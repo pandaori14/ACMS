@@ -38,8 +38,8 @@ export default function StaseManagement() {
     setIsLoading(true);
     try {
       const [staseRes, progRes] = await Promise.all([
-        api.get("/api/academic/stase"),
-        api.get("/api/academic/programs")
+        api.get("/api/v1/academic/stase"),
+        api.get("/api/v1/academic/programs")
       ]);
       setStases(staseRes.data.data || staseRes.data);
       setPrograms(progRes.data.data || progRes.data);
@@ -57,7 +57,7 @@ export default function StaseManagement() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await api.post("/api/academic/stase", formData);
+      await api.post("/api/v1/academic/stase", formData);
       setIsOpen(false);
       fetchData();
     } catch (err) {

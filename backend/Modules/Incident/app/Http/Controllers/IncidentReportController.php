@@ -10,6 +10,7 @@ use Illuminate\Http\Request;
 use Modules\Incident\Http\Requests\StoreIncidentNoteRequest;
 use Modules\Incident\Http\Requests\StoreIncidentRequest;
 use Modules\Incident\Http\Requests\UpdateIncidentStatusRequest;
+use Modules\Incident\Http\Resources\IncidentReportResource;
 use Modules\Incident\Services\IncidentService;
 
 class IncidentReportController extends Controller
@@ -21,7 +22,7 @@ class IncidentReportController extends Controller
         $paginated = $this->incidentService->list($request->all(), $request->user());
 
         return response()->json([
-            'data' => $paginated->items(),
+            'data' => IncidentReportResource::collection(collect($paginated->items()))->resolve($request),
             'meta' => [
                 'current_page' => $paginated->currentPage(),
                 'last_page' => $paginated->lastPage(),
@@ -66,7 +67,7 @@ class IncidentReportController extends Controller
 
         return response()->json([
             'message' => 'Laporan insiden berhasil dikirim. Terima kasih atas partisipasi Anda dalam menjaga keamanan lingkungan klinis.',
-            'data' => $report,
+            'data' => (new IncidentReportResource($report))->resolve($request),
         ], 201);
     }
 
@@ -74,7 +75,7 @@ class IncidentReportController extends Controller
     {
         $report = $this->incidentService->show($id, $request->user());
 
-        return response()->json(['data' => $report]);
+        return response()->json(['data' => (new IncidentReportResource($report))->resolve($request)]);
     }
 
     public function updateStatus(UpdateIncidentStatusRequest $request, string $id): JsonResponse
@@ -88,7 +89,7 @@ class IncidentReportController extends Controller
 
         return response()->json([
             'message' => 'Status laporan berhasil diperbarui.',
-            'data' => $report,
+            'data' => (new IncidentReportResource($report))->resolve($request),
         ]);
     }
 

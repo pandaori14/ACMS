@@ -42,8 +42,8 @@ export default function FacultyManagement() {
     setIsLoading(true);
     try {
       const [facRes, progRes] = await Promise.all([
-        api.get("/api/academic/faculties"),
-        api.get("/api/academic/programs")
+        api.get("/api/v1/academic/faculties"),
+        api.get("/api/v1/academic/programs")
       ]);
       setFaculties(facRes.data.data || facRes.data);
       setPrograms(progRes.data.data || progRes.data);
@@ -61,7 +61,7 @@ export default function FacultyManagement() {
   const handleAddFaculty = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await api.post("/api/academic/faculties", { name: facultyName });
+      await api.post("/api/v1/academic/faculties", { name: facultyName });
       setIsFacultyOpen(false);
       setFacultyName("");
       fetchData();
@@ -74,7 +74,7 @@ export default function FacultyManagement() {
   const handleAddProgram = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await api.post("/api/academic/programs", programData);
+      await api.post("/api/v1/academic/programs", programData);
       setIsProgramOpen(false);
       setProgramData({ faculty_id: "", code: "", name: "", accreditation: "Unggul" });
       fetchData();

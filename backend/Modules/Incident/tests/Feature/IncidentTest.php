@@ -204,4 +204,30 @@ class IncidentTest extends TestCase
             ->assertOk()
             ->assertJsonStructure(['data' => ['incident_types', 'incident_severities', 'settings', 'notification']]);
     }
+
+    public function test_anonymous_identity_is_masked_in_response_without_permission(): void
+    {
+        // Laporan anonim yang secara internal masih menyimpan reporter — identitas
+        // WAJIB disembunyikan dari pengelola tanpa izin view-anonymous-identity
+        // (ditegakkan di IncidentReportResource sebagai pertahanan berlapis).
+        $anon = $this->makeReport([
+            'is_anonymous' => true,
+            'reporter_id' => $this->reporter->id,
+        ]);
+
+        $limitedManager = User::factory()->create();
+        $limitedManager->givePermissionTo('manage-incidents');
+
+        $this->actingAs($limitedManager)
+            ->getJson("/api/v1/incidents/{$anon->id}")
+            ->assertOk()
+            ->assertJsonPath('data.reporter_id', null)
+            ->assertJsonMissingPath('data.reporter');
+
+        // Kaprodi (punya view-anonymous-identity) tetap melihat identitas asli.
+        $this->actingAs($this->manager)
+            ->getJson("/api/v1/incidents/{$anon->id}")
+            ->assertOk()
+            ->assertJsonPath('data.reporter.id', $this->reporter->id);
+    }
 }

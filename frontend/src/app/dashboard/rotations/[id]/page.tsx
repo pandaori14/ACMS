@@ -67,9 +67,9 @@ export default function RotationScheduler({ params }: { params: Promise<{ id: st
   const fetchInitialData = async () => {
     try {
       const [staseRes, hospRes, unassignedRes] = await Promise.all([
-        api.get("/api/academic/stase"),
+        api.get("/api/v1/academic/stase"),
         api.get("/api/v1/rotation/hospitals"),
-        api.get(`/api/academic/students?unassigned_in_period=${periodId}`),
+        api.get(`/api/v1/academic/students?unassigned_in_period=${periodId}`),
       ]);
       setStases(staseRes.data.data);
       setHospitals(hospRes.data.data);

@@ -8,6 +8,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Modules\Incident\Http\Requests\RespondConsultationRequest;
 use Modules\Incident\Http\Requests\StoreConsultationRequest;
+use Modules\Incident\Http\Resources\ConsultationResource;
 use Modules\Incident\Services\ConsultationService;
 
 class ConsultationController extends Controller
@@ -34,7 +35,7 @@ class ConsultationController extends Controller
         $paginated = $this->consultationService->list($request->all(), $request->user());
 
         return response()->json([
-            'data' => $paginated->items(),
+            'data' => ConsultationResource::collection(collect($paginated->items()))->resolve($request),
             'meta' => [
                 'current_page' => $paginated->currentPage(),
                 'last_page' => $paginated->lastPage(),
@@ -53,7 +54,7 @@ class ConsultationController extends Controller
 
         return response()->json([
             'message' => 'Konsultasi berhasil dikirim. Kami akan segera merespons permintaan Anda.',
-            'data' => $consultation,
+            'data' => (new ConsultationResource($consultation))->resolve($request),
         ], 201);
     }
 
@@ -61,7 +62,7 @@ class ConsultationController extends Controller
     {
         $consultation = $this->consultationService->show($id, $request->user());
 
-        return response()->json(['data' => $consultation]);
+        return response()->json(['data' => (new ConsultationResource($consultation))->resolve($request)]);
     }
 
     public function respond(RespondConsultationRequest $request, string $id): JsonResponse
@@ -75,7 +76,7 @@ class ConsultationController extends Controller
 
         return response()->json([
             'message' => 'Respons konsultasi berhasil disimpan.',
-            'data' => $consultation,
+            'data' => (new ConsultationResource($consultation))->resolve($request),
         ]);
     }
 }

@@ -37,7 +37,7 @@ export function CompetenciesClient() {
 
   const fetchCompetencies = async () => {
     try {
-      const { data } = await api.get("/api/academic/competencies?per_page=100");
+      const { data } = await api.get("/api/v1/academic/competencies?per_page=100");
       setCompetencies(data.data || []);
     } catch (err) {
       console.error("Failed to fetch competencies", err);
@@ -67,7 +67,7 @@ export function CompetenciesClient() {
   const handleDelete = async (id: string) => {
     if (!confirm("Apakah Anda yakin ingin menghapus kompetensi ini?")) return;
     try {
-      await api.delete(`/api/academic/competencies/${id}`);
+      await api.delete(`/api/v1/academic/competencies/${id}`);
       fetchCompetencies();
     } catch (err) {
       console.error(err);
@@ -80,9 +80,9 @@ export function CompetenciesClient() {
     setSaving(true);
     try {
       if (editingId) {
-        await api.put(`/api/academic/competencies/${editingId}`, form);
+        await api.put(`/api/v1/academic/competencies/${editingId}`, form);
       } else {
-        await api.post("/api/academic/competencies", form);
+        await api.post("/api/v1/academic/competencies", form);
       }
       setOpen(false);
       fetchCompetencies();

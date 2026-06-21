@@ -70,7 +70,7 @@ export function UsersClient() {
   const { data: programsData, isLoading: loadingPrograms } = useQuery({
     queryKey: ['programs'],
     queryFn: async (): Promise<Program[]> => {
-      const res = await api.get("/api/academic/programs");
+      const res = await api.get("/api/v1/academic/programs");
       return res.data.data || [];
     }
   });
