@@ -144,11 +144,15 @@ class NotificationService
                 $mail->bcc($bccEmails);
             }
 
-            $mail->send(new SystemNotificationMail($subject, $body));
+            // queue() (bukan send()): pengiriman SMTP tidak memblokir respons HTTP.
+            // Di dev jalankan `php artisan queue:work` (sudah ada di `composer dev`);
+            // di test QUEUE=sync sehingga tetap berjalan langsung. Kegagalan SMTP
+            // tercatat di failed_jobs, tidak merusak request pelaporan.
+            $mail->queue(new SystemNotificationMail($subject, $body));
 
             return true;
         } catch (\Exception $e) {
-            Log::error("Failed to send email to {$toEmail}: ".$e->getMessage());
+            Log::error("Failed to queue email to {$toEmail}: ".$e->getMessage());
 
             return false;
         }
