@@ -1,0 +1,12 @@
+{
+    "Auth": true,
+    "Academic": true,
+    "Rotation": true,
+    "Clinical": true,
+    "Assessment": true,
+    "Examination": true,
+    "Finance": true,
+    "Attendance": true,
+    "Evaluation": true,
+    "Incident": true
+}

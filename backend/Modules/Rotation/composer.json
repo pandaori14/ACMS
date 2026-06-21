@@ -1,0 +1,30 @@
+{
+    "name": "nwidart/rotation",
+    "description": "",
+    "authors": [
+        {
+            "name": "Nicolas Widart",
+            "email": "n.widart@gmail.com"
+        }
+    ],
+    "extra": {
+        "laravel": {
+            "providers": [],
+            "aliases": {
+
+            }
+        }
+    },
+    "autoload": {
+        "psr-4": {
+            "Modules\\Rotation\\": "app/",
+            "Modules\\Rotation\\Database\\Factories\\": "database/factories/",
+            "Modules\\Rotation\\Database\\Seeders\\": "database/seeders/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Modules\\Rotation\\Tests\\": "tests/"
+        }
+    }
+}

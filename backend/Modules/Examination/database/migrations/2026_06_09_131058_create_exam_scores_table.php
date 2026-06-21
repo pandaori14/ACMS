@@ -1,0 +1,32 @@
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    /**
+     * Run the migrations.
+     */
+    public function up(): void
+    {
+        Schema::create('exam_scores', function (Blueprint $table) {
+            $table->uuid('id')->primary();
+            $table->foreignUuid('exam_participant_id')->constrained('exam_participants')->cascadeOnDelete();
+            $table->foreignUuid('exam_station_id')->nullable()->constrained('exam_stations')->cascadeOnDelete();
+            $table->foreignUuid('assessor_id')->nullable()->constrained('users');
+            $table->decimal('score', 5, 2);
+            $table->text('feedback')->nullable();
+            $table->timestamps();
+        });
+    }
+
+    /**
+     * Reverse the migrations.
+     */
+    public function down(): void
+    {
+        Schema::dropIfExists('exam_scores');
+    }
+};

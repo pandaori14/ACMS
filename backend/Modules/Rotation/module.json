@@ -1,0 +1,11 @@
+{
+    "name": "Rotation",
+    "alias": "rotation",
+    "description": "",
+    "keywords": [],
+    "priority": 0,
+    "providers": [
+        "Modules\\Rotation\\Providers\\RotationServiceProvider"
+    ],
+    "files": []
+}

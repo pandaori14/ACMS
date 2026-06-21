@@ -1,0 +1,30 @@
+{
+    "name": "nwidart/incident",
+    "description": "",
+    "authors": [
+        {
+            "name": "Nicolas Widart",
+            "email": "n.widart@gmail.com"
+        }
+    ],
+    "extra": {
+        "laravel": {
+            "providers": [],
+            "aliases": {
+
+            }
+        }
+    },
+    "autoload": {
+        "psr-4": {
+            "Modules\\Incident\\": "app/",
+            "Modules\\Incident\\Database\\Factories\\": "database/factories/",
+            "Modules\\Incident\\Database\\Seeders\\": "database/seeders/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Modules\\Incident\\Tests\\": "tests/"
+        }
+    }
+}

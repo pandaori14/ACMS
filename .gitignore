@@ -1,0 +1,38 @@
+# ─── Root .gitignore (monorepo: backend/ Laravel + frontend/ Next.js) ───
+# Catatan: backend/.gitignore & frontend/.gitignore sudah mengabaikan
+# vendor, node_modules, .env, .next di sub-foldernya. Ini lapisan tambahan
+# untuk file tingkat-root + jaring pengaman lintas folder.
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE / editor
+/.vscode/
+/.idea/
+*.swp
+
+# Tooling artifact di root
+/composer.phar
+
+# Secrets & environment (jaring pengaman — jangan pernah commit .env)
+**/.env
+.env
+**/.env.backup
+**/.env.production
+
+# Dependencies (defense-in-depth; sub-folder juga mengabaikan)
+**/vendor/
+**/node_modules/
+
+# Build output
+**/.next/
+**/out/
+**/public/build/
+
+# Logs & cache
+*.log
+**/storage/*.key
+
+# Data sesi Claude lokal (jangan commit setelan lokal)
+/.claude/settings.local.json
