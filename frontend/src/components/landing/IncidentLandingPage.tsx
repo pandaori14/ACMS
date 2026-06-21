@@ -12,6 +12,7 @@ import { useEffect, useState, useRef } from "react";
 import api from "@/lib/api";
 import LandingFooter from "@/components/landing/LandingFooter";
 import Reveal from "@/components/landing/Reveal";
+import Parallax from "@/components/landing/Parallax";
 
 class Particle {
   x: number;
@@ -412,9 +413,17 @@ export default function IncidentLandingPage() {
       </section>
 
       {/* Kategori Pelaporan (dinamis dari setting) */}
-      <section id="kategori" className="py-24 bg-slate-50 border-t border-slate-100">
-        <div className="mx-auto max-w-7xl px-6 lg:px-8">
-          <Reveal className="text-center mb-16">
+      <section id="kategori" className="relative overflow-hidden py-24 bg-slate-50 border-t border-slate-100">
+        {/* Objek dekoratif parallax */}
+        <Parallax speed={0.25} className="pointer-events-none absolute -top-10 -left-16 -z-0">
+          <div className="w-72 h-72 rounded-full bg-red-200/40 blur-3xl" />
+        </Parallax>
+        <Parallax speed={-0.2} className="pointer-events-none absolute top-40 -right-20 -z-0">
+          <div className="w-80 h-80 rounded-full bg-rose-200/40 blur-3xl" />
+        </Parallax>
+
+        <div className="relative z-10 mx-auto max-w-7xl px-6 lg:px-8">
+          <Reveal variant="up" className="text-center mb-16">
             <h2 className="text-3xl font-bold text-slate-900 mb-4">Kategori Pelaporan</h2>
             <p className="text-slate-500 max-w-2xl mx-auto">Kami menangani berbagai jenis insiden dengan prosedur operasional standar (SOP) yang ketat untuk menjamin keselamatan dan keadilan.</p>
           </Reveal>
@@ -424,12 +433,14 @@ export default function IncidentLandingPage() {
               const Icon = CARD_ICONS[i % CARD_ICONS.length];
               const color = CARD_COLORS[i % CARD_COLORS.length];
               return (
-                <Reveal key={i} delay={i * 80} className="bg-white p-7 rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-shadow">
-                  <div className={`w-11 h-11 ${color.bg} ${color.text} rounded-xl flex items-center justify-center mb-5`}>
-                    <Icon className="h-5 w-5" />
+                <Reveal key={i} delay={i * 110} variant="scale" className="h-full">
+                  <div className="h-full bg-white p-7 rounded-2xl border border-slate-100 shadow-sm transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
+                    <div className={`w-11 h-11 ${color.bg} ${color.text} rounded-xl flex items-center justify-center mb-5`}>
+                      <Icon className="h-5 w-5" />
+                    </div>
+                    <h3 className="text-lg font-bold text-slate-900 mb-2">{cat.title}</h3>
+                    <p className="text-slate-500 text-sm leading-relaxed">{cat.description}</p>
                   </div>
-                  <h3 className="text-lg font-bold text-slate-900 mb-2">{cat.title}</h3>
-                  <p className="text-slate-500 text-sm leading-relaxed">{cat.description}</p>
                 </Reveal>
               );
             })}
@@ -461,16 +472,20 @@ export default function IncidentLandingPage() {
       </section>
 
       {/* Bagaimana Laporan Ditangani (proses + SLA) */}
-      <section className="py-24 bg-white border-t border-slate-100">
-        <div className="mx-auto max-w-7xl px-6 lg:px-8">
-          <Reveal className="text-center mb-16">
+      <section className="relative overflow-hidden py-24 bg-white border-t border-slate-100">
+        <Parallax speed={0.3} className="pointer-events-none absolute top-10 right-10 -z-0">
+          <div className="w-64 h-64 rounded-full bg-red-100/50 blur-3xl" />
+        </Parallax>
+
+        <div className="relative z-10 mx-auto max-w-7xl px-6 lg:px-8">
+          <Reveal variant="up" className="text-center mb-16">
             <h2 className="text-3xl font-bold text-slate-900 mb-4">Bagaimana Laporan Ditangani</h2>
             <p className="text-slate-500 max-w-2xl mx-auto">Proses yang transparan agar Anda tahu persis apa yang terjadi setelah melapor.</p>
           </Reveal>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto">
             {PROCESS_STEPS.map((step, i) => (
-              <Reveal key={i} delay={i * 100} className="relative bg-slate-50 rounded-2xl p-7 border border-slate-100">
+              <Reveal key={i} delay={i * 140} variant={i === 0 ? "left" : i === 2 ? "right" : "up"} className="relative bg-slate-50 rounded-2xl p-7 border border-slate-100">
                 <div className="w-12 h-12 bg-red-600 text-white rounded-xl flex items-center justify-center mb-5 shadow-sm shadow-red-600/20">
                   <step.icon className="h-6 w-6" />
                 </div>
@@ -491,9 +506,13 @@ export default function IncidentLandingPage() {
 
       {/* Komitmen Kami (just culture + anti-retaliasi + dasar hukum) */}
       {(config.justCulture || config.legalBasis) && (
-        <section className="py-24 bg-slate-900 text-slate-300">
-          <div className="mx-auto max-w-5xl px-6 lg:px-8">
-            <Reveal className="text-center mb-12">
+        <section className="relative overflow-hidden py-24 bg-slate-900 text-slate-300">
+          <Parallax speed={0.35} className="pointer-events-none absolute -top-20 left-1/2 -translate-x-1/2">
+            <div className="w-[40rem] h-[40rem] rounded-full bg-red-600/10 blur-3xl" />
+          </Parallax>
+
+          <div className="relative z-10 mx-auto max-w-5xl px-6 lg:px-8">
+            <Reveal variant="blur" className="text-center mb-12">
               <div className="inline-flex h-12 w-12 items-center justify-center rounded-xl bg-white/10 text-white mb-5">
                 <ShieldCheck className="h-6 w-6" />
               </div>

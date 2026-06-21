@@ -2,19 +2,33 @@
 
 import { useEffect, useRef, useState } from "react";
 
+type RevealVariant = "up" | "scale" | "left" | "right" | "blur";
+
+const HIDDEN: Record<RevealVariant, string> = {
+  up: "opacity-0 translate-y-12",
+  scale: "opacity-0 scale-90",
+  left: "opacity-0 -translate-x-16",
+  right: "opacity-0 translate-x-16",
+  blur: "opacity-0 blur-lg translate-y-8",
+};
+
+const SHOWN = "opacity-100 translate-x-0 translate-y-0 scale-100 blur-0";
+
 interface RevealProps {
   children: React.ReactNode;
   className?: string;
-  /** Jeda mulai animasi (ms) untuk efek bertahap (stagger). */
+  /** Arah/efek transisi saat masuk viewport. */
+  variant?: RevealVariant;
+  /** Jeda mulai (ms) untuk efek bertahap (stagger). */
   delay?: number;
 }
 
 /**
- * Bungkus konten agar muncul fade-up saat masuk viewport (scroll-reveal).
- * Memakai IntersectionObserver (sekali tampil), dan menghormati
+ * Bungkus konten agar muncul dengan transisi cinematic saat masuk viewport
+ * (scroll-reveal). IntersectionObserver (sekali tampil) + menghormati
  * prefers-reduced-motion (langsung tampil tanpa animasi).
  */
-export default function Reveal({ children, className = "", delay = 0 }: RevealProps) {
+export default function Reveal({ children, className = "", variant = "up", delay = 0 }: RevealProps) {
   const ref = useRef<HTMLDivElement>(null);
   const [visible, setVisible] = useState(false);
 
@@ -48,8 +62,8 @@ export default function Reveal({ children, className = "", delay = 0 }: RevealPr
     <div
       ref={ref}
       style={{ transitionDelay: visible ? `${delay}ms` : "0ms" }}
-      className={`transition-all duration-700 ease-out ${
-        visible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"
+      className={`transition-all duration-1000 ease-[cubic-bezier(0.22,1,0.36,1)] will-change-transform ${
+        visible ? SHOWN : HIDDEN[variant]
       } ${className}`}
     >
       {children}
