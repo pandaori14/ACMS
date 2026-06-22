@@ -38,10 +38,11 @@ export interface Stase {
 
 export interface Student {
   id: string;
+  user_id?: string;
   /** Sebagian endpoint memuat relasi `student` sebagai User dengan nama/email datar. */
   name?: string;
   email?: string;
-  user?: { id: string; name?: string; email?: string };
+  user?: { id: string; name?: string; email?: string; identity_number?: string };
   identity_number?: string;
   program?: Program;
   cohort?: { id: string; name?: string };
@@ -50,6 +51,7 @@ export interface Student {
 
 export interface RotationAssignment {
   id: string;
+  student_id?: string;
   stase?: Stase;
   hospital?: { id: string; name?: string };
   student?: Student;
@@ -71,6 +73,13 @@ export interface StaseGrade {
   letter_grade?: string | null;
 }
 
+export interface EvaluationQuestion {
+  id: string;
+  question_text?: string;
+  target_type?: string;
+  is_active?: boolean;
+}
+
 export interface RubricIndicator {
   key: string;
   label?: string;
@@ -79,6 +88,7 @@ export interface RubricIndicator {
 }
 
 export interface RubricSchema {
+  max_total_score?: number;
   indicators?: RubricIndicator[];
 }
 
@@ -86,6 +96,7 @@ export interface AssessmentTemplate {
   id: string;
   name?: string;
   type?: string;
+  is_active?: boolean;
   rubric_schema?: RubricSchema;
 }
 

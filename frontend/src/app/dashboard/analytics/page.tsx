@@ -27,7 +27,18 @@ export default function AnalyticsPage() {
   const user = useAuthStore((state) => state.user);
   const router = useRouter();
   
-  const [data, setData] = useState<any>(null);
+  interface ChartDatum {
+    value?: number;
+    fill?: string;
+    name?: string;
+    [key: string]: unknown;
+  }
+  interface AnalyticsData {
+    grade_distribution?: ChartDatum[];
+    logbook_completion?: ChartDatum[];
+    stase_performance?: ChartDatum[];
+  }
+  const [data, setData] = useState<AnalyticsData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -139,7 +150,7 @@ export default function AnalyticsPage() {
             <CardDescription className="text-xs">Status penyelesaian buku log klinis secara global</CardDescription>
           </CardHeader>
           <CardContent className="h-[300px]">
-             {data?.logbook_completion?.every((i: any) => i.value === 0) ? (
+             {data?.logbook_completion?.every((i) => i.value === 0) ? (
               <div className="flex h-full items-center justify-center text-slate-500 text-sm">Tidak ada data logbook</div>
             ) : (
               <ResponsiveContainer width="100%" height="100%">
@@ -154,7 +165,7 @@ export default function AnalyticsPage() {
                     dataKey="value"
                     animationDuration={1000}
                   >
-                    {data?.logbook_completion?.map((entry: any, index: number) => (
+                    {data?.logbook_completion?.map((entry, index: number) => (
                       <Cell key={`cell-${index}`} fill={entry.fill} />
                     ))}
                   </Pie>

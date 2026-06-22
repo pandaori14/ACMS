@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import api from "@/lib/api";
+import { Student } from "@/lib/types";
 import { useRouter } from "next/navigation";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -90,7 +91,7 @@ export default function TranscriptsPage() {
                 </TableHeader>
                 <TableBody>
                   {students.length > 0 ? (
-                    students.map((student: any) => (
+                    students.map((student: Student) => (
                       <TableRow key={student.id}>
                         <TableCell className="font-medium">{student.user?.identity_number || "-"}</TableCell>
                         <TableCell>

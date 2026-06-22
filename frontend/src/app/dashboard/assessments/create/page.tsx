@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import api from "@/lib/api";
 import { getApiErrorMessage } from "@/lib/api-helpers";
+import { AssessmentTemplate, RotationAssignment } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -19,8 +20,8 @@ import { Save, Send, FileSignature } from "lucide-react";
 export default function CreateAssessmentPage() {
   const router = useRouter();
   
-  const [templates, setTemplates] = useState<any[]>([]);
-  const [assignments, setAssignments] = useState<any[]>([]);
+  const [templates, setTemplates] = useState<AssessmentTemplate[]>([]);
+  const [assignments, setAssignments] = useState<RotationAssignment[]>([]);
   
   const [formData, setFormData] = useState({
     rotation_assignment_id: "",
@@ -57,7 +58,7 @@ export default function CreateAssessmentPage() {
   // Automatically update student_id when assignment changes
   useEffect(() => {
     if (selectedAssignment) {
-      setFormData((prev) => ({ ...prev, student_id: selectedAssignment.student?.id || selectedAssignment.student_id }));
+      setFormData((prev) => ({ ...prev, student_id: selectedAssignment.student?.id || selectedAssignment.student_id || "" }));
     }
   }, [selectedAssignment]);
 
@@ -172,7 +173,7 @@ export default function CreateAssessmentPage() {
               <p className="text-sm text-blue-700 mt-1">Isi skor untuk setiap indikator yang diukur.</p>
             </div>
             <div className="p-6 space-y-6">
-              {selectedTemplate.rubric_schema?.indicators?.map((indicator: any) => (
+              {selectedTemplate.rubric_schema?.indicators?.map((indicator) => (
                 <div key={indicator.key} className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b pb-4 last:border-0 last:pb-0">
                   <div className="flex-1">
                     <Label className="text-base font-medium">{indicator.label}</Label>
@@ -205,7 +206,7 @@ export default function CreateAssessmentPage() {
                   <span className="text-sm text-muted-foreground font-normal">
                     /{" "}
                     {selectedTemplate.rubric_schema?.indicators?.reduce(
-                      (sum: number, ind: any) => sum + (ind.max_score || 0),
+                      (sum: number, ind) => sum + (ind.max_score || 0),
                       0
                     )}
                   </span>

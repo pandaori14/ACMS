@@ -21,11 +21,11 @@ const eslintConfig = [
     ],
   },
   {
-    // Utang teknis pre-existing: `any` eksplisit tersebar di file lama.
-    // Sementara dijadikan WARNING (bukan error) agar CI dapat gate pada tsc + build
-    // + error lain, sambil burn-down `any` bertahap per-modul. Kode baru tetap hindari `any`.
+    // Burn-down `any` SELESAI (0 tersisa). Rule dinaikkan ke ERROR agar `any`
+    // eksplisit baru gagal di CI. Tipe domain bersama: src/lib/types.ts;
+    // util error/settings: src/lib/api-helpers.ts.
     rules: {
-      "@typescript-eslint/no-explicit-any": "warn",
+      "@typescript-eslint/no-explicit-any": "error",
     },
   },
   {

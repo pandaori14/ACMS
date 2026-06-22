@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import api from "@/lib/api";
 import { getApiErrorMessage } from "@/lib/api-helpers";
+import { AssessmentTemplate } from "@/lib/types";
 import { Plus, Edit2, Trash2, Save, X, PlusCircle, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,9 +12,9 @@ import { toast } from "sonner";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export default function RubricsPage() {
-  const [templates, setTemplates] = useState<any[]>([]);
+  const [templates, setTemplates] = useState<AssessmentTemplate[]>([]);
   const [loading, setLoading] = useState(true);
-  const [editingTemplate, setEditingTemplate] = useState<any | null>(null);
+  const [editingTemplate, setEditingTemplate] = useState<AssessmentTemplate | null>(null);
 
   const fetchTemplates = async () => {
     try {
@@ -49,9 +50,9 @@ export default function RubricsPage() {
     if (!editingTemplate) return;
     
     // Validate total weight is 100 if weights are used
-    const hasWeight = editingTemplate.rubric_schema?.indicators?.some((i: any) => i.weight !== undefined);
+    const hasWeight = editingTemplate.rubric_schema?.indicators?.some((i) => i.weight !== undefined);
     if (hasWeight) {
-        const totalWeight = editingTemplate.rubric_schema?.indicators?.reduce((acc: number, curr: any) => acc + (curr.weight || 0), 0);
+        const totalWeight = editingTemplate.rubric_schema?.indicators?.reduce((acc: number, curr) => acc + (curr.weight || 0), 0);
         if (totalWeight !== 100) {
             toast.error(`Total bobot persentase harus 100%. Saat ini: ${totalWeight}%`);
             return;
@@ -60,7 +61,7 @@ export default function RubricsPage() {
 
     try {
       if (editingTemplate.id === "new") {
-        const payload = { ...editingTemplate };
+        const payload: Partial<AssessmentTemplate> = { ...editingTemplate };
         delete payload.id;
         await api.post("/api/v1/assessments/templates", payload);
         toast.success("Template berhasil dibuat");
@@ -138,12 +139,12 @@ export default function RubricsPage() {
                 <h3 className="font-semibold text-lg">Indikator Penilaian</h3>
                 <div className="text-sm text-muted-foreground bg-muted px-2 py-1 rounded">
                   Total Bobot: <span className="font-bold text-foreground">
-                    {editingTemplate.rubric_schema?.indicators?.reduce((a:number, b:any) => a + (Number(b.weight) || 0), 0) || 0}%
+                    {editingTemplate.rubric_schema?.indicators?.reduce((a: number, b) => a + (Number(b.weight) || 0), 0) || 0}%
                   </span>
                 </div>
               </div>
 
-              {editingTemplate.rubric_schema?.indicators?.map((ind: any, idx: number) => (
+              {editingTemplate.rubric_schema?.indicators?.map((ind, idx) => (
                 <div key={idx} className="flex items-center gap-3 bg-muted/30 p-3 rounded-lg border">
                   <div className="flex-1 space-y-1">
                     <label className="text-xs text-muted-foreground">Label Indikator</label>
@@ -240,7 +241,7 @@ export default function RubricsPage() {
               <CardContent>
                 <div className="text-sm space-y-2 mt-2">
                   <div className="font-medium text-muted-foreground mb-1">Indikator & Bobot:</div>
-                  {t.rubric_schema?.indicators?.map((i:any, idx:number) => (
+                  {t.rubric_schema?.indicators?.map((i, idx) => (
                     <div key={idx} className="flex justify-between items-center text-xs bg-muted/50 p-2 rounded">
                       <span className="font-medium truncate max-w-[140px]" title={i.label}>{i.label}</span>
                       <span className="text-muted-foreground bg-background px-1.5 py-0.5 rounded border">

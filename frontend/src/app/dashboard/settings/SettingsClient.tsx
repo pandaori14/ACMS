@@ -14,6 +14,21 @@ import {
   LayoutTemplate, Mail, Key, Plus, Trash2, BookOpen, MapPin, Search, Scale, type LucideIcon,
 } from "lucide-react";
 import { toast } from "sonner";
+
+interface MatrixRule {
+  trigger_field?: string;
+  trigger_value?: string;
+  additional_cc?: string;
+  additional_roles?: string[];
+}
+
+interface MatrixNode {
+  enabled?: boolean;
+  cc_emails?: string;
+  notify_roles?: string[];
+  conditional_rules?: MatrixRule[];
+  [key: string]: unknown;
+}
 import { useAuthStore } from "@/store/useAuthStore";
 
 interface Setting {
@@ -253,7 +268,7 @@ export function SettingsClient() {
     }
 
     if (setting.type === "json_contacts") {
-      let contactsData: any[] = [];
+      let contactsData: Record<string, string>[] = [];
       try {
         contactsData = JSON.parse(setting.value || "[]");
       } catch (e) {}
@@ -320,7 +335,7 @@ export function SettingsClient() {
     }
 
     if (setting.type === "json_links") {
-      let linksData: any[] = [];
+      let linksData: Record<string, string>[] = [];
       try {
         linksData = JSON.parse(setting.value || "[]");
       } catch (e) {}
@@ -370,7 +385,7 @@ export function SettingsClient() {
     }
 
     if (setting.type === "json_cards") {
-      let cardsData: any[] = [];
+      let cardsData: Record<string, string>[] = [];
       try {
         cardsData = JSON.parse(setting.value || "[]");
       } catch (e) {}
@@ -422,7 +437,7 @@ export function SettingsClient() {
     }
 
     if (setting.type === "json_faq") {
-      let faqData: any[] = [];
+      let faqData: Record<string, string>[] = [];
       try {
         faqData = JSON.parse(setting.value || "[]");
       } catch (e) {}
@@ -474,7 +489,7 @@ export function SettingsClient() {
     }
 
     if (setting.type === "matrix") {
-      let matrixData: Record<string, any> = {};
+      let matrixData: Record<string, MatrixNode> = {};
       try {
         matrixData = JSON.parse(setting.value || "{}");
       } catch (e) {}
@@ -492,7 +507,7 @@ export function SettingsClient() {
         consultation_responded: "Konsultasi Dibalas (ke pengaju)"
       };
 
-      const updateMatrixNode = (key: string, field: string, value: any) => {
+      const updateMatrixNode = (key: string, field: string, value: unknown) => {
         const newData = { ...matrixData };
         if (!newData[key]) newData[key] = { enabled: false, cc_emails: '', notify_roles: [], conditional_rules: [] };
         newData[key][field] = value;
@@ -595,14 +610,14 @@ export function SettingsClient() {
                             Belum ada aturan bersyarat.
                           </div>
                         ) : (
-                          (dataNode.conditional_rules || []).map((rule: any, idx: number) => (
+                          (dataNode.conditional_rules || []).map((rule: MatrixRule, idx: number) => (
                             <div key={idx} className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-2 p-2 pt-5 border border-dashed rounded text-xs bg-slate-50 dark:bg-slate-900 relative">
                               <Button
                                 variant="ghost"
                                 size="icon"
                                 className="absolute top-1 right-1 h-5 w-5 text-red-500 hover:text-red-700 hover:bg-red-50"
                                 onClick={() => {
-                                  const rules = [...dataNode.conditional_rules];
+                                  const rules = [...(dataNode.conditional_rules || [])];
                                   rules.splice(idx, 1);
                                   updateMatrixNode(key, 'conditional_rules', rules);
                                 }}
@@ -616,7 +631,7 @@ export function SettingsClient() {
                                   <Select
                                     value={rule.trigger_field || ""}
                                     onValueChange={(v) => {
-                                      const rules = [...dataNode.conditional_rules];
+                                      const rules = [...(dataNode.conditional_rules || [])];
                                       rules[idx].trigger_field = v ?? "";
                                       rules[idx].trigger_value = ""; // reset nilai karena opsinya berubah
                                       updateMatrixNode(key, 'conditional_rules', rules);
@@ -635,7 +650,7 @@ export function SettingsClient() {
                                   <Input
                                     value={rule.trigger_field}
                                     onChange={(e) => {
-                                      const rules = [...dataNode.conditional_rules];
+                                      const rules = [...(dataNode.conditional_rules || [])];
                                       rules[idx].trigger_field = e.target.value;
                                       updateMatrixNode(key, 'conditional_rules', rules);
                                     }}
@@ -646,11 +661,11 @@ export function SettingsClient() {
                               </div>
                               <div>
                                 <label className="text-[10px] text-muted-foreground">Nilai Pemicu</label>
-                                {(triggerRefs[rule.trigger_field] && triggerRefs[rule.trigger_field].length > 0) ? (
+                                {(triggerRefs[rule.trigger_field ?? ""] && triggerRefs[rule.trigger_field ?? ""].length > 0) ? (
                                   <Select
                                     value={rule.trigger_value || ""}
                                     onValueChange={(v) => {
-                                      const rules = [...dataNode.conditional_rules];
+                                      const rules = [...(dataNode.conditional_rules || [])];
                                       rules[idx].trigger_value = v ?? "";
                                       updateMatrixNode(key, 'conditional_rules', rules);
                                     }}
@@ -659,7 +674,7 @@ export function SettingsClient() {
                                       <SelectValue placeholder="Pilih nilai..." />
                                     </SelectTrigger>
                                     <SelectContent>
-                                      {triggerRefs[rule.trigger_field].map((opt) => (
+                                      {triggerRefs[rule.trigger_field ?? ""].map((opt) => (
                                         <SelectItem key={opt.value} value={opt.value}>{opt.name}</SelectItem>
                                       ))}
                                     </SelectContent>
@@ -668,7 +683,7 @@ export function SettingsClient() {
                                   <Input
                                     value={rule.trigger_value}
                                     onChange={(e) => {
-                                      const rules = [...dataNode.conditional_rules];
+                                      const rules = [...(dataNode.conditional_rules || [])];
                                       rules[idx].trigger_value = e.target.value;
                                       updateMatrixNode(key, 'conditional_rules', rules);
                                     }}
@@ -682,7 +697,7 @@ export function SettingsClient() {
                                 <Input
                                   value={rule.additional_cc}
                                   onChange={(e) => {
-                                    const rules = [...dataNode.conditional_rules];
+                                    const rules = [...(dataNode.conditional_rules || [])];
                                     rules[idx].additional_cc = e.target.value;
                                     updateMatrixNode(key, 'conditional_rules', rules);
                                   }}

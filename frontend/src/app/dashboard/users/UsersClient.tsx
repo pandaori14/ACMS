@@ -8,6 +8,18 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Users, Plus, Edit, Trash2, Loader2, Search } from "lucide-react";
 
+interface UserForm {
+  name: string;
+  email: string;
+  password: string;
+  identity_number: string;
+  phone: string;
+  status: string;
+  roles: string[];
+  hospital_ids: string[];
+  program_id: string;
+}
+
 interface Role {
   id: number;
   name: string;
@@ -40,7 +52,7 @@ export function UsersClient() {
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [form, setForm] = useState<any>({
+  const [form, setForm] = useState<UserForm>({
     name: "",
     email: "",
     password: "",
@@ -140,10 +152,10 @@ export function UsersClient() {
     e.preventDefault();
     setSaving(true);
     try {
-      const payload = { ...form };
+      const payload: Partial<UserForm> = { ...form };
       if (!payload.password) delete payload.password; // Don't send empty password on edit
       if (!payload.program_id) delete payload.program_id; // Don't send empty program_id
-      if (payload.hospital_ids.length === 0) delete payload.hospital_ids; // Same for hospital_ids
+      if (payload.hospital_ids?.length === 0) delete payload.hospital_ids; // Same for hospital_ids
 
       if (editingId) {
         await api.put(`/api/users/${editingId}`, payload);
@@ -170,7 +182,7 @@ export function UsersClient() {
   };
 
   const toggleRole = (roleName: string) => {
-    setForm((prev: any) => {
+    setForm((prev) => {
       const roles = prev.roles.includes(roleName)
         ? prev.roles.filter((r: string) => r !== roleName)
         : [...prev.roles, roleName];
@@ -179,7 +191,7 @@ export function UsersClient() {
   };
 
   const toggleHospital = (hospitalId: string) => {
-    setForm((prev: any) => {
+    setForm((prev) => {
       const hospital_ids = prev.hospital_ids.includes(hospitalId)
         ? prev.hospital_ids.filter((id: string) => id !== hospitalId)
         : [...prev.hospital_ids, hospitalId];

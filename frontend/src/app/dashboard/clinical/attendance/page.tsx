@@ -8,8 +8,15 @@ import { toast } from "sonner";
 import { MapPin, Clock, LogIn, LogOut, CheckCircle2 } from "lucide-react";
 import api from "@/lib/api";
 
+interface AttendanceStatus {
+  rotation?: { id: string; hospital?: { name?: string; radius?: number } };
+  can_check_in?: boolean;
+  can_check_out?: boolean;
+  attendance?: { check_in_time?: string | null; check_out_time?: string | null };
+}
+
 export default function AttendancePage() {
-  const [status, setStatus] = useState<any>(null);
+  const [status, setStatus] = useState<AttendanceStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState(false);
   const [location, setLocation] = useState<{lat: number, lng: number} | null>(null);
@@ -63,7 +70,7 @@ export default function AttendancePage() {
       const payload = {
         latitude: coords.lat,
         longitude: coords.lng,
-        rotation_assignment_id: status.rotation.id
+        rotation_assignment_id: status?.rotation?.id
       };
       
       const res = await api.post(`/api/v1/clinical/attendance/${type}`, payload);
@@ -115,7 +122,7 @@ export default function AttendancePage() {
               <div className="flex justify-between items-start">
                 <div>
                   <CardDescription>Lokasi Rotasi Saat Ini</CardDescription>
-                  <CardTitle className="text-xl mt-1">{status.rotation.hospital.name}</CardTitle>
+                  <CardTitle className="text-xl mt-1">{status.rotation?.hospital?.name}</CardTitle>
                 </div>
                 <Badge variant="outline" className="bg-primary/5 text-primary">
                   {new Date().toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
@@ -126,7 +133,7 @@ export default function AttendancePage() {
               <div className="flex items-center gap-2 text-sm text-muted-foreground bg-muted/30 p-3 rounded-lg border">
                 <MapPin className="h-4 w-4 shrink-0 text-primary" />
                 <span>
-                  Pastikan Anda berada di area Rumah Sakit (Radius {status.rotation.hospital.radius ?? 100}m). Sistem akan memverifikasi koordinat GPS perangkat Anda.
+                  Pastikan Anda berada di area Rumah Sakit (Radius {status.rotation?.hospital?.radius ?? 100}m). Sistem akan memverifikasi koordinat GPS perangkat Anda.
                 </span>
               </div>
             </CardContent>

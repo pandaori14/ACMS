@@ -8,10 +8,11 @@ import { Star, FileText, CheckCircle2 } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import api from "@/lib/api";
 import { getApiErrorMessage } from "@/lib/api-helpers";
+import { EvaluationQuestion, RotationAssignment } from "@/lib/types";
 
 export default function EvaluationsPage() {
-  const [questions, setQuestions] = useState<any[]>([]);
-  const [rotation, setRotation] = useState<any>(null);
+  const [questions, setQuestions] = useState<EvaluationQuestion[]>([]);
+  const [rotation, setRotation] = useState<RotationAssignment | null>(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
@@ -37,8 +38,8 @@ export default function EvaluationsPage() {
             setQuestions(qRes.data.data);
             
             // Initialize answers state
-            const initial: any = {};
-            qRes.data.forEach((q: any) => {
+            const initial: Record<string, { rating: number; comment: string }> = {};
+            qRes.data.data.forEach((q: EvaluationQuestion) => {
               initial[q.id] = { rating: 0, comment: "" };
             });
             setAnswers(initial);
@@ -76,6 +77,7 @@ export default function EvaluationsPage() {
       return;
     }
 
+    if (!rotation) return;
     setSubmitting(true);
     try {
       const payload = {
@@ -127,7 +129,7 @@ export default function EvaluationsPage() {
             <CheckCircle2 className="h-16 w-16 text-green-500 mb-4" />
             <h3 className="text-xl font-bold text-green-700 dark:text-green-400">Evaluasi Selesai</h3>
             <p className="text-muted-foreground mt-2">
-              Anda telah mengisi kuesioner evaluasi untuk stase di {rotation.hospital.name}. Terima kasih atas partisipasi Anda dalam menjaga kualitas pendidikan klinis.
+              Anda telah mengisi kuesioner evaluasi untuk stase di {rotation.hospital?.name}. Terima kasih atas partisipasi Anda dalam menjaga kualitas pendidikan klinis.
             </p>
           </CardContent>
         </Card>
@@ -147,7 +149,7 @@ export default function EvaluationsPage() {
       <Card className="bg-primary/5 border-primary/20">
         <CardHeader>
           <CardTitle>Stase Saat Ini</CardTitle>
-          <CardDescription>{rotation.hospital.name}</CardDescription>
+          <CardDescription>{rotation.hospital?.name}</CardDescription>
         </CardHeader>
       </Card>
 

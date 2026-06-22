@@ -2,6 +2,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import api from "@/lib/api";
+import { StaseGrade } from "@/lib/types";
 import { useParams, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -145,7 +146,7 @@ export default function TranscriptDetailPage() {
             </thead>
             <tbody>
               {grades.length > 0 ? (
-                grades.map((grade: any, index: number) => (
+                grades.map((grade: StaseGrade, index: number) => (
                   <tr key={grade.id}>
                     <td className="border border-black px-4 py-2 text-center">{index + 1}</td>
                     <td className="border border-black px-4 py-2 font-medium">{grade.rotation_assignment?.stase?.name || "-"}</td>

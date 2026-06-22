@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/store/useAuthStore";
 import api from "@/lib/api";
 import { getApiErrorStatus } from "@/lib/api-helpers";
+import { RotationAssignment, StaseGrade } from "@/lib/types";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
@@ -130,11 +131,11 @@ export default function DashboardPage() {
                 {stats.stase_distribution?.length === 0 ? (
                   <p className="text-sm text-slate-500">Tidak ada stase aktif.</p>
                 ) : (
-                  stats.stase_distribution?.map((item: any, i: number) => (
+                  stats.stase_distribution?.map((item: { name?: string; value?: number }, i: number) => (
                     <div key={i} className="flex items-center group">
                       <div className="w-[180px] truncate text-sm font-medium text-slate-700 dark:text-slate-300">{item.name}</div>
                       <div className="flex-1 ml-4">
-                        <Progress value={(item.value / stats.metrics.active_rotations) * 100} className="h-2 bg-slate-100 dark:bg-slate-800" />
+                        <Progress value={((item.value ?? 0) / stats.metrics.active_rotations) * 100} className="h-2 bg-slate-100 dark:bg-slate-800" />
                       </div>
                       <div className="ml-4 w-8 text-right text-sm text-slate-500">{item.value}</div>
                     </div>
@@ -269,7 +270,7 @@ export default function DashboardPage() {
               </div>
             ) : (
               <div className="space-y-3">
-                {stats.active_students?.map((assignment: any) => (
+                {stats.active_students?.map((assignment: RotationAssignment) => (
                   <div key={assignment.id} className="flex items-center justify-between p-4 border border-slate-200 dark:border-slate-800 rounded-lg bg-slate-50/50 dark:bg-slate-900/50 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
                     <div className="flex items-center gap-4">
                       <div className="bg-slate-200 dark:bg-slate-800 p-2 rounded-full">
@@ -282,7 +283,7 @@ export default function DashboardPage() {
                     </div>
                     <div className="text-sm text-right">
                       <p className="text-xs text-slate-500">Selesai pada</p>
-                      <p className="font-medium text-slate-700 dark:text-slate-300">{new Date(assignment.rotation_period?.end_date).toLocaleDateString('id-ID', {day: 'numeric', month: 'short', year: 'numeric'})}</p>
+                      <p className="font-medium text-slate-700 dark:text-slate-300">{new Date(assignment.rotation_period?.end_date ?? "").toLocaleDateString('id-ID', {day: 'numeric', month: 'short', year: 'numeric'})}</p>
                     </div>
                   </div>
                 ))}
@@ -414,7 +415,7 @@ export default function DashboardPage() {
                           paddingAngle={2}
                           dataKey="value"
                         >
-                          {stats.logbook_distribution.map((entry: any, index: number) => (
+                          {stats.logbook_distribution.map((entry: { fill?: string }, index: number) => (
                             <Cell key={`cell-${index}`} fill={entry.fill} />
                           ))}
                         </Pie>
@@ -460,7 +461,7 @@ export default function DashboardPage() {
                   <p className="text-sm text-slate-500">Belum ada nilai stase yang dipublikasikan.</p>
                 ) : (
                   <div className="space-y-3">
-                    {stats.recent_grades?.map((grade: any) => (
+                    {stats.recent_grades?.map((grade: StaseGrade) => (
                       <div key={grade.id} className="flex items-center justify-between p-3 border border-slate-200 dark:border-slate-800 rounded-lg bg-slate-50/50 dark:bg-slate-900/50">
                         <div>
                           <p className="font-medium text-sm text-slate-900 dark:text-slate-50">{grade.rotation_assignment?.stase?.name}</p>

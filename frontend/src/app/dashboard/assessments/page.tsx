@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import api from "@/lib/api";
+import { RubricSchema } from "@/lib/types";
 import {
   Table,
   TableBody,
@@ -33,7 +34,7 @@ interface Assessment {
   total_score: string;
   feedback_notes: string;
   status: "draft" | "submitted" | "acknowledged";
-  template: { name: string; type: string; rubric_schema: any };
+  template: { name: string; type: string; rubric_schema?: RubricSchema };
   student: { name: string };
   preceptor: { name: string };
   scores: AssessmentScore[];
@@ -196,7 +197,7 @@ export default function AssessmentHistoryPage() {
               <div>
                 <h4 className="font-semibold mb-3 border-b pb-2">Rincian Nilai</h4>
                 <div className="space-y-3">
-                  {selectedAssessment.template?.rubric_schema?.indicators?.map((indicator: any) => {
+                  {selectedAssessment.template?.rubric_schema?.indicators?.map((indicator) => {
                     const score = selectedAssessment.scores?.find(s => s.rubric_key === indicator.key);
                     return (
                       <div key={indicator.key} className="flex justify-between items-center text-sm">
