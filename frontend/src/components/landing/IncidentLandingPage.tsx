@@ -106,13 +106,15 @@ interface LandingConfig {
 
 // Palet ikon & warna untuk kartu kategori (di-cycle berdasar indeks).
 const CARD_ICONS: LucideIcon[] = [AlertTriangle, UserCheck, HardHat, HeartHandshake, ShieldAlert, MessageSquare];
+// Palet ikon kategori: satu keluarga hangat (merah/rose/oranye) agar kohesif
+// dengan tema keselamatan — bukan pelangi multi-aksen.
 const CARD_COLORS = [
   { bg: "bg-red-50", text: "text-red-600" },
-  { bg: "bg-blue-50", text: "text-blue-600" },
-  { bg: "bg-yellow-50", text: "text-yellow-600" },
-  { bg: "bg-purple-50", text: "text-purple-600" },
   { bg: "bg-rose-50", text: "text-rose-600" },
-  { bg: "bg-indigo-50", text: "text-indigo-600" },
+  { bg: "bg-orange-50", text: "text-orange-600" },
+  { bg: "bg-red-50", text: "text-red-700" },
+  { bg: "bg-rose-50", text: "text-rose-700" },
+  { bg: "bg-orange-50", text: "text-orange-700" },
 ];
 
 const DEFAULT_CATEGORIES: CategoryCard[] = [
@@ -123,9 +125,9 @@ const DEFAULT_CATEGORIES: CategoryCard[] = [
 ];
 
 const PROCESS_STEPS = [
-  { icon: FileText, title: "1. Anda Melapor", desc: "Kirim laporan melalui form (anonim atau teridentifikasi). Sertakan kronologi dan bukti bila ada." },
-  { icon: Search, title: "2. Ditelaah & Diinvestigasi", desc: "Tim berwenang menelaah, mengklasifikasi tingkat keparahan, dan menindaklanjuti sesuai SOP." },
-  { icon: CheckCircle2, title: "3. Ditindaklanjuti", desc: "Tindakan korektif dilakukan dan dijadikan pembelajaran sistem. Pelapor dilindungi selama proses." },
+  { icon: FileText, title: "Anda Melapor", desc: "Kirim laporan melalui form (anonim atau teridentifikasi). Sertakan kronologi dan bukti bila ada." },
+  { icon: Search, title: "Ditelaah & Diinvestigasi", desc: "Tim berwenang menelaah, mengklasifikasi tingkat keparahan, dan menindaklanjuti sesuai SOP." },
+  { icon: CheckCircle2, title: "Ditindaklanjuti", desc: "Tindakan korektif dilakukan dan dijadikan pembelajaran sistem. Pelapor dilindungi selama proses." },
 ];
 
 export default function IncidentLandingPage() {
@@ -349,7 +351,7 @@ export default function IncidentLandingPage() {
           <div className="flex items-center gap-3">
             {config.showConsultation && (
               <Link href={config.ctaLink}>
-                <Button variant="ghost" className="text-blue-700 hover:text-blue-800 hover:bg-blue-50 h-9 px-4 font-semibold text-sm hidden sm:flex">
+                <Button variant="ghost" className="text-slate-600 hover:text-slate-900 hover:bg-slate-100 h-9 px-4 font-semibold text-sm hidden sm:flex">
                   <MessageSquare className="h-4 w-4 mr-1.5" /> Konsultasi
                 </Button>
               </Link>
@@ -399,11 +401,17 @@ export default function IncidentLandingPage() {
               {config.showConsultation && (
                 <p className="text-sm text-slate-500 mt-6">
                   Butuh konsultasi rahasia?{" "}
-                  <Link href={config.ctaLink} className="text-blue-600 hover:underline font-semibold">
+                  <Link href={config.ctaLink} className="text-slate-700 hover:text-slate-900 hover:underline font-semibold rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-400">
                     Gunakan saluran konsultasi <ArrowRight className="inline h-3.5 w-3.5" />
                   </Link>
                 </p>
               )}
+
+              <div className="mt-8 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-sm text-slate-500">
+                <span className="inline-flex items-center gap-1.5"><Lock className="h-4 w-4 text-red-500" /> Anonim &amp; rahasia</span>
+                <span className="inline-flex items-center gap-1.5"><ShieldCheck className="h-4 w-4 text-red-500" /> Anti-retaliasi</span>
+                <span className="inline-flex items-center gap-1.5"><CheckCircle2 className="h-4 w-4 text-red-500" /> Respons prioritas &le; 2&times;24 jam</span>
+              </div>
 
             </div>
           </div>
@@ -435,9 +443,9 @@ export default function IncidentLandingPage() {
               const color = CARD_COLORS[i % CARD_COLORS.length];
               return (
                 <Reveal key={i} delay={i * 110} variant="scale" className="h-full">
-                  <div className="h-full bg-white p-7 rounded-2xl border border-slate-100 shadow-sm transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
-                    <div className={`w-11 h-11 ${color.bg} ${color.text} rounded-xl flex items-center justify-center mb-5`}>
-                      <Icon className="h-5 w-5" />
+                  <div className="group/card h-full bg-white p-7 rounded-2xl ring-1 ring-slate-100 shadow-[0_2px_12px_rgba(220,38,38,0.04)] transition-all duration-300 hover:ring-red-100 hover:shadow-[0_18px_40px_rgba(220,38,38,0.10)] hover:-translate-y-1.5">
+                    <div className={`w-12 h-12 ${color.bg} ${color.text} rounded-2xl flex items-center justify-center mb-5 transition-transform duration-300 group-hover/card:scale-110`}>
+                      <Icon className="h-6 w-6" />
                     </div>
                     <h3 className="text-lg font-bold text-slate-900 mb-2">{cat.title}</h3>
                     <p className="text-slate-500 text-sm leading-relaxed">{cat.description}</p>
@@ -449,9 +457,9 @@ export default function IncidentLandingPage() {
 
           {/* Konsultasi Rahasia CTA */}
           {config.showConsultation && (
-            <Reveal className="mt-10 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-100 rounded-2xl p-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+            <Reveal className="mt-10 bg-gradient-to-r from-slate-50 to-slate-100/70 border border-slate-200 rounded-2xl p-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
               <div className="flex items-start gap-4">
-                <div className="w-12 h-12 bg-blue-100 text-blue-700 rounded-xl flex items-center justify-center shrink-0">
+                <div className="w-12 h-12 bg-slate-200 text-slate-700 rounded-xl flex items-center justify-center shrink-0">
                   <MessageSquare className="h-6 w-6" />
                 </div>
                 <div>
@@ -463,7 +471,7 @@ export default function IncidentLandingPage() {
                 </div>
               </div>
               <Link href={config.ctaLink} className="shrink-0">
-                <Button className="rounded-full bg-blue-700 hover:bg-blue-800 text-white h-11 px-7 font-semibold shadow-md shadow-blue-500/20 whitespace-nowrap">
+                <Button className="rounded-full bg-slate-800 hover:bg-slate-900 text-white h-11 px-7 font-semibold shadow-md shadow-slate-500/20 whitespace-nowrap">
                   Mulai Konsultasi
                 </Button>
               </Link>
@@ -484,11 +492,16 @@ export default function IncidentLandingPage() {
             <p className="text-slate-500 max-w-2xl mx-auto">Proses yang transparan agar Anda tahu persis apa yang terjadi setelah melapor.</p>
           </Reveal>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto">
+          <div className="relative grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto">
+            {/* garis penghubung alur (desktop) */}
+            <div aria-hidden className="hidden md:block absolute top-[3.25rem] left-[16.66%] right-[16.66%] h-px bg-gradient-to-r from-red-200 via-red-300 to-red-200" />
             {PROCESS_STEPS.map((step, i) => (
-              <Reveal key={i} delay={i * 140} variant={i === 0 ? "left" : i === 2 ? "right" : "up"} className="relative bg-slate-50 rounded-2xl p-7 border border-slate-100">
-                <div className="w-12 h-12 bg-red-600 text-white rounded-xl flex items-center justify-center mb-5 shadow-sm shadow-red-600/20">
-                  <step.icon className="h-6 w-6" />
+              <Reveal key={i} delay={i * 140} variant={i === 0 ? "left" : i === 2 ? "right" : "up"} className="relative z-10 bg-white rounded-2xl p-7 ring-1 ring-slate-100 shadow-[0_2px_12px_rgba(220,38,38,0.04)]">
+                <div className="flex items-center justify-between mb-5">
+                  <div className="w-12 h-12 bg-red-600 text-white rounded-2xl flex items-center justify-center shadow-sm shadow-red-600/20">
+                    <step.icon className="h-6 w-6" />
+                  </div>
+                  <span className="text-4xl font-extrabold tabular-nums text-red-100 leading-none">{String(i + 1).padStart(2, "0")}</span>
                 </div>
                 <h3 className="text-lg font-bold text-slate-900 mb-2">{step.title}</h3>
                 <p className="text-slate-500 text-sm leading-relaxed">{step.desc}</p>
@@ -536,11 +549,11 @@ export default function IncidentLandingPage() {
               {config.legalBasis && (
                 <div className="bg-white/5 border border-white/10 rounded-2xl p-7">
                   <div className="flex items-center gap-3 mb-3">
-                    <Scale className="h-5 w-5 text-blue-400" />
+                    <Scale className="h-5 w-5 text-rose-400" />
                     <h3 className="font-bold text-white">Dasar Hukum & Tata Kelola</h3>
                   </div>
                   <p className="text-sm leading-relaxed text-slate-400">{config.legalBasis}</p>
-                  <Link href="/safety/sop" className="inline-flex items-center gap-1 text-sm font-semibold text-blue-400 hover:text-blue-300 mt-4">
+                  <Link href="/safety/sop" className="inline-flex items-center gap-1 text-sm font-semibold text-rose-400 hover:text-rose-300 mt-4">
                     Lihat SOP Pelaporan <ArrowRight className="h-3.5 w-3.5" />
                   </Link>
                 </div>

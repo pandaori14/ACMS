@@ -12,6 +12,7 @@ import api from "@/lib/api";
 import { AppSetting } from "@/lib/api-helpers";
 import LandingFooter from "@/components/landing/LandingFooter";
 import { jakarta } from "@/lib/fonts";
+import Reveal from "@/components/landing/Reveal";
 
 export default function AcmsLandingPage() {
   const [mounted, setMounted] = useState(false);
@@ -374,10 +375,10 @@ export default function AcmsLandingPage() {
           width: 32px; height: 32px;
           border-radius: 50%;
           background: white;
-          border: 2px solid var(--primary);
+          border: 2px solid #2b4a8b;
           display: flex; align-items: center; justify-content: center;
           transform: translateX(-50%);
-          color: var(--primary);
+          color: #2b4a8b;
           font-weight: 700; font-size: 0.9rem;
           box-shadow: 0 0 0 4px rgba(43, 74, 139, 0.1);
           z-index: 2;
@@ -518,10 +519,10 @@ export default function AcmsLandingPage() {
       {/* --- Timeline / Alur Section --- */}
       <section id="alur" className="py-24 bg-slate-50 relative overflow-hidden">
         <div className="mx-auto max-w-7xl px-6 lg:px-8 relative z-10">
-          <div className="text-center mb-16">
+          <Reveal variant="up" className="text-center mb-16">
             <h2 className="font-display text-3xl md:text-4xl font-extrabold text-slate-900 mb-4">Alur Pendidikan Profesi</h2>
             <p className="text-lg text-slate-500 max-w-2xl mx-auto">Ikuti panduan langkah demi langkah di bawah ini untuk memahami siklus klinis menggunakan sistem ACMS.</p>
-          </div>
+          </Reveal>
 
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-start">
             <div className="lg:col-span-7 pl-10 relative timeline-container">
@@ -608,10 +609,10 @@ export default function AcmsLandingPage() {
       <section id="fitur" className="py-24 bg-white relative">
         <div className="cursor-glow"></div>
         <div className="mx-auto max-w-7xl px-6 lg:px-8 relative z-10">
-          <div className="text-center mb-16">
+          <Reveal variant="up" className="text-center mb-16">
             <h2 className="font-display text-3xl md:text-4xl font-extrabold text-slate-900 mb-4">Ekosistem Terpadu</h2>
             <p className="text-lg text-slate-500 max-w-2xl mx-auto">Infrastruktur pendukung operasional akademik dan administrasi finansial rumah sakit.</p>
-          </div>
+          </Reveal>
 
           <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
 
