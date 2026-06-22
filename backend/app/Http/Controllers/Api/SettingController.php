@@ -5,6 +5,11 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Setting;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
+use Modules\Academic\Models\Program;
+use Modules\Academic\Models\Student;
+use Modules\Clinical\Models\LogbookEntry;
+use Modules\Rotation\Models\Hospital;
 
 class SettingController extends Controller
 {
@@ -26,6 +31,24 @@ class SettingController extends Controller
             ->get();
 
         return response()->json($settings);
+    }
+
+    /**
+     * Statistik agregat publik untuk landing page (hanya hitungan, tanpa PII).
+     * Di-cache 1 jam agar tidak membebani DB dari endpoint tak terotentikasi.
+     */
+    public function publicStats()
+    {
+        $stats = Cache::remember('public_stats', 3600, function () {
+            return [
+                'hospitals' => Hospital::count(),
+                'logbook_entries' => LogbookEntry::count(),
+                'students' => Student::count(),
+                'programs' => Program::count(),
+            ];
+        });
+
+        return response()->json(['data' => $stats]);
     }
 
     public function update(Request $request)

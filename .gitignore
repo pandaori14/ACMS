@@ -36,3 +36,10 @@ Thumbs.db
 
 # Data sesi Claude lokal (jangan commit setelan lokal)
 /.claude/settings.local.json
+
+# Skill agent pihak ketiga (taste-skill via `npx skills add`) — tooling lokal,
+# berisi symlink yang tidak portabel antar-device. Pasang ulang per-device
+# dengan: npx skills add Leonxlnx/taste-skill
+/.agents/
+/.claude/skills/
+/skills-lock.json

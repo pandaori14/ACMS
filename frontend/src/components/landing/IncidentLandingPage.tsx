@@ -13,6 +13,7 @@ import api from "@/lib/api";
 import LandingFooter from "@/components/landing/LandingFooter";
 import Reveal from "@/components/landing/Reveal";
 import Parallax from "@/components/landing/Parallax";
+import { jakarta } from "@/lib/fonts";
 
 class Particle {
   x: number;
@@ -312,7 +313,7 @@ export default function IncidentLandingPage() {
   const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000";
 
   return (
-    <div ref={containerRef} className="min-h-screen bg-white font-sans text-slate-900 overflow-x-hidden selection:bg-red-200 flex flex-col">
+    <div ref={containerRef} style={{ fontFamily: "var(--font-jakarta), system-ui, sans-serif" }} className={`${jakarta.variable} min-h-screen bg-white font-sans text-slate-900 overflow-x-hidden selection:bg-red-200 flex flex-col`}>
       <style dangerouslySetInnerHTML={{__html: `
         :root { --mouse-x: 50%; --mouse-y: 50%; }
         .safety-gradient { background: linear-gradient(135deg, #fef2f2 0%, #fff 100%); }
@@ -375,7 +376,7 @@ export default function IncidentLandingPage() {
                 <Lock className="h-4 w-4" /> {config.badge}
               </div>
 
-              <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold leading-[1.1] tracking-tight text-slate-900 mb-8">
+              <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold leading-[1.1] tracking-tight text-balance text-slate-900 mb-8">
                 {config.title}
               </h1>
               <p className="text-lg text-slate-600 mb-10 max-w-2xl mx-auto leading-relaxed">

@@ -19,6 +19,7 @@ Route::get('/sso/redirect', [SsoController::class, 'redirect']);
 Route::get('/sso/callback', [SsoController::class, 'callback']);
 
 Route::get('/public-settings', [SettingController::class, 'publicSettings']);
+Route::get('/public-stats', [SettingController::class, 'publicStats']);
 
 Route::get('/user', function (Request $request) {
     return $request->user();

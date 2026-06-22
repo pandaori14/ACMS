@@ -11,6 +11,7 @@ import { useEffect, useState, useRef } from "react";
 import api from "@/lib/api";
 import { AppSetting } from "@/lib/api-helpers";
 import LandingFooter from "@/components/landing/LandingFooter";
+import { jakarta } from "@/lib/fonts";
 
 export default function AcmsLandingPage() {
   const [mounted, setMounted] = useState(false);
@@ -30,6 +31,7 @@ export default function AcmsLandingPage() {
     announcementText: "",
     heroImage: "",
   });
+  const [stats, setStats] = useState<{ hospitals: number; logbook_entries: number; students: number; programs: number } | null>(null);
 
   useEffect(() => {
     setMounted(true);
@@ -53,6 +55,8 @@ export default function AcmsLandingPage() {
         heroImage: getVal("landing_hero_image") || prev.heroImage,
       }));
     }).catch(console.error);
+
+    api.get("/api/public-stats").then((res) => setStats(res.data.data)).catch(() => {});
 
     const handleMouseMove = (e: MouseEvent) => {
       if (!containerRef.current) return;
@@ -278,11 +282,12 @@ export default function AcmsLandingPage() {
   }, []);
 
   return (
-    <div ref={containerRef} className="min-h-screen bg-white font-sans text-slate-900 overflow-x-hidden selection:bg-blue-200">
+    <div ref={containerRef} style={{ fontFamily: "var(--font-jakarta), system-ui, sans-serif" }} className={`${jakarta.variable} min-h-screen bg-white font-sans text-slate-900 overflow-x-hidden selection:bg-blue-200`}>
       <style dangerouslySetInnerHTML={{__html: `
         :root {
-          --primary: #2563eb;
-          --primary-light: #eff6ff;
+          --primary: #2b4a8b;
+          --primary-light: #eef2f8;
+          --accent: #c99a3b;
           --radius-md: 20px;
           --radius-lg: 32px;
           --mouse-x: 50%;
@@ -291,8 +296,9 @@ export default function AcmsLandingPage() {
           --tilt-y: 0deg;
         }
         .font-display {
-          font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+          font-family: var(--font-jakarta), 'Plus Jakarta Sans', system-ui, sans-serif;
           letter-spacing: -0.03em;
+          text-wrap: balance;
         }
 
         .cursor-glow {
@@ -302,7 +308,7 @@ export default function AcmsLandingPage() {
           z-index: 0;
           background: radial-gradient(
             circle 800px at var(--mouse-x) var(--mouse-y),
-            rgba(37, 99, 235, 0.08),
+            rgba(43, 74, 139, 0.08),
             transparent 70%
           );
         }
@@ -313,7 +319,7 @@ export default function AcmsLandingPage() {
           -webkit-backdrop-filter: blur(24px);
           border: 1px solid rgba(255, 255, 255, 0.8);
           border-radius: var(--radius-lg);
-          box-shadow: 0 20px 40px rgba(0, 0, 0, 0.05), inset 0 0 0 1px rgba(255, 255, 255, 0.5);
+          box-shadow: 0 24px 50px rgba(43, 74, 139, 0.12), inset 0 0 0 1px rgba(255, 255, 255, 0.5);
           transform: perspective(1000px) rotateX(var(--tilt-x)) rotateY(var(--tilt-y)) translateY(-5px);
           transition: transform 0.1s ease-out;
           will-change: transform;
@@ -323,7 +329,7 @@ export default function AcmsLandingPage() {
           background: white;
           border-radius: var(--radius-md);
           border: 1px solid #f1f5f9;
-          box-shadow: 0 4px 20px rgba(0,0,0,0.02);
+          box-shadow: 0 4px 20px rgba(43, 74, 139, 0.05);
           transition: all 0.3s ease;
           position: relative;
           overflow: hidden;
@@ -334,7 +340,7 @@ export default function AcmsLandingPage() {
           inset: 0;
           background: radial-gradient(
             800px circle at var(--mouse-x) var(--mouse-y),
-            rgba(37, 99, 235, 0.06),
+            rgba(43, 74, 139, 0.06),
             transparent 40%
           );
           opacity: 0;
@@ -347,8 +353,8 @@ export default function AcmsLandingPage() {
         }
         .bento-card:hover {
           transform: translateY(-4px);
-          box-shadow: 0 12px 30px rgba(0,0,0,0.05);
-          border-color: rgba(37, 99, 235, 0.15);
+          box-shadow: 0 14px 34px rgba(43, 74, 139, 0.12);
+          border-color: rgba(43, 74, 139, 0.15);
         }
 
         .bento-content {
@@ -373,7 +379,7 @@ export default function AcmsLandingPage() {
           transform: translateX(-50%);
           color: var(--primary);
           font-weight: 700; font-size: 0.9rem;
-          box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.1);
+          box-shadow: 0 0 0 4px rgba(43, 74, 139, 0.1);
           z-index: 2;
         }
       `}} />
@@ -390,7 +396,7 @@ export default function AcmsLandingPage() {
             {landingConfig.appLogo ? (
               <img src={`${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000'}${landingConfig.appLogo}`} alt="Logo" className="h-9 w-auto rounded object-contain" />
             ) : (
-              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-600 text-white shadow-sm">
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#2b4a8b] text-white shadow-sm">
                 <Activity className="h-5 w-5" />
               </div>
             )}
@@ -405,7 +411,7 @@ export default function AcmsLandingPage() {
           </div>
           <div className="flex items-center gap-4">
             <Link href={landingConfig.ctaLink}>
-              <Button className="rounded-full shadow-lg shadow-blue-500/25 hover:shadow-blue-500/40 transition-all bg-blue-600 hover:bg-blue-700 hover:-translate-y-0.5 h-10 px-6 font-semibold">
+              <Button className="rounded-full shadow-lg shadow-[#2b4a8b]/25 hover:shadow-[#2b4a8b]/40 transition-all bg-[#2b4a8b] hover:bg-[#22407a] hover:-translate-y-0.5 h-10 px-6 font-semibold">
                 {landingConfig.ctaText} <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
             </Link>
@@ -448,7 +454,7 @@ export default function AcmsLandingPage() {
               </p>
               <div className="flex flex-wrap gap-4">
                 <Link href={landingConfig.ctaLink}>
-                  <Button size="lg" className="rounded-full h-14 px-8 text-base font-semibold shadow-xl shadow-blue-500/25 transition-all bg-blue-600 hover:bg-blue-700 hover:-translate-y-1">
+                  <Button size="lg" className="rounded-full h-14 px-8 text-base font-semibold shadow-xl shadow-[#2b4a8b]/25 transition-all bg-[#2b4a8b] hover:bg-[#22407a] hover:-translate-y-1">
                     {landingConfig.ctaText}
                   </Button>
                 </Link>
@@ -468,7 +474,7 @@ export default function AcmsLandingPage() {
 
                 <div className="flex justify-between items-center mb-8 pb-6 border-b border-slate-200/50">
                   <h3 className="font-display text-xl font-bold text-slate-900">Periode Berjalan</h3>
-                  <span className="px-4 py-1.5 rounded-full bg-blue-100 text-blue-700 text-sm font-bold border border-blue-200">2026/2027</span>
+                  <span className="px-4 py-1.5 rounded-full bg-[#c99a3b]/15 text-[#9a7325] text-sm font-bold border border-[#c99a3b]/30">2026/2027</span>
                 </div>
 
                 <div className="space-y-6">
@@ -488,7 +494,7 @@ export default function AcmsLandingPage() {
                     </div>
                     <div>
                       <h4 className="text-base font-bold text-slate-900">Jejaring RS</h4>
-                      <p className="text-sm text-slate-500 mt-1">Distribusi ke 15+ Rumah Sakit<br/>pendidikan utama dan satelit.</p>
+                      <p className="text-sm text-slate-500 mt-1">Distribusi ke {stats?.hospitals ?? "—"} Rumah Sakit<br/>pendidikan utama dan satelit.</p>
                     </div>
                   </div>
 
@@ -521,7 +527,7 @@ export default function AcmsLandingPage() {
             <div className="lg:col-span-7 pl-10 relative timeline-container">
 
               <div className="relative mb-12 last:mb-0 group">
-                <div className="timeline-indicator transition-transform group-hover:scale-110 group-hover:bg-blue-600 group-hover:text-white">1</div>
+                <div className="timeline-indicator transition-transform group-hover:scale-110 group-hover:bg-[#2b4a8b] group-hover:text-white">1</div>
                 <div className="bento-card p-8 group-hover:-translate-y-1">
                   <div className="bento-content">
                     <h3 className="font-display text-xl font-bold text-slate-900 mb-3 group-hover:text-blue-600 transition-colors">Penjadwalan & Orientasi</h3>
@@ -536,7 +542,7 @@ export default function AcmsLandingPage() {
               </div>
 
               <div className="relative mb-12 last:mb-0 group">
-                <div className="timeline-indicator transition-transform group-hover:scale-110 group-hover:bg-blue-600 group-hover:text-white">2</div>
+                <div className="timeline-indicator transition-transform group-hover:scale-110 group-hover:bg-[#2b4a8b] group-hover:text-white">2</div>
                 <div className="bento-card p-8 group-hover:-translate-y-1">
                   <div className="bento-content">
                     <h3 className="font-display text-xl font-bold text-slate-900 mb-3 group-hover:text-blue-600 transition-colors">Kegiatan Klinis & Logbook</h3>
@@ -551,7 +557,7 @@ export default function AcmsLandingPage() {
               </div>
 
               <div className="relative mb-12 last:mb-0 group">
-                <div className="timeline-indicator transition-transform group-hover:scale-110 group-hover:bg-blue-600 group-hover:text-white">3</div>
+                <div className="timeline-indicator transition-transform group-hover:scale-110 group-hover:bg-[#2b4a8b] group-hover:text-white">3</div>
                 <div className="bento-card p-8 group-hover:-translate-y-1">
                   <div className="bento-content">
                     <h3 className="font-display text-xl font-bold text-slate-900 mb-3 group-hover:text-blue-600 transition-colors">Ujian Akhir Stase & Nilai</h3>
@@ -623,7 +629,7 @@ export default function AcmsLandingPage() {
             </div>
 
             {/* Bento 2: Finansial (Highlight) */}
-            <div className="md:col-span-8 rounded-[20px] bg-blue-600 p-8 flex flex-col text-white overflow-hidden relative shadow-lg shadow-blue-600/20 transition-all hover:-translate-y-1 hover:shadow-blue-600/40 group">
+            <div className="md:col-span-8 rounded-[20px] bg-[#2b4a8b] p-8 flex flex-col text-white overflow-hidden relative shadow-lg shadow-[#2b4a8b]/20 transition-all hover:-translate-y-1 hover:shadow-[#2b4a8b]/40 group">
               <div className="absolute top-0 right-0 p-8 opacity-10 transition-transform duration-700 group-hover:scale-125 group-hover:rotate-12 pointer-events-none">
                 <Wallet className="h-32 w-32" />
               </div>
@@ -637,9 +643,9 @@ export default function AcmsLandingPage() {
                   Kalkulasi otomatis biaya tagihan stase Universitas ke Rumah Sakit dan pencairan honorarium langsung ke rekening Preceptor berdasarkan beban verifikasi logbook.
                 </p>
               </div>
-              <div className="relative z-10 flex items-center gap-2 text-sm font-bold text-white hover:text-blue-100 transition-colors cursor-pointer w-max mt-auto group/link">
-                Lihat Skema Finansial <ArrowRight className="h-4 w-4 transition-transform group-hover/link:translate-x-1" />
-              </div>
+              <Link href="/login" className="relative z-10 flex items-center gap-2 text-sm font-bold text-white hover:text-blue-100 transition-colors w-max mt-auto group/link">
+                Masuk untuk detail finansial <ArrowRight className="h-4 w-4 transition-transform group-hover/link:translate-x-1" />
+              </Link>
             </div>
 
             {/* Bento 3: Data */}
@@ -647,8 +653,8 @@ export default function AcmsLandingPage() {
               <div className="bento-content">
                 <h4 className="font-display text-lg font-bold text-slate-900 mb-1 group-hover:text-blue-600 transition-colors">Total Entri Logbook</h4>
                 <p className="text-sm text-slate-500 uppercase tracking-widest font-semibold mb-4">Tahun Akademik Ini</p>
-                <div className="font-display text-5xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-sky-400 transform transition-transform group-hover:scale-105">
-                  24.5K+
+                <div className="font-display text-5xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-[#2b4a8b] to-sky-400 transform transition-transform group-hover:scale-105 tabular-nums">
+                  {stats ? stats.logbook_entries.toLocaleString("id-ID") : "—"}
                 </div>
               </div>
             </div>
