@@ -41,7 +41,7 @@ class NotificationController extends Controller
             return response()->json(['message' => 'Notifikasi ditandai sudah dibaca.']);
         }
 
-        return response()->json(['error' => 'Notifikasi tidak ditemukan.'], 404);
+        return response()->json(['message' => 'Notifikasi tidak ditemukan.'], 404);
     }
 
     /**

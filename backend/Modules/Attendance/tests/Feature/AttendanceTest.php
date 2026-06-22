@@ -147,7 +147,7 @@ class AttendanceTest extends TestCase
             ->postJson('/api/v1/clinical/attendance/check-in', $payload);
 
         $response->assertStatus(403)
-            ->assertJsonPath('error', 'Anda berada di luar radius Rumah Sakit.');
+            ->assertJsonPath('message', 'Anda berada di luar radius Rumah Sakit.');
 
         $this->assertDatabaseMissing('attendance_records', [
             'student_id' => $this->student->id,
@@ -171,6 +171,6 @@ class AttendanceTest extends TestCase
             ->postJson('/api/v1/clinical/attendance/check-in', $payload);
 
         $response->assertStatus(400)
-            ->assertJsonPath('error', 'Anda sudah melakukan check-in hari ini.');
+            ->assertJsonPath('message', 'Anda sudah melakukan check-in hari ini.');
     }
 }

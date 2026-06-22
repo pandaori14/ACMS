@@ -107,8 +107,7 @@ class SsoController extends Controller
 
         } catch (\Exception $e) {
             return response()->json([
-                'error' => 'Authentication failed',
-                'message' => $e->getMessage(),
+                'message' => 'Authentication failed',
             ], 401);
         }
     }

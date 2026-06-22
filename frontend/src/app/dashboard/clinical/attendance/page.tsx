@@ -75,7 +75,7 @@ export default function AttendancePage() {
         setLocationError(err);
         toast.error(err);
       } else {
-        toast.error(err.response?.data?.error || `Gagal melakukan ${type}`);
+        toast.error(err.response?.data?.message || `Gagal melakukan ${type}`);
         if (err.response?.data?.distance_meters) {
           const maxRadius = err.response.data.radius_meters ?? 100;
           setLocationError(`Anda berada ${err.response.data.distance_meters} meter dari Rumah Sakit. Jarak maksimal adalah ${maxRadius} meter.`);

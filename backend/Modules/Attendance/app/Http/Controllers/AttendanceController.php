@@ -84,7 +84,7 @@ class AttendanceController extends Controller
 
         if ($requireLocation) {
             if (! $assignment->hospital->latitude || ! $assignment->hospital->longitude) {
-                return response()->json(['error' => 'Koordinat Rumah Sakit belum diatur oleh admin.'], 400);
+                return response()->json(['message' => 'Koordinat Rumah Sakit belum diatur oleh admin.'], 400);
             }
 
             $geo = $this->attendance->evaluateGeofence($assignment->hospital, (float) $request->latitude, (float) $request->longitude);
@@ -92,7 +92,7 @@ class AttendanceController extends Controller
 
             if (! $geo['within']) {
                 return response()->json([
-                    'error' => 'Anda berada di luar radius Rumah Sakit.',
+                    'message' => 'Anda berada di luar radius Rumah Sakit.',
                     'distance_meters' => round($geo['distance']),
                     'radius_meters' => $geo['radius'],
                 ], 403);
@@ -105,7 +105,7 @@ class AttendanceController extends Controller
             ->first();
 
         if ($record && $record->check_in_time) {
-            return response()->json(['error' => 'Anda sudah melakukan check-in hari ini.'], 400);
+            return response()->json(['message' => 'Anda sudah melakukan check-in hari ini.'], 400);
         }
 
         // Mark LATE when checking in after the configured cutoff time (HH:MM).
@@ -156,10 +156,10 @@ class AttendanceController extends Controller
             ->first();
 
         if (! $record || ! $record->check_in_time) {
-            return response()->json(['error' => 'Anda belum melakukan check-in.'], 400);
+            return response()->json(['message' => 'Anda belum melakukan check-in.'], 400);
         }
         if ($record->check_out_time) {
-            return response()->json(['error' => 'Anda sudah melakukan check-out.'], 400);
+            return response()->json(['message' => 'Anda sudah melakukan check-out.'], 400);
         }
 
         $assignment = RotationAssignment::with('hospital')->findOrFail($request->rotation_assignment_id);
@@ -167,7 +167,7 @@ class AttendanceController extends Controller
 
         if (! $geo['within']) {
             return response()->json([
-                'error' => 'Anda berada di luar radius Rumah Sakit untuk Check-out.',
+                'message' => 'Anda berada di luar radius Rumah Sakit untuk Check-out.',
                 'distance_meters' => round($geo['distance']),
                 'radius_meters' => $geo['radius'],
             ], 403);
@@ -235,7 +235,16 @@ class AttendanceController extends Controller
         }
 
         $perPage = (int) Setting::getValue('items_per_page', 20);
+        $paginator = $query->paginate($perPage > 0 ? $perPage : 20);
 
-        return response()->json($query->paginate($perPage > 0 ? $perPage : 20));
+        return response()->json([
+            'data' => $paginator->items(),
+            'meta' => [
+                'current_page' => $paginator->currentPage(),
+                'last_page' => $paginator->lastPage(),
+                'per_page' => $paginator->perPage(),
+                'total' => $paginator->total(),
+            ],
+        ]);
     }
 }

@@ -73,7 +73,7 @@ class GradeController extends Controller
                 'data' => $grade->load(['rotationAssignment.stase', 'student.student']),
             ]);
         } catch (\Exception $e) {
-            return response()->json(['message' => 'Calculation failed', 'error' => $e->getMessage()], 500);
+            return response()->json(['message' => 'Calculation failed'], 500);
         }
     }
 

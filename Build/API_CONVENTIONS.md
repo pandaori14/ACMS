@@ -55,12 +55,11 @@ berbeda format di controller.
 - `401` belum terotentikasi · `403` tanpa izin (RBAC) · `404` tidak ditemukan
 - `422` validasi (`{ message, errors: { field: [...] } }`) · `429` rate-limit (lihat `AuthController`)
 
-> ⚠️ **Utang konsistensi error (belum seragam):** beberapa controller masih
-> mengembalikan bentuk error manual yang berbeda — `{ error: { code, message } }`
-> (mis. `LogbookController`) dan `{ error: "pesan" }` (mis. Evaluation/Attendance/References).
-> Targetnya: semua error manual → `{ message }` (selaras envelope global), opsional `code`
-> untuk error mesin. Migrasi ini **menyentuh error-handler frontend** (beberapa membaca
-> `data.error`) sehingga dikerjakan sebagai pass terpisah per endpoint.
+**Semua error manual kini SERAGAM `{ message }`.** Varian lama `{ error: { code, message } }`
+(Logbook) dan `{ error: "pesan" }` (Attendance/Evaluation/SystemReference/Sso/Notification)
+sudah dikonversi ke `{ message }`. Error 500 tidak lagi membocorkan `$e->getMessage()` ke klien.
+Error-handler frontend yang sebelumnya membaca `data.error` sudah dipindah ke `data.message`.
+Field data tambahan boleh menyertai (mis. `distance_meters`, `radius_meters` pada error geofence).
 
 ---
 
@@ -94,17 +93,15 @@ pemanggilnya). Dikunci oleh tes `IncidentTest::test_anonymous_identity_is_masked
 | Aspek | Status |
 |-------|--------|
 | Versioning domain (`/api/v1`) | ✅ Konsisten (Academic sudah distandarkan) |
-| **Success envelope** (semua endpoint resource domain) | ✅ **Seragam** — Academic, Finance, Assessment, Examination, Clinical, Evaluation, Incident, Rotation |
-| Error envelope | 🔄 Sebagian — global envelope aktif; sisa error manual `{error:...}` dicicil (lihat §3) |
+| **Success envelope** (semua endpoint resource domain) | ✅ **Seragam** — Academic, Finance, Assessment, Examination, Clinical, Attendance, Evaluation, Incident, Rotation |
+| **Error envelope** | ✅ **Seragam** — semua error manual `{ message }`; 500 tak bocorkan exception |
 | API Resource (kelas) | 🔄 Insiden/Konsultasi sebagai pola; modul lain memakai envelope seragam, kelas Resource menyusul opsional |
 
-**Sudah seragam (success envelope):** seluruh endpoint resource domain kini memakai
-`{data}` / `{data, meta}` / `{message, data}`. Endpoint platform bespoke (§2) dikecualikan
-secara sadar. Paginator telanjang & objek/array telanjang sudah dibungkus.
+**Pengecualian bespoke (sadar, terdokumentasi):** endpoint platform `/settings`,
+`/public-settings`, `/dashboard`, `/analytics`, serta `/notifications`
+(`{ notifications, unread_count }` — gabungan daftar + hitungan) berbentuk khusus
+sesuai kebutuhan UI.
 
-**Sisa utang (dicicil, terdokumentasi):**
-1. **Error envelope** — seragamkan `{error:...}` → `{message}` (§3), per endpoint + frontend.
-2. **Kelas API Resource** — adopsi `JsonResource` per model (saat ini hanya Insiden); ini
-   decoupling kolom DB, bukan lagi soal bentuk wire yang sudah seragam.
-3. **Dead code** — `Examination/.../Api/ExamController` & `ExamScoreController` tidak terdaftar
-   di route (bisa dihapus saat bersih-bersih).
+**Sisa (opsional, bukan inkonsistensi wire):**
+1. **Kelas API Resource** per model (kini hanya Insiden) — decoupling kolom DB.
+2. **Dead code** — `Examination/.../Api/ExamController` & `ExamScoreController` tak terdaftar route. *(Core `NotificationController` duplikat sudah dihapus.)*

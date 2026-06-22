@@ -100,7 +100,7 @@ export default function ReferencesClient() {
       setIsDialogOpen(false);
       fetchReferences();
     } catch (error: any) {
-      toast.error(error.response?.data?.error || "Gagal menyimpan data.");
+      toast.error(error.response?.data?.message || "Gagal menyimpan data.");
     } finally {
       setIsSubmitting(false);
     }

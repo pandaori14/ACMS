@@ -50,7 +50,7 @@ class EvaluationController extends Controller
             ->exists();
 
         if ($existingSubmission) {
-            return response()->json(['error' => 'Anda sudah melakukan evaluasi untuk stase ini.'], 400);
+            return response()->json(['message' => 'Anda sudah melakukan evaluasi untuk stase ini.'], 400);
         }
 
         // Insert semua jawaban

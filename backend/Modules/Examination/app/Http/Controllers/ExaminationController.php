@@ -82,7 +82,7 @@ class ExaminationController extends Controller
         } catch (\Exception $e) {
             DB::rollBack();
 
-            return response()->json(['message' => 'Failed to create exam', 'error' => $e->getMessage()], 500);
+            return response()->json(['message' => 'Failed to create exam'], 500);
         }
     }
 
@@ -236,7 +236,7 @@ class ExaminationController extends Controller
         } catch (\Exception $e) {
             DB::rollBack();
 
-            return response()->json(['message' => 'Failed to save score', 'error' => $e->getMessage()], 500);
+            return response()->json(['message' => 'Failed to save score'], 500);
         }
     }
 

@@ -78,9 +78,9 @@ export default function RecapClient() {
       });
       setRows(res.data.data ?? []);
       setMeta({
-        current_page: res.data.current_page ?? 1,
-        last_page: res.data.last_page ?? 1,
-        total: res.data.total ?? 0,
+        current_page: res.data.meta?.current_page ?? 1,
+        last_page: res.data.meta?.last_page ?? 1,
+        total: res.data.meta?.total ?? 0,
       });
     } catch (error: unknown) {
       const status = (error as { response?: { status?: number } })?.response?.status;

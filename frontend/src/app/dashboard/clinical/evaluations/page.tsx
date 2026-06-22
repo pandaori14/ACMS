@@ -92,7 +92,7 @@ export default function EvaluationsPage() {
       toast.success(res.data.message);
       setIsSubmitted(true);
     } catch (err: any) {
-      toast.error(err.response?.data?.error || "Gagal mengirim evaluasi.");
+      toast.error(err.response?.data?.message || "Gagal mengirim evaluasi.");
     } finally {
       setSubmitting(false);
     }

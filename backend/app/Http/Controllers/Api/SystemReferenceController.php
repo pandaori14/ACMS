@@ -40,7 +40,7 @@ class SystemReferenceController extends Controller
         ]);
 
         if ($validator->fails()) {
-            return response()->json(['error' => $validator->errors()->first()], 422);
+            return response()->json(['message' => $validator->errors()->first()], 422);
         }
 
         $ref = SystemReference::create([
@@ -68,7 +68,7 @@ class SystemReferenceController extends Controller
         ]);
 
         if ($validator->fails()) {
-            return response()->json(['error' => $validator->errors()->first()], 422);
+            return response()->json(['message' => $validator->errors()->first()], 422);
         }
 
         $ref->update($request->only(['category', 'name', 'value', 'is_active']));

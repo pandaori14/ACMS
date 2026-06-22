@@ -179,6 +179,6 @@ class EvaluationTest extends TestCase
             ->postJson('/api/v1/clinical/evaluations/submit', $payload);
 
         $response->assertStatus(400)
-            ->assertJsonPath('error', 'Anda sudah melakukan evaluasi untuk stase ini.');
+            ->assertJsonPath('message', 'Anda sudah melakukan evaluasi untuk stase ini.');
     }
 }

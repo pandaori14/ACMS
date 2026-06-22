@@ -143,10 +143,7 @@ class LogbookController extends Controller
         $activityDate = Carbon::parse($validated['activity_date']);
         if ($activityDate->diffInDays(now(), false) > $cutoffDays) {
             return response()->json([
-                'error' => [
-                    'code' => 'LOGBOOK_CUTOFF_EXCEEDED',
-                    'message' => "Batas waktu pengisian logbook ($cutoffDays hari) telah lewat.",
-                ],
+                'message' => "Batas waktu pengisian logbook ($cutoffDays hari) telah lewat.",
             ], 403);
         }
 
@@ -233,10 +230,7 @@ class LogbookController extends Controller
 
         if (! in_array($entry->status, ['draft', 'rejected'])) {
             return response()->json([
-                'error' => [
-                    'code' => 'INVALID_STATUS',
-                    'message' => 'Logbook hanya bisa diedit saat berstatus Draft atau Ditolak.',
-                ],
+                'message' => 'Logbook hanya bisa diedit saat berstatus Draft atau Ditolak.',
             ], 422);
         }
 
@@ -260,10 +254,7 @@ class LogbookController extends Controller
             $activityDate = Carbon::parse($validated['activity_date']);
             if ($activityDate->diffInDays(now(), false) > $cutoffDays) {
                 return response()->json([
-                    'error' => [
-                        'code' => 'LOGBOOK_CUTOFF_EXCEEDED',
-                        'message' => "Batas waktu pengisian logbook ($cutoffDays hari) telah lewat.",
-                    ],
+                    'message' => "Batas waktu pengisian logbook ($cutoffDays hari) telah lewat.",
                 ], 403);
             }
         }
@@ -329,10 +320,7 @@ class LogbookController extends Controller
 
         if ($entry->status !== 'submitted') {
             return response()->json([
-                'error' => [
-                    'code' => 'INVALID_STATUS',
-                    'message' => 'Hanya logbook berstatus Submitted yang bisa diverifikasi.',
-                ],
+                'message' => 'Hanya logbook berstatus Submitted yang bisa diverifikasi.',
             ], 422);
         }
 
@@ -395,10 +383,7 @@ class LogbookController extends Controller
 
         if ($entry->status !== 'submitted') {
             return response()->json([
-                'error' => [
-                    'code' => 'INVALID_STATUS',
-                    'message' => 'Hanya logbook berstatus Submitted yang bisa ditolak.',
-                ],
+                'message' => 'Hanya logbook berstatus Submitted yang bisa ditolak.',
             ], 422);
         }
 
@@ -440,10 +425,7 @@ class LogbookController extends Controller
 
         if ($entry->status !== 'draft') {
             return response()->json([
-                'error' => [
-                    'code' => 'INVALID_STATUS',
-                    'message' => 'Hanya logbook berstatus Draft yang bisa dihapus.',
-                ],
+                'message' => 'Hanya logbook berstatus Draft yang bisa dihapus.',
             ], 422);
         }
 
