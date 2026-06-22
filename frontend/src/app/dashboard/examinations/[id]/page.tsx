@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 
 import api from "@/lib/api";
+import { Exam } from "@/lib/types";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -16,7 +17,7 @@ export default function ExaminationDetailPage() {
   const params = useParams();
   const router = useRouter();
   
-  const [exam, setExam] = useState<any>(null);
+  const [exam, setExam] = useState<Exam | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -49,7 +50,7 @@ export default function ExaminationDetailPage() {
         const _url = window.URL.createObjectURL(new Blob([response.data]));
         const _link = document.createElement('a');
         _link.href = _url;
-        _link.setAttribute('download', `Berita_Acara_Ujian_${exam.name.replace(/\s+/g, '_')}.pdf`);
+        _link.setAttribute('download', `Berita_Acara_Ujian_${(exam?.name ?? "Ujian").replace(/\s+/g, '_')}.pdf`);
         document.body.appendChild(_link);
         _link.click();
         _link.parentNode?.removeChild(_link);
@@ -144,7 +145,7 @@ export default function ExaminationDetailPage() {
                 <div className="text-center py-6 text-muted-foreground border border-dashed rounded-md">Belum ada peserta terdaftar.</div>
               ) : (
                 <div className="space-y-4">
-                  {exam.participants?.map((p: any) => (
+                  {exam.participants?.map((p) => (
                     <div key={p.id} className="flex justify-between items-center p-4 border rounded-lg">
                       <div className="flex items-center gap-4">
                         <div className="bg-primary/10 p-2 rounded-full">
@@ -185,7 +186,7 @@ export default function ExaminationDetailPage() {
                 <div className="text-center py-6 text-muted-foreground border border-dashed rounded-md">Belum ada stasiun yang dibuat.</div>
               ) : (
                 <div className="grid gap-4 md:grid-cols-2">
-                  {exam.stations?.map((s: any) => (
+                  {exam.stations?.map((s) => (
                     <Card key={s.id} className="border bg-slate-50/50 dark:bg-slate-900/50">
                       <CardHeader className="pb-2">
                         <CardTitle className="text-base flex justify-between">
@@ -219,7 +220,7 @@ export default function ExaminationDetailPage() {
                 <div className="text-center py-6 text-muted-foreground border border-dashed rounded-md">Belum ada penguji ditugaskan.</div>
               ) : (
                 <div className="space-y-4">
-                  {exam.assessors?.map((a: any) => (
+                  {exam.assessors?.map((a) => (
                     <div key={a.id} className="flex justify-between items-center p-4 border rounded-lg">
                       <div className="flex items-center gap-4">
                         <div className="bg-green-100 p-2 rounded-full dark:bg-green-900/30">

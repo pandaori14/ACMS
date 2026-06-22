@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { useAuthStore } from "@/store/useAuthStore";
 import api from "@/lib/api";
 import { getApiErrorMessage } from "@/lib/api-helpers";
+import { Exam } from "@/lib/types";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -20,7 +21,7 @@ export default function AssessorExamPage() {
   const router = useRouter();
   const user = useAuthStore((state) => state.user);
   
-  const [exam, setExam] = useState<any>(null);
+  const [exam, setExam] = useState<Exam | null>(null);
   const [loading, setLoading] = useState(true);
   const [selectedParticipant, setSelectedParticipant] = useState<string>("");
   
@@ -45,7 +46,7 @@ export default function AssessorExamPage() {
     }
   };
 
-  const myAssessorRole = exam?.assessors?.find((a: any) => a.assessor_id === user?.id);
+  const myAssessorRole = exam?.assessors?.find((a) => a.assessor_id === user?.id);
   const stationAssigned = myAssessorRole?.exam_station;
   const rubricTemplate = stationAssigned?.assessment_template;
   const isRubricMode = !!rubricTemplate;
@@ -55,9 +56,9 @@ export default function AssessorExamPage() {
   const calculatedTotalScore = () => {
     if (!isRubricMode) return score ? parseFloat(score) : 0;
     
-    const indicators = rubricTemplate.rubric_schema?.indicators || [];
+    const indicators = rubricTemplate?.rubric_schema?.indicators || [];
     let total = 0;
-    indicators.forEach((ind: any) => {
+    indicators.forEach((ind) => {
         const val = parseFloat(rubricScores[ind.key] || "0");
         const weight = ind.weight || 0;
         const maxScore = ind.max_score || 100;
@@ -81,6 +82,7 @@ export default function AssessorExamPage() {
         return;
     }
 
+    if (!exam) return;
     setSubmitting(true);
     try {
       await api.post(`/api/v1/examinations/${exam.id}/scores`, {
@@ -132,15 +134,15 @@ export default function AssessorExamPage() {
             <UserCircle2 className="h-5 w-5 text-muted-foreground" /> Pilih Peserta
           </h3>
           <div className="space-y-2">
-            {exam.participants?.map((p: any) => {
-              const myScore = p.scores?.find((s: any) => s.assessor_id === user?.id && s.exam_station_id === (stationAssigned?.id || null));
+            {exam.participants?.map((p) => {
+              const myScore = p.scores?.find((s) => s.assessor_id === user?.id && s.exam_station_id === (stationAssigned?.id || null));
               return (
                 <button
                   key={p.id}
                   onClick={() => {
                     setSelectedParticipant(p.id);
                     if (myScore) {
-                      setScore(myScore.score.toString());
+                      setScore(String(myScore.score ?? ""));
                       setFeedback(myScore.feedback || "");
                       
                       // For rubric mode, we need to load detailed scores if available
@@ -182,7 +184,7 @@ export default function AssessorExamPage() {
                 <CardTitle>Lembar Penilaian</CardTitle>
                 <CardDescription>
                   Peserta: <span className="font-bold text-foreground">
-                    {exam.participants.find((p:any) => p.id === selectedParticipant)?.student?.name}
+                    {exam.participants?.find((p) => p.id === selectedParticipant)?.student?.name}
                   </span>
                 </CardDescription>
               </CardHeader>
@@ -197,7 +199,7 @@ export default function AssessorExamPage() {
                             </p>
                         </div>
                         {isRubricMode && (
-                            <Badge variant="secondary">{rubricTemplate.name}</Badge>
+                            <Badge variant="secondary">{rubricTemplate?.name}</Badge>
                         )}
                     </div>
                   </div>
@@ -206,7 +208,7 @@ export default function AssessorExamPage() {
                 {isRubricMode ? (
                     <div className="space-y-4">
                         <h3 className="text-lg font-semibold border-b pb-2">Rubrik Penilaian</h3>
-                        {rubricTemplate.rubric_schema?.indicators?.map((ind: any) => (
+                        {rubricTemplate?.rubric_schema?.indicators?.map((ind) => (
                             <div key={ind.key} className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-3 border rounded-lg bg-card">
                                 <div>
                                     <Label className="text-base font-medium">{ind.label}</Label>

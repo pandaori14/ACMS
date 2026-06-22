@@ -38,8 +38,9 @@ export interface Stase {
 
 export interface Student {
   id: string;
-  /** Sebagian endpoint memuat relasi `student` sebagai User dengan nama datar. */
+  /** Sebagian endpoint memuat relasi `student` sebagai User dengan nama/email datar. */
   name?: string;
+  email?: string;
   user?: { id: string; name?: string; email?: string };
   identity_number?: string;
   program?: Program;
@@ -94,7 +95,7 @@ export interface ExamStation {
   name?: string;
   description?: string | null;
   order?: number;
-  assessmentTemplate?: AssessmentTemplate;
+  assessment_template?: AssessmentTemplate;
 }
 
 export interface ExamScore {
@@ -111,6 +112,7 @@ export interface ExamParticipant {
   exam_id?: string;
   student_id?: string;
   status?: string;
+  final_score?: number | string | null;
   student?: Student;
   scores?: ExamScore[];
 }
@@ -121,7 +123,7 @@ export interface ExamAssessor {
   exam_station_id?: string | null;
   assessor_id?: string;
   assessor?: { id: string; name?: string };
-  examStation?: ExamStation;
+  exam_station?: ExamStation;
 }
 
 export interface Exam {
