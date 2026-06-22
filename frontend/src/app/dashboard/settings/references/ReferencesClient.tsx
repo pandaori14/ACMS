@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { getApiErrorMessage } from "@/lib/api-helpers";
 import { 
   Table, 
   TableBody, 
@@ -54,7 +55,7 @@ export default function ReferencesClient() {
     try {
       const res = await api.get('/v1/system-references');
       setReferences(res.data);
-    } catch (error: any) {
+    } catch {
       toast.error("Gagal memuat data referensi.");
     } finally {
       setIsLoading(false);
@@ -99,8 +100,8 @@ export default function ReferencesClient() {
       }
       setIsDialogOpen(false);
       fetchReferences();
-    } catch (error: any) {
-      toast.error(error.response?.data?.message || "Gagal menyimpan data.");
+    } catch (error) {
+      toast.error(getApiErrorMessage(error, "Gagal menyimpan data."));
     } finally {
       setIsSubmitting(false);
     }
@@ -112,7 +113,7 @@ export default function ReferencesClient() {
       await api.delete(`/v1/system-references/${id}`);
       toast.success("Referensi berhasil dihapus.");
       fetchReferences();
-    } catch (error: any) {
+    } catch {
       toast.error("Gagal menghapus data.");
     }
   };
@@ -122,7 +123,7 @@ export default function ReferencesClient() {
       await api.put(`/v1/system-references/${id}`, { is_active: !currentStatus });
       toast.success("Status berhasil diperbarui.");
       fetchReferences();
-    } catch (error: any) {
+    } catch {
       toast.error("Gagal memperbarui status.");
     }
   };

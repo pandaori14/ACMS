@@ -7,6 +7,7 @@ import * as z from "zod";
 import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/store/useAuthStore";
 import api from "@/lib/api";
+import { ApiError, AppSetting } from "@/lib/api-helpers";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -31,7 +32,7 @@ export function LoginForm() {
   useState(() => {
     api.get("/api/public-settings").then((res) => {
       const data = res.data;
-      const ssoSetting = data.find((s: any) => s.key === "enable_google_sso");
+      const ssoSetting = data.find((s: AppSetting) => s.key === "enable_google_sso");
       setSsoEnabled(ssoSetting?.value === "true" || ssoSetting?.value === true || ssoSetting?.value === "1");
     }).catch(console.error);
   });
@@ -59,9 +60,10 @@ export function LoginForm() {
         setUser(response.data.user);
         router.push("/dashboard");
       }
-    } catch (err: any) {
+    } catch (err) {
+      const e = err as ApiError;
       setError(
-        err.response?.data?.message || err.response?.data?.errors?.email?.[0] || "Terjadi kesalahan saat login."
+        e.response?.data?.message || e.response?.data?.errors?.email?.[0] || "Terjadi kesalahan saat login."
       );
     } finally {
       setIsLoading(false);

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useAuthStore } from "@/store/useAuthStore";
 import api from "@/lib/api";
+import { getApiErrorMessage } from "@/lib/api-helpers";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -55,8 +56,8 @@ export default function PreceptorHonorariumsPage() {
       queryClient.invalidateQueries({ queryKey: ['honorariums'] });
       setIsDialogOpen(false);
     },
-    onError: (error: any) => {
-      toast.error("Gagal mengkalkulasi honorarium: " + (error.response?.data?.message || error.message));
+    onError: (error) => {
+      toast.error("Gagal mengkalkulasi honorarium: " + getApiErrorMessage(error, error.message));
     }
   });
 
@@ -68,8 +69,8 @@ export default function PreceptorHonorariumsPage() {
       toast.success("Status honorarium berhasil diubah menjadi PAID.");
       queryClient.invalidateQueries({ queryKey: ['honorariums'] });
     },
-    onError: (error: any) => {
-      toast.error("Gagal mengubah status: " + (error.response?.data?.message || error.message));
+    onError: (error) => {
+      toast.error("Gagal mengubah status: " + getApiErrorMessage(error, error.message));
     }
   });
 
