@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import api from "@/lib/api";
+import { getApiErrorMessage } from "@/lib/api-helpers";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -80,8 +81,8 @@ export default function CreateAssessmentPage() {
         scores,
       });
       router.push("/dashboard/assessments");
-    } catch (err: any) {
-      setError(err.response?.data?.message || "Gagal menyimpan penilaian.");
+    } catch (err) {
+      setError(getApiErrorMessage(err, "Gagal menyimpan penilaian."));
       console.error(err);
     } finally {
       setSubmitting(false);

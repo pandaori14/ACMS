@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/store/useAuthStore";
 import api from "@/lib/api";
+import { getApiErrorMessage } from "@/lib/api-helpers";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -41,9 +42,9 @@ export default function AnalyticsPage() {
       try {
         const res = await api.get("/api/analytics");
         setData(res.data);
-      } catch (err: any) {
+      } catch (err) {
         console.error("Failed to load analytics", err);
-        setError(err.response?.data?.message || "Gagal memuat data analitik.");
+        setError(getApiErrorMessage(err, "Gagal memuat data analitik."));
       } finally {
         setLoading(false);
       }

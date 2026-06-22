@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { Star, FileText, CheckCircle2 } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import api from "@/lib/api";
+import { getApiErrorMessage } from "@/lib/api-helpers";
 
 export default function EvaluationsPage() {
   const [questions, setQuestions] = useState<any[]>([]);
@@ -43,7 +44,7 @@ export default function EvaluationsPage() {
             setAnswers(initial);
           }
         }
-      } catch (err: any) {
+      } catch {
         toast.error("Gagal memuat data evaluasi.");
       } finally {
         setLoading(false);
@@ -91,8 +92,8 @@ export default function EvaluationsPage() {
       const res = await api.post("/api/v1/clinical/evaluations/submit", payload);
       toast.success(res.data.message);
       setIsSubmitted(true);
-    } catch (err: any) {
-      toast.error(err.response?.data?.message || "Gagal mengirim evaluasi.");
+    } catch (err) {
+      toast.error(getApiErrorMessage(err, "Gagal mengirim evaluasi."));
     } finally {
       setSubmitting(false);
     }

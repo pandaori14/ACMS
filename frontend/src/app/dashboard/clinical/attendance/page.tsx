@@ -20,7 +20,7 @@ export default function AttendancePage() {
       setLoading(true);
       const res = await api.get("/api/v1/clinical/attendance/status");
       setStatus(res.data);
-    } catch (err: any) {
+    } catch {
       toast.error("Gagal memuat status presensi.");
     } finally {
       setLoading(false);
@@ -70,15 +70,16 @@ export default function AttendancePage() {
       
       toast.success(res.data.message);
       fetchStatus();
-    } catch (err: any) {
+    } catch (err) {
       if (typeof err === "string") {
         setLocationError(err);
         toast.error(err);
       } else {
-        toast.error(err.response?.data?.message || `Gagal melakukan ${type}`);
-        if (err.response?.data?.distance_meters) {
-          const maxRadius = err.response.data.radius_meters ?? 100;
-          setLocationError(`Anda berada ${err.response.data.distance_meters} meter dari Rumah Sakit. Jarak maksimal adalah ${maxRadius} meter.`);
+        const e = err as { response?: { data?: { message?: string; distance_meters?: number; radius_meters?: number } } };
+        toast.error(e.response?.data?.message || `Gagal melakukan ${type}`);
+        if (e.response?.data?.distance_meters) {
+          const maxRadius = e.response.data.radius_meters ?? 100;
+          setLocationError(`Anda berada ${e.response.data.distance_meters} meter dari Rumah Sakit. Jarak maksimal adalah ${maxRadius} meter.`);
         }
       }
     } finally {

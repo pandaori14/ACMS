@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import api from "@/lib/api";
+import { ApiError } from "@/lib/api-helpers";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Users, Plus, Edit, Trash2, Loader2, Search } from "lucide-react";
@@ -151,15 +152,16 @@ export function UsersClient() {
       }
       setOpen(false);
       refetchUsers();
-    } catch (err: any) {
+    } catch (err) {
       console.error("FULL ERROR", err);
+      const e = err as ApiError;
       let msg = "Gagal menyimpan pengguna.";
-      if (err.response?.data?.errors) {
+      if (e.response?.data?.errors) {
         // Gabungkan semua pesan error validasi (misal: "Email sudah ada", "Password minimal 8", dsb)
-        const errors = err.response.data.errors;
+        const errors = e.response.data.errors;
         msg = Object.values(errors).flat().join("\n");
-      } else if (err.response?.data?.message) {
-        msg = err.response.data.message;
+      } else if (e.response?.data?.message) {
+        msg = e.response.data.message;
       }
       alert(msg);
     } finally {

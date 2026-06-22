@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/store/useAuthStore";
 import api from "@/lib/api";
+import { getApiErrorStatus } from "@/lib/api-helpers";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
@@ -35,8 +36,8 @@ export default function DashboardPage() {
       try {
         const res = await api.get("/api/dashboard/stats");
         return res.data;
-      } catch (err: any) {
-        if (err.response?.status === 401) {
+      } catch (err) {
+        if (getApiErrorStatus(err) === 401) {
           router.push("/login");
         }
         throw err;

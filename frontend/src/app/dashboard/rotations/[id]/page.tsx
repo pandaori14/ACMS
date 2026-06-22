@@ -3,6 +3,7 @@
 import { useState, useEffect, use } from "react";
 import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd";
 import api from "@/lib/api";
+import { getApiErrorMessage } from "@/lib/api-helpers";
 import {
   Select,
   SelectContent,
@@ -161,9 +162,9 @@ export default function RotationScheduler({ params }: { params: Promise<{ id: st
       fetchInitialData();
       fetchAssignments();
       
-    } catch (err: any) {
+    } catch (err) {
       console.error(err);
-      alert("Gagal memindahkan mahasiswa: " + (err.response?.data?.message || err.message));
+      alert("Gagal memindahkan mahasiswa: " + getApiErrorMessage(err, err instanceof Error ? err.message : "Terjadi kesalahan"));
       // Revert Optimistic updates
       fetchInitialData();
       fetchAssignments();

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import api from "@/lib/api";
+import { getApiErrorMessage } from "@/lib/api-helpers";
 import { Plus, Edit2, Trash2, Save, X, PlusCircle, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -69,8 +70,8 @@ export default function RubricsPage() {
       }
       setEditingTemplate(null);
       fetchTemplates();
-    } catch (err: any) {
-      toast.error(err.response?.data?.message || "Gagal menyimpan template");
+    } catch (err) {
+      toast.error(getApiErrorMessage(err, "Gagal menyimpan template"));
     }
   };
 
@@ -80,7 +81,7 @@ export default function RubricsPage() {
       await api.delete(`/api/v1/assessments/templates/${id}`);
       toast.success("Template dihapus");
       fetchTemplates();
-    } catch (err: any) {
+    } catch {
       toast.error("Gagal menghapus template");
     }
   };

@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import api from "@/lib/api";
+import { getApiErrorMessage } from "@/lib/api-helpers";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -152,8 +153,8 @@ export function RoleAccessClient() {
       const permNames = role.permissions.map((p) => p.name);
       await api.post(`/api/role-permissions/${role.id}/sync`, { permissions: permNames });
       toast.success(`Hak akses untuk ${role.name} diperbarui!`);
-    } catch (error: any) {
-      toast.error(error.response?.data?.message || `Gagal memperbarui ${role.name}`);
+    } catch (error) {
+      toast.error(getApiErrorMessage(error, `Gagal memperbarui ${role.name}`));
     } finally {
       setSaving(null);
     }

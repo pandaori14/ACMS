@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useAuthStore } from "@/store/useAuthStore";
 import api from "@/lib/api";
+import { getApiErrorMessage } from "@/lib/api-helpers";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -97,8 +98,8 @@ export default function AssessorExamPage() {
       setRubricScores({});
       setFeedback("");
       setSelectedParticipant("");
-    } catch (err: any) {
-      toast.error("Gagal menyimpan nilai: " + (err.response?.data?.message || err.message));
+    } catch (err) {
+      toast.error("Gagal menyimpan nilai: " + getApiErrorMessage(err, err instanceof Error ? err.message : "Terjadi kesalahan"));
     } finally {
       setSubmitting(false);
     }

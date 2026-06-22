@@ -4,6 +4,7 @@ import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuthStore } from "@/store/useAuthStore";
 import api from "@/lib/api";
+import { getApiErrorMessage } from "@/lib/api-helpers";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -31,9 +32,9 @@ function SsoCallbackContent() {
           toast.success("Login SSO berhasil!");
           router.push("/dashboard");
         }
-      } catch (err: any) {
+      } catch (err) {
         console.error("SSO Callback Error:", err);
-        setError(err.response?.data?.message || "Gagal melakukan verifikasi SSO dengan Universitas.");
+        setError(getApiErrorMessage(err, "Gagal melakukan verifikasi SSO dengan Universitas."));
         setTimeout(() => router.push("/login"), 3000);
       }
     };
