@@ -26,6 +26,10 @@ const eslintConfig = [
     // util error/settings: src/lib/api-helpers.ts.
     rules: {
       "@typescript-eslint/no-explicit-any": "error",
+      // Semua <img> di proyek ini adalah logo/gambar UNGGAHAN dinamis dari backend
+      // (host runtime bervariasi + rasio tak tetap) sehingga next/image kurang cocok
+      // (butuh remotePatterns per-host + dimensi tetap). Rule dimatikan secara sadar.
+      "@next/next/no-img-element": "off",
     },
   },
   {
