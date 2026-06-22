@@ -25,7 +25,7 @@ export default function ExaminationsPage() {
     queryKey: ['examinations'],
     queryFn: async (): Promise<Exam[]> => {
       const res = await api.get("/api/v1/examinations");
-      return res.data;
+      return res.data.data;
     }
   });
 

@@ -31,9 +31,17 @@ Konsisten di seluruh endpoint:
 | Item tunggal | `{ "data": { ... } }` | `GET /incidents/{id}` |
 | Daftar (paginasi) | `{ "data": [ ... ], "meta": { current_page, last_page, per_page, total } }` | `GET /incidents` |
 | Mutasi (create/update) | `{ "message": "...", "data": { ... } }` | `POST /incidents/report` |
-| Unduhan file | binary stream (`response()->download`) | lampiran |
+| Unduhan file | binary stream (`response()->download`/`stream`) | lampiran, PDF, CSV |
 
 `meta` paginasi minimal memuat `current_page`, `last_page`, `per_page`, `total`.
+Untuk paginator Laravel: jangan kembalikan paginator telanjang (`response()->json($paginator)`);
+gunakan `$paginator->items()` + blok `meta` di atas.
+
+**Pengecualian — endpoint platform bespoke (BUKAN resource CRUD):** `/api/settings`,
+`/api/public-settings`, `/api/dashboard/*`, `/api/analytics` mengembalikan payload
+konfigurasi/agregat berbentuk khusus (mis. `Setting::all()` flat, objek statistik per-peran).
+Bentuknya sengaja menyesuaikan kebutuhan UI dan **konsisten di dalam tujuannya** —
+tidak dibungkus `{data}` resource. Ini keputusan sadar, bukan inkonsistensi.
 
 ---
 
@@ -46,6 +54,13 @@ berbeda format di controller.
 
 - `401` belum terotentikasi · `403` tanpa izin (RBAC) · `404` tidak ditemukan
 - `422` validasi (`{ message, errors: { field: [...] } }`) · `429` rate-limit (lihat `AuthController`)
+
+> ⚠️ **Utang konsistensi error (belum seragam):** beberapa controller masih
+> mengembalikan bentuk error manual yang berbeda — `{ error: { code, message } }`
+> (mis. `LogbookController`) dan `{ error: "pesan" }` (mis. Evaluation/Attendance/References).
+> Targetnya: semua error manual → `{ message }` (selaras envelope global), opsional `code`
+> untuk error mesin. Migrasi ini **menyentuh error-handler frontend** (beberapa membaca
+> `data.error`) sehingga dikerjakan sebagai pass terpisah per endpoint.
 
 ---
 
@@ -79,10 +94,17 @@ pemanggilnya). Dikunci oleh tes `IncidentTest::test_anonymous_identity_is_masked
 | Aspek | Status |
 |-------|--------|
 | Versioning domain (`/api/v1`) | ✅ Konsisten (Academic sudah distandarkan) |
-| Success/Error envelope | ✅ Terdefinisi; Insiden/Konsultasi sebagai acuan |
-| API Resource | 🔄 Insiden/Konsultasi **selesai** sebagai pola; modul lain **dicicil per-modul** |
+| **Success envelope** (semua endpoint resource domain) | ✅ **Seragam** — Academic, Finance, Assessment, Examination, Clinical, Evaluation, Incident, Rotation |
+| Error envelope | 🔄 Sebagian — global envelope aktif; sisa error manual `{error:...}` dicicil (lihat §3) |
+| API Resource (kelas) | 🔄 Insiden/Konsultasi sebagai pola; modul lain memakai envelope seragam, kelas Resource menyusul opsional |
 
-**Migrasi Resource bertahap (aman):** konversi modul lain dilakukan **per modul**
-disertai verifikasi konsumen frontend-nya, bukan sekaligus, karena tiap modul
-punya kopling bentuk payload tersendiri. Urutan menyusul prioritas di
-`PLAN`/roadmap enterprise.
+**Sudah seragam (success envelope):** seluruh endpoint resource domain kini memakai
+`{data}` / `{data, meta}` / `{message, data}`. Endpoint platform bespoke (§2) dikecualikan
+secara sadar. Paginator telanjang & objek/array telanjang sudah dibungkus.
+
+**Sisa utang (dicicil, terdokumentasi):**
+1. **Error envelope** — seragamkan `{error:...}` → `{message}` (§3), per endpoint + frontend.
+2. **Kelas API Resource** — adopsi `JsonResource` per model (saat ini hanya Insiden); ini
+   decoupling kolom DB, bukan lagi soal bentuk wire yang sudah seragam.
+3. **Dead code** — `Examination/.../Api/ExamController` & `ExamScoreController` tidak terdaftar
+   di route (bisa dihapus saat bersih-bersih).

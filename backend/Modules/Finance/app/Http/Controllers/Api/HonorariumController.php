@@ -24,7 +24,7 @@ class HonorariumController extends Controller
 
         $honorariums = $query->orderBy('created_at', 'desc')->get();
 
-        return response()->json($honorariums);
+        return response()->json(['data' => $honorariums]);
     }
 
     public function generateForPeriod(Request $request)
@@ -61,6 +61,9 @@ class HonorariumController extends Controller
         $honorarium = Honorarium::findOrFail($id);
         $honorarium->update(['status' => $request->status]);
 
-        return response()->json($honorarium);
+        return response()->json([
+            'message' => 'Status honorarium berhasil diperbarui.',
+            'data' => $honorarium,
+        ]);
     }
 }

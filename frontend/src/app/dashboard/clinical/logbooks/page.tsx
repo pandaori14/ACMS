@@ -167,12 +167,12 @@ export default function LogbooksPage() {
       const res = await api.get("/api/v1/clinical/logbooks", { params: { page: p, search } });
       setEntries(res.data.data);
       
-      // Laravel LengthAwarePaginator puts pagination info at root when directly JSON serialized
+      // Envelope standar: { data: [...], meta: { current_page, last_page, per_page, total } }
       setMeta({
-        current_page: res.data.current_page,
-        last_page: res.data.last_page,
-        per_page: res.data.per_page,
-        total: res.data.total
+        current_page: res.data.meta.current_page,
+        last_page: res.data.meta.last_page,
+        per_page: res.data.meta.per_page,
+        total: res.data.meta.total
       });
 
       // Compute stats from full data (if backend provides) or from current page

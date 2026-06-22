@@ -98,7 +98,15 @@ class LogbookController extends Controller
             ->orderBy('created_at', 'desc')
             ->paginate($request->get('per_page', 15));
 
-        return response()->json($entries);
+        return response()->json([
+            'data' => $entries->items(),
+            'meta' => [
+                'current_page' => $entries->currentPage(),
+                'last_page' => $entries->lastPage(),
+                'per_page' => $entries->perPage(),
+                'total' => $entries->total(),
+            ],
+        ]);
     }
 
     /**

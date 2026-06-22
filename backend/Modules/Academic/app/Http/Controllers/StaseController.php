@@ -51,7 +51,7 @@ class StaseController extends Controller
     {
         $stase = Stase::with('program')->findOrFail($id);
 
-        return response()->json($stase);
+        return response()->json(['data' => $stase]);
     }
 
     public function update(Request $request, string $id): JsonResponse

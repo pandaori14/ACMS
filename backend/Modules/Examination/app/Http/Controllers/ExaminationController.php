@@ -35,7 +35,7 @@ class ExaminationController extends Controller
 
         $exams = $query->orderBy('date', 'desc')->get();
 
-        return response()->json($exams);
+        return response()->json(['data' => $exams]);
     }
 
     /**
@@ -100,7 +100,7 @@ class ExaminationController extends Controller
             'assessors.examStation.assessmentTemplate',
         ])->findOrFail($id);
 
-        return response()->json($exam);
+        return response()->json(['data' => $exam]);
     }
 
     /**

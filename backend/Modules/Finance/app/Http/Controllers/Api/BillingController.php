@@ -19,7 +19,7 @@ class BillingController extends Controller
 
         $billings = $query->orderBy('created_at', 'desc')->get();
 
-        return response()->json($billings);
+        return response()->json(['data' => $billings]);
     }
 
     public function generateForPeriod(Request $request)
@@ -54,7 +54,10 @@ class BillingController extends Controller
         $billing = Billing::findOrFail($id);
         $billing->update(['status' => $request->status]);
 
-        return response()->json($billing);
+        return response()->json([
+            'message' => 'Status tagihan berhasil diperbarui.',
+            'data' => $billing,
+        ]);
     }
 
     public function export(Request $request)

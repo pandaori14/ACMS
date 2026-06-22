@@ -39,7 +39,7 @@ export default function HospitalBillingsPage() {
     queryKey: ['billings'],
     queryFn: async (): Promise<Billing[]> => {
       const res = await api.get("/api/v1/finance/billings");
-      return res.data;
+      return res.data.data;
     }
   });
 

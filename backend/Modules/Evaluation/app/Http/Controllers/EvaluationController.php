@@ -18,7 +18,7 @@ class EvaluationController extends Controller
     {
         $questions = EvaluationQuestion::where('is_active', true)->get();
 
-        return response()->json($questions);
+        return response()->json(['data' => $questions]);
     }
 
     /**

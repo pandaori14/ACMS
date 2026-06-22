@@ -118,7 +118,7 @@ class EvaluationTest extends TestCase
             ->getJson('/api/v1/clinical/evaluations/questions');
 
         $response->assertStatus(200)
-            ->assertJsonCount(2);
+            ->assertJsonCount(2, 'data');
     }
 
     public function test_student_can_submit_evaluation()

@@ -79,7 +79,15 @@ class AssessmentController extends Controller
 
         $assessments = $query->orderBy('created_at', 'desc')->paginate(15);
 
-        return response()->json($assessments);
+        return response()->json([
+            'data' => $assessments->items(),
+            'meta' => [
+                'current_page' => $assessments->currentPage(),
+                'last_page' => $assessments->lastPage(),
+                'per_page' => $assessments->perPage(),
+                'total' => $assessments->total(),
+            ],
+        ]);
     }
 
     /**

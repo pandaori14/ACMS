@@ -33,6 +33,14 @@ class StudentController extends Controller
         $perPage = $request->get('per_page', 15);
         $paginator = $query->paginate($perPage);
 
-        return response()->json($paginator);
+        return response()->json([
+            'data' => $paginator->items(),
+            'meta' => [
+                'current_page' => $paginator->currentPage(),
+                'last_page' => $paginator->lastPage(),
+                'per_page' => $paginator->perPage(),
+                'total' => $paginator->total(),
+            ],
+        ]);
     }
 }

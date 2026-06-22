@@ -35,7 +35,7 @@ export default function AssessorExamPage() {
   const fetchExamDetail = async () => {
     try {
       const res = await api.get(`/api/v1/examinations/${params.id}`);
-      setExam(res.data);
+      setExam(res.data.data);
     } catch (err) {
       console.error("Failed to fetch exam", err);
       toast.error("Gagal memuat data ujian.");

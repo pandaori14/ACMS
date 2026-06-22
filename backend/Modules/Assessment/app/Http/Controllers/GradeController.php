@@ -42,7 +42,15 @@ class GradeController extends Controller
 
         $grades = $query->orderBy('updated_at', 'desc')->paginate(15);
 
-        return response()->json($grades);
+        return response()->json([
+            'data' => $grades->items(),
+            'meta' => [
+                'current_page' => $grades->currentPage(),
+                'last_page' => $grades->lastPage(),
+                'per_page' => $grades->perPage(),
+                'total' => $grades->total(),
+            ],
+        ]);
     }
 
     /**

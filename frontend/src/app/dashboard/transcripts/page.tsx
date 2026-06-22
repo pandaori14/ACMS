@@ -41,7 +41,7 @@ export default function TranscriptsPage() {
   });
 
   const students = paginatedData?.data || [];
-  const totalPages = paginatedData?.last_page || 1;
+  const totalPages = paginatedData?.meta?.last_page || 1;
 
   return (
     <div className="max-w-6xl mx-auto space-y-6">

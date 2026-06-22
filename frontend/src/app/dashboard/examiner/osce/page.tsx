@@ -23,7 +23,7 @@ export default function ExaminerOsceDashboard() {
       setLoading(true);
       const res = await api.get("/api/v1/examinations");
       // Filter for OSCE type only if needed, assuming the API returns exams the user is an assessor for
-      const osceExams = res.data.filter((exam: any) => exam.type === "OSCE");
+      const osceExams = res.data.data.filter((exam: any) => exam.type === "OSCE");
       setExams(osceExams);
     } catch (error) {
       toast.error("Gagal memuat daftar ujian OSCE.");

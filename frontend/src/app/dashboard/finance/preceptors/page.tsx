@@ -42,7 +42,7 @@ export default function PreceptorHonorariumsPage() {
     queryKey: ['honorariums'],
     queryFn: async (): Promise<Honorarium[]> => {
       const res = await api.get("/api/v1/finance/honorariums");
-      return res.data;
+      return res.data.data;
     }
   });
 

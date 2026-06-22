@@ -28,7 +28,15 @@ class CompetencyController extends Controller
 
         $competencies = $query->paginate($request->per_page ?? 15);
 
-        return response()->json($competencies);
+        return response()->json([
+            'data' => $competencies->items(),
+            'meta' => [
+                'current_page' => $competencies->currentPage(),
+                'last_page' => $competencies->lastPage(),
+                'per_page' => $competencies->perPage(),
+                'total' => $competencies->total(),
+            ],
+        ]);
     }
 
     public function store(Request $request)

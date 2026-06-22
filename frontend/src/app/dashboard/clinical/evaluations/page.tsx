@@ -33,7 +33,7 @@ export default function EvaluationsPage() {
           } else {
             // Load questions
             const qRes = await api.get("/api/v1/clinical/evaluations/questions");
-            setQuestions(qRes.data);
+            setQuestions(qRes.data.data);
             
             // Initialize answers state
             const initial: any = {};
