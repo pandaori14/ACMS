@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import api from "@/lib/api";
+import { AppSetting } from "@/lib/api-helpers";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Loader2, BookOpen } from "lucide-react";
 import { useAuthStore } from "@/store/useAuthStore";
@@ -27,7 +28,7 @@ export function GuideClient() {
       const roleKey = userRole.toLowerCase().replace(/\s+/g, '_');
       const settingKey = `incident_guide_${roleKey}`;
       
-      const guide = data.find((s: any) => s.key === settingKey)?.value;
+      const guide = data.find((s: AppSetting) => s.key === settingKey)?.value;
       
       if (guide) {
         setGuideContent(guide);

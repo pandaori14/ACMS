@@ -4,6 +4,7 @@ import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useAuthStore } from "@/store/useAuthStore";
+import { AppSetting } from "@/lib/api-helpers";
 import {
   Sidebar,
   SidebarContent,
@@ -30,7 +31,7 @@ export function AppSidebar() {
   useEffect(() => {
     api.get("/api/public-settings").then((res) => {
       const data = res.data;
-      const getVal = (key: string) => data.find((s: any) => s.key === key)?.value;
+      const getVal = (key: string) => data.find((s: AppSetting) => s.key === key)?.value;
       setAppSettings({
         name: getVal("app_name") || 'ACMS',
         logo: getVal("app_logo") || ''

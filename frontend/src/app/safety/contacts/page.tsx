@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import api from "@/lib/api";
+import { AppSetting } from "@/lib/api-helpers";
 import { Loader2, Phone, Mail, ExternalLink, ShieldAlert } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 
@@ -12,7 +13,7 @@ export default function ContactsPage() {
   useEffect(() => {
     api.get("/api/public-settings").then((res) => {
       const data = res.data;
-      const val = data.find((s: any) => s.key === "incident_emergency_contacts")?.value;
+      const val = data.find((s: AppSetting) => s.key === "incident_emergency_contacts")?.value;
       if (val) {
         try {
           setContacts(JSON.parse(val));

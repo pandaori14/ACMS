@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { ShieldAlert, ShieldCheck, ChevronLeft } from "lucide-react";
 import { useEffect, useState } from "react";
 import api from "@/lib/api";
+import { AppSetting } from "@/lib/api-helpers";
 import LandingFooter from "@/components/landing/LandingFooter";
 
 export default function SafetyLayout({
@@ -24,7 +25,7 @@ export default function SafetyLayout({
     setMounted(true);
     api.get("/api/public-settings").then((res) => {
       const data = res.data;
-      const getVal = (key: string) => data.find((s: any) => s.key === key)?.value;
+      const getVal = (key: string) => data.find((s: AppSetting) => s.key === key)?.value;
       
       let hotlineDisplay = "119";
       const contactsStr = getVal("incident_emergency_contacts");

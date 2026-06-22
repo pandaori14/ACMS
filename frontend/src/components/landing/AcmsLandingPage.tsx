@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import { useEffect, useState, useRef } from "react";
 import api from "@/lib/api";
+import { AppSetting } from "@/lib/api-helpers";
 import LandingFooter from "@/components/landing/LandingFooter";
 
 export default function AcmsLandingPage() {
@@ -36,7 +37,7 @@ export default function AcmsLandingPage() {
     // Fetch public settings
     api.get("/api/public-settings").then((res) => {
       const data = res.data;
-      const getVal = (key: string) => data.find((s: any) => s.key === key)?.value;
+      const getVal = (key: string) => data.find((s: AppSetting) => s.key === key)?.value;
 
       setLandingConfig(prev => ({
         title: getVal("landing_title") || prev.title,

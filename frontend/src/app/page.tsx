@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import api from "@/lib/api";
+import { AppSetting } from "@/lib/api-helpers";
 import AcmsLandingPage from "@/components/landing/AcmsLandingPage";
 import IncidentLandingPage from "@/components/landing/IncidentLandingPage";
 
@@ -12,7 +13,7 @@ export default function Home() {
   useEffect(() => {
     api.get("/api/public-settings").then((res) => {
       const data = res.data;
-      const tpl = data.find((s: any) => s.key === "landing_page_template")?.value;
+      const tpl = data.find((s: AppSetting) => s.key === "landing_page_template")?.value;
       if (tpl) setTemplate(tpl);
     }).catch(console.error).finally(() => setLoading(false));
   }, []);

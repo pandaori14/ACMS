@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import api from "@/lib/api";
+import { AppSetting } from "@/lib/api-helpers";
 import ReactMarkdown from "react-markdown";
 import { Loader2, FileText } from "lucide-react";
 
@@ -12,7 +13,7 @@ export default function SOPPage() {
   useEffect(() => {
     api.get("/api/public-settings").then((res) => {
       const data = res.data;
-      const val = data.find((s: any) => s.key === "incident_sop_content")?.value;
+      const val = data.find((s: AppSetting) => s.key === "incident_sop_content")?.value;
       setContent(val || "### Dokumen SOP Belum Tersedia");
     }).catch(console.error).finally(() => setLoading(false));
   }, []);
