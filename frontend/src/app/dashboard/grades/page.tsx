@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import api from "@/lib/api";
+import { StaseGrade, RotationAssignment } from "@/lib/types";
 import {
   Table,
   TableBody,
@@ -23,8 +24,8 @@ import { Label } from "@/components/ui/label";
 
 
 export default function GradeManagementPage() {
-  const [grades, setGrades] = useState<any[]>([]);
-  const [assignments, setAssignments] = useState<any[]>([]);
+  const [grades, setGrades] = useState<StaseGrade[]>([]);
+  const [assignments, setAssignments] = useState<RotationAssignment[]>([]);
   const [selectedAssignment, setSelectedAssignment] = useState<string>("");
   const [loading, setLoading] = useState(false);
   const [calculating, setCalculating] = useState(false);

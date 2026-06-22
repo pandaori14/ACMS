@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import api from "@/lib/api";
+import { Faculty, Program } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
@@ -23,8 +24,8 @@ import {
 } from "@/components/ui/dialog";
 
 export default function FacultyManagement() {
-  const [faculties, setFaculties] = useState<any[]>([]);
-  const [programs, setPrograms] = useState<any[]>([]);
+  const [faculties, setFaculties] = useState<Faculty[]>([]);
+  const [programs, setPrograms] = useState<Program[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   
   const [isFacultyOpen, setIsFacultyOpen] = useState(false);

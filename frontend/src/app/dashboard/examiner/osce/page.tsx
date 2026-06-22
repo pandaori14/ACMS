@@ -6,11 +6,12 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ClipboardList, Clock, CheckCircle2, AlertCircle } from "lucide-react";
 import api from "@/lib/api";
+import { Exam } from "@/lib/types";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 
 export default function ExaminerOsceDashboard() {
-  const [exams, setExams] = useState<any[]>([]);
+  const [exams, setExams] = useState<Exam[]>([]);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
 
@@ -23,7 +24,7 @@ export default function ExaminerOsceDashboard() {
       setLoading(true);
       const res = await api.get("/api/v1/examinations");
       // Filter for OSCE type only if needed, assuming the API returns exams the user is an assessor for
-      const osceExams = res.data.data.filter((exam: any) => exam.type === "OSCE");
+      const osceExams = res.data.data.filter((exam: Exam) => exam.type === "OSCE");
       setExams(osceExams);
     } catch (error) {
       toast.error("Gagal memuat daftar ujian OSCE.");

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import api from "@/lib/api";
+import { Stase, Program } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -21,8 +22,8 @@ import {
 } from "@/components/ui/dialog";
 
 export default function StaseManagement() {
-  const [stases, setStases] = useState<any[]>([]);
-  const [programs, setPrograms] = useState<any[]>([]);
+  const [stases, setStases] = useState<Stase[]>([]);
+  const [programs, setPrograms] = useState<Program[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   
   const [isOpen, setIsOpen] = useState(false);

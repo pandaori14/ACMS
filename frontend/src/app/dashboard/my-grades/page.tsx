@@ -2,12 +2,13 @@
 
 import { useEffect, useState } from "react";
 import api from "@/lib/api";
+import { StaseGrade } from "@/lib/types";
 import { BookOpen, GraduationCap } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export default function StudentGradesPage() {
-  const [grades, setGrades] = useState<any[]>([]);
+  const [grades, setGrades] = useState<StaseGrade[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {

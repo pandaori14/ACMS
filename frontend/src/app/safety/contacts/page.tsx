@@ -6,8 +6,16 @@ import { AppSetting } from "@/lib/api-helpers";
 import { Loader2, Phone, Mail, ExternalLink, ShieldAlert } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 
+interface EmergencyContact {
+  name?: string;
+  role?: string;
+  phone?: string;
+  email?: string;
+  link?: string;
+}
+
 export default function ContactsPage() {
-  const [contacts, setContacts] = useState<any[]>([]);
+  const [contacts, setContacts] = useState<EmergencyContact[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -16,7 +24,7 @@ export default function ContactsPage() {
       const val = data.find((s: AppSetting) => s.key === "incident_emergency_contacts")?.value;
       if (val) {
         try {
-          setContacts(JSON.parse(val));
+          setContacts(JSON.parse(val) as EmergencyContact[]);
         } catch (e) {}
       }
     }).catch(console.error).finally(() => setLoading(false));
