@@ -210,6 +210,14 @@ class AiAssistantService
         return (int) config('services.ai.timeout', 30);
     }
 
+    /** Batas token jawaban. Bisa di-override via Setting ai_max_tokens (mis. naikkan untuk model reasoning). */
+    private function maxTokens(): int
+    {
+        $fromSetting = (int) Setting::getValue('ai_max_tokens', 0);
+
+        return $fromSetting > 0 ? $fromSetting : (int) config('services.ai.max_tokens', 4096);
+    }
+
     /**
      * Prompt sistem = instruksi dasar yang SELALU berlaku (anti-halusinasi,
      * gaya bahasa, pemakaian tool) + persona tambahan yang bisa diatur admin
@@ -277,6 +285,7 @@ PROMPT;
             'model' => $this->activeModel ?? $this->model(),
             'messages' => $messages,
             'temperature' => 0.6,
+            'max_tokens' => $this->maxTokens(),
         ];
         if (! empty($tools)) {
             $payload['tools'] = $tools;
