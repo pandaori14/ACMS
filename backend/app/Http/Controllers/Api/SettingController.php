@@ -5,7 +5,9 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Setting;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Crypt;
 use Modules\Academic\Models\Program;
 use Modules\Academic\Models\Student;
 use Modules\Clinical\Models\LogbookEntry;
@@ -13,12 +15,13 @@ use Modules\Rotation\Models\Hospital;
 
 class SettingController extends Controller
 {
+    /** Placeholder yang dikirim ke frontend untuk setting bertipe `secret` yang sudah terisi. */
+    private const SECRET_PLACEHOLDER = '__SECRET_SET__';
+
     public function index()
     {
-        $settings = Setting::all();
-
-        // Return grouped or flat depending on frontend needs, flat is easier to map in frontend state
-        return response()->json($settings);
+        // Redaksi nilai bertipe `secret` (mis. API key AI) — jangan pernah kirim plaintext ke frontend.
+        return response()->json($this->redactSecrets(Setting::all()));
     }
 
     /**
@@ -64,6 +67,7 @@ class SettingController extends Controller
 
         foreach ($data['settings'] as $index => $settingData) {
             $value = $settingData['value'];
+            $type = $settingData['type'] ?? 'string';
 
             // Handle file upload if present
             if ($request->hasFile("settings.{$index}.value")) {
@@ -72,20 +76,50 @@ class SettingController extends Controller
                 $value = '/storage/'.$path;
             }
 
+            // Setting bertipe `secret` (mis. API key): jangan timpa bila kosong atau masih
+            // placeholder (artinya user tidak mengubahnya); selain itu simpan terenkripsi.
+            if ($type === 'secret') {
+                if (empty($value) || $value === self::SECRET_PLACEHOLDER) {
+                    continue;
+                }
+                $value = Crypt::encryptString($value);
+            }
+
             Setting::updateOrCreate(
                 ['key' => $settingData['key']],
                 [
                     'group' => $settingData['group'] ?? 'general',
                     'value' => $value,
-                    'type' => $settingData['type'] ?? 'string',
+                    'type' => $type,
                     'description' => $settingData['description'] ?? null,
                 ]
             );
         }
 
+        Setting::clearCache();
+
         return response()->json([
             'message' => 'Pengaturan berhasil diperbarui.',
-            'data' => Setting::all(),
+            'data' => $this->redactSecrets(Setting::all()),
+        ]);
+    }
+
+    /**
+     * Ganti nilai setting bertipe `secret` dengan placeholder sebelum dikirim ke frontend,
+     * sehingga API key tidak pernah bocor ke klien (hanya indikator "tersimpan").
+     *
+     * @param  Collection<int, Setting>  $settings
+     */
+    private function redactSecrets($settings)
+    {
+        return $settings->map(fn (Setting $s) => [
+            'key' => $s->key,
+            'group' => $s->group,
+            'value' => $s->type === 'secret'
+                ? (! empty($s->value) ? self::SECRET_PLACEHOLDER : '')
+                : $s->value,
+            'type' => $s->type,
+            'description' => $s->description,
         ]);
     }
 }

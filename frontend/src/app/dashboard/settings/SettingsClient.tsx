@@ -11,7 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   Save, Loader2, MonitorSmartphone, GraduationCap, Stethoscope, Landmark, ShieldCheck,
-  LayoutTemplate, Mail, Key, Plus, Trash2, BookOpen, MapPin, Search, Scale, type LucideIcon,
+  LayoutTemplate, Mail, Key, Plus, Trash2, BookOpen, MapPin, Search, Scale, Bot, type LucideIcon,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -62,6 +62,7 @@ const SECTIONS: Section[] = [
       { id: "smtp", label: "SMTP (Email)", icon: Mail, description: "Server email, template, dan matriks notifikasi otomatis." },
       { id: "oauth", label: "OAuth (SSO)", icon: Key, description: "Kredensial Google Single Sign-On." },
       { id: "guide", label: "Panduan", icon: BookOpen, description: "Konten panduan pelaporan insiden per peran (Markdown)." },
+      { id: "ai_assistant", label: "AI Assistant", icon: Bot, description: "Konfigurasi LLM (NVIDIA NIM / Ollama): aktif, base URL, model, API key (terenkripsi), system prompt." },
     ],
   },
   {
@@ -264,6 +265,28 @@ export function SettingsClient() {
           onChange={(e) => handleChange(setting.key, e.target.value)}
           placeholder={`Masukkan ${setting.key}`}
         />
+      );
+    }
+
+    if (setting.type === "secret") {
+      // Backend mengirim placeholder '__SECRET_SET__' bila key sudah tersimpan
+      // (nilai asli tak pernah dikirim ke browser). Kosong = belum diisi.
+      const isSet = setting.value === "__SECRET_SET__";
+      return (
+        <div className="space-y-1.5">
+          <Input
+            type="password"
+            autoComplete="off"
+            value={isSet ? "" : (setting.value || "")}
+            onChange={(e) => handleChange(setting.key, e.target.value)}
+            placeholder={isSet ? "•••••••••• (tersimpan)" : "Tempel API key (mis. nvapi-...)"}
+          />
+          <p className="text-xs text-muted-foreground">
+            {isSet
+              ? "✓ Key tersimpan & terenkripsi. Biarkan kosong untuk mempertahankan, atau ketik untuk mengganti."
+              : "Disimpan terenkripsi di server; tidak pernah ditampilkan kembali ke browser."}
+          </p>
+        </div>
       );
     }
 

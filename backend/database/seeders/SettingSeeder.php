@@ -216,6 +216,13 @@ class SettingSeeder extends Seeder
             ['key' => 'google_client_id', 'group' => 'oauth', 'value' => '', 'type' => 'string', 'description' => 'Google Client ID'],
             ['key' => 'google_client_secret', 'group' => 'oauth', 'value' => '', 'type' => 'password', 'description' => 'Google Client Secret'],
             ['key' => 'google_redirect_url', 'group' => 'oauth', 'value' => 'http://localhost:3000/sso-callback', 'type' => 'string', 'description' => 'Google Redirect URL (Frontend)'],
+
+            // AI Assistant (Super Admin) — OpenAI-compatible (NVIDIA NIM / Ollama)
+            ['key' => 'ai_enabled', 'group' => 'ai_assistant', 'value' => 'false', 'type' => 'boolean', 'description' => 'Aktifkan AI Assistant di panel Super Admin'],
+            ['key' => 'ai_base_url', 'group' => 'ai_assistant', 'value' => 'https://integrate.api.nvidia.com/v1', 'type' => 'string', 'description' => 'Base URL endpoint OpenAI-compatible (NVIDIA NIM: https://integrate.api.nvidia.com/v1 · Ollama: http://localhost:11434/v1)'],
+            ['key' => 'ai_model', 'group' => 'ai_assistant', 'value' => 'meta/llama-3.1-8b-instruct', 'type' => 'string', 'description' => 'Nama model (cth: meta/llama-3.1-8b-instruct · Ollama: llama3.1)'],
+            ['key' => 'ai_api_key', 'group' => 'ai_assistant', 'value' => '', 'type' => 'secret', 'description' => 'API Key (mis. nvapi-... dari NVIDIA). Tersimpan terenkripsi & tidak pernah ditampilkan kembali.'],
+            ['key' => 'ai_system_prompt', 'group' => 'ai_assistant', 'value' => 'Anda adalah asisten AI internal untuk Super Admin sistem ACMS (manajemen pendidikan profesi dokter). Bantu menjawab pertanyaan operasional dan menyusun draf (memo, laporan) secara ringkas dan profesional dalam Bahasa Indonesia. Gunakan tool yang tersedia untuk mengambil data status sistem bila relevan, dan jangan mengarang data.', 'type' => 'text', 'description' => 'System prompt / instruksi dasar untuk AI'],
         ];
 
         foreach ($settings as $setting) {

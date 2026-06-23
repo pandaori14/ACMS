@@ -41,4 +41,14 @@ return [
         ],
     ],
 
+    // AI Assistant (Super Admin) — endpoint OpenAI-compatible (NVIDIA NIM / Ollama).
+    // Dipakai sebagai fallback bila setting di DB (grup ai_assistant) kosong.
+    'ai' => [
+        'enabled' => env('AI_ENABLED', false),
+        'base_url' => env('AI_BASE_URL', 'https://integrate.api.nvidia.com/v1'),
+        'model' => env('AI_MODEL', 'meta/llama-3.1-8b-instruct'),
+        'api_key' => env('AI_API_KEY'),
+        'timeout' => (int) env('AI_TIMEOUT', 30),
+    ],
+
 ];

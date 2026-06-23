@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\AiAssistantController;
 use App\Http\Controllers\Api\AnalyticsController;
 use App\Http\Controllers\Api\AuditLogController;
 use App\Http\Controllers\Api\DashboardController;
@@ -29,6 +30,12 @@ Route::middleware('auth:sanctum')->prefix('v1/notifications')->group(function ()
     Route::get('/', [NotificationController::class, 'index']);
     Route::post('/mark-all-read', [NotificationController::class, 'markAllAsRead']);
     Route::post('/{id}/read', [NotificationController::class, 'markAsRead']);
+});
+
+// AI Assistant — HANYA Super Admin (LLM OpenAI-compatible + tool-calling ber-whitelist)
+Route::middleware(['auth:sanctum', 'role:Super Admin'])->prefix('ai-assistant')->group(function () {
+    Route::get('/status', [AiAssistantController::class, 'status']);
+    Route::post('/chat', [AiAssistantController::class, 'chat']);
 });
 
 // Audit Trail (read-only) — Super Admin global, Kaprodi scoped to own program

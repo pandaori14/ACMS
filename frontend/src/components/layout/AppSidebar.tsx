@@ -17,7 +17,7 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
-import { Building, BookOpen, Home, Settings, Settings2, LogOut, FileText, Building2, GraduationCap, CalendarSync, ClipboardList, CheckCircle, BarChart2, Users, ShieldAlert, Database, ScrollText, MapPin, MessageSquare, MessageSquareDot, Bell } from "lucide-react";
+import { Building, BookOpen, Home, Settings, Settings2, LogOut, FileText, Building2, GraduationCap, CalendarSync, ClipboardList, CheckCircle, BarChart2, Users, ShieldAlert, Database, ScrollText, MapPin, MessageSquare, MessageSquareDot, Bell, Bot } from "lucide-react";
 import api from "@/lib/api";
 import { useRouter } from "next/navigation";
 
@@ -116,6 +116,7 @@ export function AppSidebar() {
     {
       label: "Sistem & Master Data",
       items: [
+        { title: "AI Assistant", url: "/dashboard/ai-assistant", icon: Bot, permissions: ["manage-settings"] },
         { title: "Manajemen Pengguna", url: "/dashboard/users", icon: Users, permissions: ["manage-users"] },
         { title: "Master Kompetensi", url: "/dashboard/academic/competencies", icon: ClipboardList, permissions: ["manage-academic-master"] },
         { title: "Master Rubrik", url: "/dashboard/rubrics", icon: FileText, permissions: ["manage-academic-master"] },
