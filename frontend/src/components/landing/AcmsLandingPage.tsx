@@ -3,8 +3,8 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import {
-  ArrowRight, Activity, Calendar, ShieldCheck,
-  Stethoscope, ChevronRight, Clock, MapPin,
+  ArrowRight, Activity, ShieldCheck,
+  Stethoscope, Clock,
   Wallet, PersonStanding, CheckCircle2, Hospital
 } from "lucide-react";
 import { useEffect, useState, useRef } from "react";

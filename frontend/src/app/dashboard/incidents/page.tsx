@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { format } from "date-fns";
-import { ShieldAlert, RefreshCw, Eye, UserX, AlertTriangle, Clock, CheckCircle2, Flame } from "lucide-react";
+import { ShieldAlert, RefreshCw, Eye, UserX, AlertTriangle, Clock, Flame } from "lucide-react";
 import api from "@/lib/api";
 import { toast } from "sonner";
 import { useAuthStore } from "@/store/useAuthStore";

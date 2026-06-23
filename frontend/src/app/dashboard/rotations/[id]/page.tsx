@@ -57,12 +57,14 @@ export default function RotationScheduler({ params }: { params: Promise<{ id: st
 
   useEffect(() => {
     fetchInitialData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- muat ulang hanya saat periodId berubah
   }, [periodId]);
 
   useEffect(() => {
     if (selectedStase) {
       fetchAssignments();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- muat ulang hanya saat selectedStase berubah
   }, [selectedStase]);
 
   const fetchInitialData = async () => {

@@ -15,7 +15,6 @@ import api from "@/lib/api";
 import { toast } from "sonner";
 import { useAuthStore } from "@/store/useAuthStore";
 import type { Consultation, ConsultationStatus } from "@/types/incident";
-import { CONSULTATION_STATUS_LABELS } from "@/types/incident";
 
 function getStatusBadge(status: ConsultationStatus) {
   switch (status) {

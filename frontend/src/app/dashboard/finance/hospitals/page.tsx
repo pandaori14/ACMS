@@ -1,13 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useAuthStore } from "@/store/useAuthStore";
+import { useState } from "react";
 import api from "@/lib/api";
 import { getApiErrorMessage } from "@/lib/api-helpers";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import { Building2, FileText, CheckCircle, RefreshCcw } from "lucide-react";
 
@@ -26,7 +24,6 @@ interface Billing {
 }
 
 export default function HospitalBillingsPage() {
-  const user = useAuthStore((state) => state.user);
   const queryClient = useQueryClient();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [formData, setFormData] = useState({
@@ -36,7 +33,7 @@ export default function HospitalBillingsPage() {
     rate_per_student: 1500000
   });
 
-  const { data: billings = [], isLoading: loading } = useQuery({
+  const { data: billings = [] } = useQuery({
     queryKey: ['billings'],
     queryFn: async (): Promise<Billing[]> => {
       const res = await api.get("/api/v1/finance/billings");

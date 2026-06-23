@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import api from "@/lib/api";
 import { AppSetting } from "@/lib/api-helpers";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Loader2, BookOpen } from "lucide-react";
 import { useAuthStore } from "@/store/useAuthStore";
 import ReactMarkdown from "react-markdown";
@@ -18,6 +18,7 @@ export function GuideClient() {
     if (userRole) {
       fetchGuide();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- muat ulang hanya saat userRole berubah
   }, [userRole]);
 
   const fetchGuide = async () => {

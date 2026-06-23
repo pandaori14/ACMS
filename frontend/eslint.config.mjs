@@ -26,6 +26,13 @@ const eslintConfig = [
     // util error/settings: src/lib/api-helpers.ts.
     rules: {
       "@typescript-eslint/no-explicit-any": "error",
+      // Binding catch tak-terpakai diabaikan (umum di TS: error sering di-narrow ulang);
+      // argumen/var berawalan _ sengaja dibiarkan (konvensi "intentionally unused").
+      "@typescript-eslint/no-unused-vars": ["warn", {
+        argsIgnorePattern: "^_",
+        varsIgnorePattern: "^_",
+        caughtErrors: "none",
+      }],
       // Semua <img> di proyek ini adalah logo/gambar UNGGAHAN dinamis dari backend
       // (host runtime bervariasi + rasio tak tetap) sehingga next/image kurang cocok
       // (butuh remotePatterns per-host + dimensi tetap). Rule dimatikan secara sadar.

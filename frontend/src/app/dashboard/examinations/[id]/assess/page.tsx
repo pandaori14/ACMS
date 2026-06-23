@@ -32,6 +32,7 @@ export default function AssessorExamPage() {
 
   useEffect(() => {
     fetchExamDetail();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- muat ulang hanya saat params.id berubah
   }, [params.id]);
 
   const fetchExamDetail = async () => {

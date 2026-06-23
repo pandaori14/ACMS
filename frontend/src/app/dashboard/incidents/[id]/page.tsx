@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label";
 import { format } from "date-fns";
 import {
   ArrowLeft, ShieldAlert, UserX, Download, Lock, MessageSquarePlus,
-  AlertTriangle, Flame, Clock, CheckCircle2,
+  CheckCircle2,
 } from "lucide-react";
 import api from "@/lib/api";
 import { toast } from "sonner";

@@ -8,7 +8,6 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Save } from "lucide-react";
-import { useAuthStore } from "@/store/useAuthStore";
 
 interface Role {
   id: string | number;
@@ -78,7 +77,6 @@ export function RoleAccessClient() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState<string | null>(null);
   const [moduleFilter, setModuleFilter] = useState<string>(DEFAULT_FOCUS);
-  const currentUser = useAuthStore((state) => state.user);
 
   useEffect(() => {
     fetchData();

@@ -19,7 +19,7 @@ export default function AttendancePage() {
   const [status, setStatus] = useState<AttendanceStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState(false);
-  const [location, setLocation] = useState<{lat: number, lng: number} | null>(null);
+  const [, setLocation] = useState<{lat: number, lng: number} | null>(null);
   const [locationError, setLocationError] = useState("");
 
   const fetchStatus = async () => {
@@ -50,7 +50,7 @@ export default function AttendancePage() {
               lng: position.coords.longitude
             });
           },
-          (error) => {
+          () => {
             reject("Gagal mendapatkan lokasi. Pastikan izin lokasi (GPS) diaktifkan.");
           },
           { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }

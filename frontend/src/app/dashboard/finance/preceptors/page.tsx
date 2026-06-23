@@ -1,13 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useAuthStore } from "@/store/useAuthStore";
 import api from "@/lib/api";
 import { getApiErrorMessage } from "@/lib/api-helpers";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import { UserCircle, FileText, CheckCircle, RefreshCcw } from "lucide-react";
 
@@ -39,7 +38,7 @@ export default function PreceptorHonorariumsPage() {
 
   const isAdmin = user?.roles.includes("Admin Prodi") || user?.roles.includes("Finance");
 
-  const { data: honorariums = [], isLoading: loading } = useQuery({
+  const { data: honorariums = [] } = useQuery({
     queryKey: ['honorariums'],
     queryFn: async (): Promise<Honorarium[]> => {
       const res = await api.get("/api/v1/finance/honorariums");

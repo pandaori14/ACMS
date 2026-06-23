@@ -20,11 +20,6 @@ interface UserForm {
   program_id: string;
 }
 
-interface Role {
-  id: number;
-  name: string;
-}
-
 interface Hospital {
   id: string;
   name: string;
