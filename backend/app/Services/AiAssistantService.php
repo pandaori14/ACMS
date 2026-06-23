@@ -219,6 +219,23 @@ class AiAssistantService
     }
 
     /**
+     * Param tambahan khusus-model (JSON) dari Settings. Kosong/invalid = diabaikan.
+     *
+     * @return array<string, mixed>
+     */
+    private function extraParams(): array
+    {
+        $raw = trim((string) Setting::getValue('ai_extra_params'));
+        if ($raw === '') {
+            return [];
+        }
+
+        $decoded = json_decode($raw, true);
+
+        return is_array($decoded) ? $decoded : [];
+    }
+
+    /**
      * Prompt sistem = instruksi dasar yang SELALU berlaku (anti-halusinasi,
      * gaya bahasa, pemakaian tool) + persona tambahan yang bisa diatur admin
      * lewat Settings. Bagian dasar tidak bisa ditimpa dari Settings.
@@ -287,6 +304,16 @@ PROMPT;
             'temperature' => 0.6,
             'max_tokens' => $this->maxTokens(),
         ];
+
+        // Param tambahan khusus-model (opsional) dari Settings, mis. top_p,
+        // chat_template_kwargs, reasoning_budget. Tak boleh mengganggu integritas
+        // payload inti (model/messages/tools) atau mengaktifkan streaming.
+        $extras = $this->extraParams();
+        if (! empty($extras)) {
+            unset($extras['messages'], $extras['model'], $extras['tools'], $extras['tool_choice'], $extras['stream']);
+            $payload = array_merge($payload, $extras);
+        }
+
         if (! empty($tools)) {
             $payload['tools'] = $tools;
             $payload['tool_choice'] = 'auto';
