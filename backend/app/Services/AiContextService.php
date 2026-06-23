@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
 use Modules\Academic\Models\Program;
 use Modules\Academic\Models\Stase;
@@ -15,21 +16,36 @@ use Modules\Rotation\Models\RotationPeriod;
 /**
  * Registry tool ber-WHITELIST untuk AI Assistant (function-calling).
  *
- * KEAMANAN: hanya agregat read-only & NON-PII. Tidak ada SQL mentah, tidak ada
- * data per-individu (nama/nilai), dan tidak ada angka keuangan (v1). Nama tool
- * yang dipanggil model selalu divalidasi terhadap whitelist sebelum dieksekusi.
+ * KONTEKS: endpoint AI dibatasi role:Super Admin (lihat routes/api.php). Super
+ * Admin memang berwenang melihat seluruh data operasional sistem, sehingga tool
+ * di sini boleh mengembalikan data nyata (termasuk nama) — bukan hanya agregat.
+ *
+ * KEAMANAN tetap dijaga:
+ * - Read-only. Tidak ada SQL mentah; nama tool divalidasi terhadap whitelist.
+ * - Tidak mengembalikan ID/UUID, password, token, atau data keuangan.
+ * - Jumlah baris dibatasi (limit, maks 200) agar payload terkendali.
  */
 class AiContextService
 {
+    private const MAX_ROWS = 200;
+
+    private const DEFAULT_ROWS = 50;
+
     /** Whitelist nama tool yang boleh dieksekusi. */
     public function allowed(): array
     {
         return [
+            'get_system_counts',
             'count_incidents_by_status',
             'count_logbooks_by_status',
             'count_exams_by_status',
-            'get_system_counts',
             'get_active_rotation_periods',
+            'list_students',
+            'list_users',
+            'list_hospitals',
+            'list_programs',
+            'list_stase',
+            'list_exams',
         ];
     }
 
@@ -40,14 +56,45 @@ class AiContextService
      */
     public function toolDefinitions(): array
     {
-        $noArgs = ['type' => 'object', 'properties' => (object) [], 'required' => []];
+        $none = ['type' => 'object', 'properties' => (object) []];
+
+        $listArgs = [
+            'type' => 'object',
+            'properties' => [
+                'limit' => ['type' => 'integer', 'description' => 'Maksimum baris (default 50, maks 200).'],
+                'search' => ['type' => 'string', 'description' => 'Filter berdasarkan nama (opsional).'],
+            ],
+        ];
+
+        $userArgs = [
+            'type' => 'object',
+            'properties' => [
+                'limit' => ['type' => 'integer', 'description' => 'Maksimum baris (default 50, maks 200).'],
+                'search' => ['type' => 'string', 'description' => 'Filter nama (opsional).'],
+                'role' => ['type' => 'string', 'description' => 'Filter peran, mis. "Dosen", "Mahasiswa", "Admin Prodi", "Dodiknis" (opsional).'],
+            ],
+        ];
+
+        $examArgs = [
+            'type' => 'object',
+            'properties' => [
+                'limit' => ['type' => 'integer', 'description' => 'Maksimum baris (default 50).'],
+                'status' => ['type' => 'string', 'description' => 'Filter status ujian: DRAFT, ONGOING, COMPLETED (opsional).'],
+            ],
+        ];
 
         return [
-            $this->def('count_incidents_by_status', 'Jumlah laporan insiden dikelompokkan per status (submitted, investigating, resolved).', $noArgs),
-            $this->def('count_logbooks_by_status', 'Jumlah entri logbook klinis per status (draft, submitted, verified, rejected).', $noArgs),
-            $this->def('count_exams_by_status', 'Jumlah ujian (OSCE/CBT/WRITTEN) per status (DRAFT, ONGOING, COMPLETED).', $noArgs),
-            $this->def('get_system_counts', 'Hitungan entitas inti: mahasiswa, rumah sakit, program studi, stase, ujian.', $noArgs),
-            $this->def('get_active_rotation_periods', 'Daftar periode rotasi aktif (nama, tanggal mulai & selesai).', $noArgs),
+            $this->def('get_system_counts', 'Hitungan entitas inti: mahasiswa, rumah sakit, program studi, stase, ujian, pengguna.', $none),
+            $this->def('count_incidents_by_status', 'Jumlah laporan insiden dikelompokkan per status (submitted, investigating, resolved).', $none),
+            $this->def('count_logbooks_by_status', 'Jumlah entri logbook klinis per status.', $none),
+            $this->def('count_exams_by_status', 'Jumlah ujian per status (DRAFT, ONGOING, COMPLETED).', $none),
+            $this->def('get_active_rotation_periods', 'Daftar periode rotasi aktif (nama, tanggal mulai & selesai).', $none),
+            $this->def('list_students', 'Daftar mahasiswa: nama, email, program studi, status. Dukung pencarian nama.', $listArgs),
+            $this->def('list_users', 'Daftar pengguna sistem: nama, email, peran. Bisa difilter per peran.', $userArgs),
+            $this->def('list_hospitals', 'Daftar rumah sakit/wahana: kode, nama, tipe, status aktif.', $listArgs),
+            $this->def('list_programs', 'Daftar program studi: kode, nama, akreditasi.', $listArgs),
+            $this->def('list_stase', 'Daftar stase: kode, nama, durasi (minggu), nilai lulus, program.', $listArgs),
+            $this->def('list_exams', 'Daftar ujian: nama, tipe, status, tanggal, stase.', $examArgs),
         ];
     }
 
@@ -63,19 +110,27 @@ class AiContextService
             return ['error' => 'Tool tidak dikenal atau tidak diizinkan.'];
         }
 
+        $limit = min(max((int) ($args['limit'] ?? self::DEFAULT_ROWS), 1), self::MAX_ROWS);
+        $search = trim((string) ($args['search'] ?? ''));
+        $role = trim((string) ($args['role'] ?? ''));
+        $status = trim((string) ($args['status'] ?? ''));
+
         return match ($name) {
-            'count_incidents_by_status' => $this->groupCount(IncidentReport::query(), 'status'),
-            'count_logbooks_by_status' => $this->groupCount(LogbookEntry::query(), 'status'),
-            'count_exams_by_status' => $this->groupCount(Exam::query(), 'status'),
             'get_system_counts' => [
                 'students' => Student::count(),
                 'hospitals' => Hospital::count(),
                 'programs' => Program::count(),
                 'stase' => Stase::count(),
                 'exams' => Exam::count(),
+                'users' => User::count(),
             ],
+            'count_incidents_by_status' => $this->groupCount(IncidentReport::query(), 'status'),
+            'count_logbooks_by_status' => $this->groupCount(LogbookEntry::query(), 'status'),
+            'count_exams_by_status' => $this->groupCount(Exam::query(), 'status'),
+
             'get_active_rotation_periods' => RotationPeriod::where('status', 'ACTIVE')
                 ->orderBy('start_date')
+                ->limit($limit)
                 ->get(['name', 'start_date', 'end_date'])
                 ->map(fn ($p) => [
                     'name' => $p->name,
@@ -83,6 +138,81 @@ class AiContextService
                     'end_date' => (string) $p->end_date,
                 ])
                 ->toArray(),
+
+            'list_students' => Student::with(['user:id,name,email', 'program:id,name'])
+                ->when($search !== '', fn ($q) => $q->whereHas('user', fn ($u) => $u->where('name', 'like', "%{$search}%")))
+                ->limit($limit)
+                ->get()
+                ->map(fn ($s) => [
+                    'name' => $s->user?->name,
+                    'email' => $s->user?->email,
+                    'program' => $s->program?->name,
+                    'status' => $s->status,
+                ])
+                ->toArray(),
+
+            'list_users' => User::query()
+                ->with('roles:id,name')
+                ->when($role !== '', fn ($q) => $q->whereHas('roles', fn ($r) => $r->where('name', $role)))
+                ->when($search !== '', fn ($q) => $q->where('name', 'like', "%{$search}%"))
+                ->limit($limit)
+                ->get(['id', 'name', 'email'])
+                ->map(fn ($u) => [
+                    'name' => $u->name,
+                    'email' => $u->email,
+                    'roles' => $u->roles->pluck('name')->toArray(),
+                ])
+                ->toArray(),
+
+            'list_hospitals' => Hospital::query()
+                ->when($search !== '', fn ($q) => $q->where('name', 'like', "%{$search}%"))
+                ->limit($limit)
+                ->get(['code', 'name', 'type', 'address'])
+                ->map(fn ($h) => [
+                    'code' => $h->code,
+                    'name' => $h->name,
+                    'type' => $h->type,
+                    'address' => $h->address,
+                ])
+                ->toArray(),
+
+            'list_programs' => Program::query()
+                ->limit($limit)
+                ->get(['code', 'name', 'accreditation'])
+                ->map(fn ($p) => [
+                    'code' => $p->code,
+                    'name' => $p->name,
+                    'accreditation' => $p->accreditation,
+                ])
+                ->toArray(),
+
+            'list_stase' => Stase::with('program:id,name')
+                ->when($search !== '', fn ($q) => $q->where('name', 'like', "%{$search}%"))
+                ->limit($limit)
+                ->get()
+                ->map(fn ($s) => [
+                    'code' => $s->code,
+                    'name' => $s->name,
+                    'duration_weeks' => $s->duration_weeks,
+                    'passing_grade' => $s->passing_grade,
+                    'program' => $s->program?->name,
+                ])
+                ->toArray(),
+
+            'list_exams' => Exam::with('stase:id,name')
+                ->when($status !== '', fn ($q) => $q->where('status', $status))
+                ->orderByDesc('date')
+                ->limit($limit)
+                ->get()
+                ->map(fn ($e) => [
+                    'name' => $e->name,
+                    'type' => $e->type,
+                    'status' => $e->status,
+                    'date' => (string) $e->date,
+                    'stase' => $e->stase?->name,
+                ])
+                ->toArray(),
+
             default => ['error' => 'Tool tidak dikenal.'],
         };
     }

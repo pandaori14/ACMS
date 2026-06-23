@@ -222,7 +222,7 @@ class SettingSeeder extends Seeder
             ['key' => 'ai_base_url', 'group' => 'ai_assistant', 'value' => 'https://integrate.api.nvidia.com/v1', 'type' => 'string', 'description' => 'Base URL endpoint OpenAI-compatible (NVIDIA NIM: https://integrate.api.nvidia.com/v1 · Ollama: http://localhost:11434/v1)'],
             ['key' => 'ai_model', 'group' => 'ai_assistant', 'value' => 'meta/llama-3.1-8b-instruct', 'type' => 'string', 'description' => 'Nama model (cth: meta/llama-3.1-8b-instruct · Ollama: llama3.1)'],
             ['key' => 'ai_api_key', 'group' => 'ai_assistant', 'value' => '', 'type' => 'secret', 'description' => 'API Key (mis. nvapi-... dari NVIDIA). Tersimpan terenkripsi & tidak pernah ditampilkan kembali.'],
-            ['key' => 'ai_system_prompt', 'group' => 'ai_assistant', 'value' => 'Anda adalah asisten AI internal untuk Super Admin sistem ACMS (manajemen pendidikan profesi dokter). Bantu menjawab pertanyaan operasional dan menyusun draf (memo, laporan) secara ringkas dan profesional dalam Bahasa Indonesia. Gunakan tool yang tersedia untuk mengambil data status sistem bila relevan, dan jangan mengarang data.', 'type' => 'text', 'description' => 'System prompt / instruksi dasar untuk AI'],
+            ['key' => 'ai_system_prompt', 'group' => 'ai_assistant', 'value' => '', 'type' => 'text', 'description' => 'Persona/instruksi tambahan untuk AI (opsional). Aturan dasar anti-mengarang, gaya bahasa, & pemakaian tool sudah ditanam di sistem; isi ini hanya pelengkap.'],
         ];
 
         foreach ($settings as $setting) {
