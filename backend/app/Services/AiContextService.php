@@ -7,23 +7,33 @@ use Illuminate\Database\Eloquent\Builder;
 use Modules\Academic\Models\Program;
 use Modules\Academic\Models\Stase;
 use Modules\Academic\Models\Student;
+use Modules\Assessment\Models\ClinicalAssessment;
+use Modules\Assessment\Models\StaseGrade;
+use Modules\Attendance\Models\AttendanceRecord;
+use Modules\Clinical\Models\Diagnosis;
 use Modules\Clinical\Models\LogbookEntry;
+use Modules\Clinical\Models\Procedure;
+use Modules\Evaluation\Models\EvaluationSubmission;
 use Modules\Examination\Models\Exam;
+use Modules\Finance\Models\Billing;
+use Modules\Finance\Models\Honorarium;
 use Modules\Incident\Models\IncidentReport;
 use Modules\Rotation\Models\Hospital;
+use Modules\Rotation\Models\RotationAssignment;
 use Modules\Rotation\Models\RotationPeriod;
 
 /**
  * Registry tool ber-WHITELIST untuk AI Assistant (function-calling).
  *
- * KONTEKS: endpoint AI dibatasi role:Super Admin (lihat routes/api.php). Super
- * Admin memang berwenang melihat seluruh data operasional sistem, sehingga tool
- * di sini boleh mengembalikan data nyata (termasuk nama) — bukan hanya agregat.
+ * KONTEKS: endpoint AI dibatasi role:Super Admin (routes/api.php). Super Admin
+ * berwenang melihat seluruh data operasional, jadi tool boleh mengembalikan
+ * data nyata lintas 11 modul (Academic, Rotation, Clinical, Assessment,
+ * Examination, Finance, Attendance, Evaluation, Incident, dst).
  *
  * KEAMANAN tetap dijaga:
  * - Read-only. Tidak ada SQL mentah; nama tool divalidasi terhadap whitelist.
- * - Tidak mengembalikan ID/UUID, password, token, atau data keuangan.
- * - Jumlah baris dibatasi (limit, maks 200) agar payload terkendali.
+ * - Tidak mengembalikan ID/UUID, password, token, atau identitas pelapor insiden.
+ * - Jumlah baris dibatasi (limit, maks 200).
  */
 class AiContextService
 {
@@ -35,11 +45,20 @@ class AiContextService
     public function allowed(): array
     {
         return [
+            // Ringkasan & diagnosa lintas modul
             'get_system_counts',
+            'get_system_health',
+            // Hitungan per status
             'count_incidents_by_status',
             'count_logbooks_by_status',
             'count_exams_by_status',
-            'get_active_rotation_periods',
+            'count_assessments_by_status',
+            'get_rotation_summary',
+            'get_attendance_summary',
+            'get_grade_summary',
+            'get_finance_summary',
+            'count_evaluations',
+            // Daftar entitas
             'list_students',
             'list_users',
             'list_hospitals',
@@ -47,6 +66,9 @@ class AiContextService
             'list_stase',
             'list_exams',
             'list_recent_incidents',
+            'list_procedures',
+            'list_diagnoses',
+            'get_active_rotation_periods',
         ];
     }
 
@@ -72,7 +94,7 @@ class AiContextService
             'properties' => [
                 'limit' => ['type' => 'integer', 'description' => 'Maksimum baris (default 50, maks 200).'],
                 'search' => ['type' => 'string', 'description' => 'Filter nama (opsional).'],
-                'role' => ['type' => 'string', 'description' => 'Filter peran, mis. "Dosen", "Mahasiswa", "Admin Prodi", "Dodiknis" (opsional).'],
+                'role' => ['type' => 'string', 'description' => 'Filter peran, mis. "Dosen", "Mahasiswa", "Admin Prodi", "Dodiknis", "Finance" (opsional).'],
             ],
         ];
 
@@ -93,11 +115,17 @@ class AiContextService
         ];
 
         return [
-            $this->def('get_system_counts', 'Hitungan TOTAL entitas inti: mahasiswa, rumah sakit, program studi, stase, ujian, pengguna.', $none),
-            $this->def('count_incidents_by_status', 'Jumlah TOTAL laporan insiden per status (akumulatif sepanjang waktu, BUKAN per tanggal).', $none),
-            $this->def('count_logbooks_by_status', 'Jumlah TOTAL entri logbook klinis per status (akumulatif sepanjang waktu, BUKAN per tanggal/hari tertentu).', $none),
+            $this->def('get_system_counts', 'Hitungan TOTAL semua entitas inti lintas modul (mahasiswa, pengguna, RS, program, stase, ujian, penempatan rotasi, penilaian, insiden, tagihan, honorarium, presensi, evaluasi).', $none),
+            $this->def('get_system_health', 'Ringkasan KESEHATAN sistem untuk diagnosa masalah: sebaran status logbook/insiden/ujian/tagihan/honor/nilai + jumlah presensi ter-flag + insiden kritis terbuka. Pakai ini saat user tanya "ada masalah apa / apa yang perlu ditindaklanjuti".', $none),
+            $this->def('count_incidents_by_status', 'Jumlah TOTAL laporan insiden per status (akumulatif, BUKAN per tanggal).', $none),
+            $this->def('count_logbooks_by_status', 'Jumlah TOTAL entri logbook per status (akumulatif, BUKAN per tanggal/hari tertentu).', $none),
             $this->def('count_exams_by_status', 'Jumlah TOTAL ujian per status (DRAFT, ONGOING, COMPLETED).', $none),
-            $this->def('get_active_rotation_periods', 'Daftar periode rotasi aktif (nama, tanggal mulai & selesai).', $none),
+            $this->def('count_assessments_by_status', 'Jumlah penilaian klinis (mini-CEX/DOPS/CBD) per status.', $none),
+            $this->def('get_rotation_summary', 'Ringkasan penempatan rotasi: jumlah per status.', $none),
+            $this->def('get_attendance_summary', 'Ringkasan presensi: jumlah per status (present/late/absent) + jumlah yang ditandai mencurigakan (flagged).', $none),
+            $this->def('get_grade_summary', 'Ringkasan nilai stase: sebaran huruf mutu, sebaran status, dan rata-rata nilai akhir.', $none),
+            $this->def('get_finance_summary', 'Ringkasan keuangan: tagihan RS & honorarium preceptor — jumlah dan total nominal per status.', $none),
+            $this->def('count_evaluations', 'Jumlah kuesioner evaluasi yang masuk + rata-rata rating.', $none),
             $this->def('list_students', 'Daftar mahasiswa: nama, email, program studi, status. Dukung pencarian nama.', $listArgs),
             $this->def('list_users', 'Daftar pengguna sistem: nama, email, peran. Bisa difilter per peran.', $userArgs),
             $this->def('list_hospitals', 'Daftar rumah sakit/wahana: kode, nama, tipe, alamat.', $listArgs),
@@ -105,6 +133,9 @@ class AiContextService
             $this->def('list_stase', 'Daftar stase: kode, nama, durasi (minggu), nilai lulus, program.', $listArgs),
             $this->def('list_exams', 'Daftar ujian: nama, tipe, status, tanggal, stase.', $examArgs),
             $this->def('list_recent_incidents', 'Daftar insiden terbaru: tipe, severity, status, tanggal, lokasi, ringkasan. TANPA identitas pelapor (anonimitas dijaga).', $incidentArgs),
+            $this->def('list_procedures', 'Master data tindakan/prosedur klinis: kode, nama, kategori.', $listArgs),
+            $this->def('list_diagnoses', 'Master data diagnosis: kode ICD, nama, kategori.', $listArgs),
+            $this->def('get_active_rotation_periods', 'Daftar periode rotasi aktif (nama, tanggal mulai & selesai).', $none),
         ];
     }
 
@@ -128,15 +159,61 @@ class AiContextService
         return match ($name) {
             'get_system_counts' => [
                 'students' => Student::count(),
+                'users' => User::count(),
                 'hospitals' => Hospital::count(),
                 'programs' => Program::count(),
                 'stase' => Stase::count(),
                 'exams' => Exam::count(),
-                'users' => User::count(),
+                'rotation_assignments' => RotationAssignment::count(),
+                'clinical_assessments' => ClinicalAssessment::count(),
+                'incidents' => IncidentReport::count(),
+                'billings' => Billing::count(),
+                'honorariums' => Honorarium::count(),
+                'attendance_records' => AttendanceRecord::count(),
+                'evaluations' => EvaluationSubmission::count(),
             ],
+
+            'get_system_health' => [
+                'logbooks_by_status' => $this->groupCount(LogbookEntry::query(), 'status'),
+                'incidents_by_status' => $this->groupCount(IncidentReport::query(), 'status'),
+                'incidents_critical_open' => IncidentReport::where('severity', 'critical')
+                    ->whereIn('status', ['submitted', 'investigating'])->count(),
+                'exams_by_status' => $this->groupCount(Exam::query(), 'status'),
+                'attendance_flagged' => AttendanceRecord::where('is_flagged', true)->count(),
+                'grades_by_status' => $this->groupCount(StaseGrade::query(), 'status'),
+                'billings_by_status' => $this->groupCount(Billing::query(), 'status'),
+                'honorariums_by_status' => $this->groupCount(Honorarium::query(), 'status'),
+                'hint' => 'Status seperti pending/submitted/investigating/draft/unpaid/unverified umumnya menandakan butuh tindak lanjut.',
+            ],
+
             'count_incidents_by_status' => $this->groupCount(IncidentReport::query(), 'status'),
             'count_logbooks_by_status' => $this->groupCount(LogbookEntry::query(), 'status'),
             'count_exams_by_status' => $this->groupCount(Exam::query(), 'status'),
+            'count_assessments_by_status' => $this->groupCount(ClinicalAssessment::query(), 'status'),
+            'get_rotation_summary' => $this->groupCount(RotationAssignment::query(), 'status'),
+
+            'get_attendance_summary' => [
+                'by_status' => $this->groupCount(AttendanceRecord::query(), 'status'),
+                'flagged' => AttendanceRecord::where('is_flagged', true)->count(),
+                'total' => AttendanceRecord::count(),
+            ],
+
+            'get_grade_summary' => [
+                'by_letter_grade' => $this->groupCount(StaseGrade::query(), 'letter_grade'),
+                'by_status' => $this->groupCount(StaseGrade::query(), 'status'),
+                'average_final_score' => round((float) StaseGrade::avg('final_score'), 2),
+                'total' => StaseGrade::count(),
+            ],
+
+            'get_finance_summary' => [
+                'billings' => $this->sumByStatus(Billing::query(), 'amount'),
+                'honorariums' => $this->sumByStatus(Honorarium::query(), 'amount'),
+            ],
+
+            'count_evaluations' => [
+                'total' => EvaluationSubmission::count(),
+                'average_rating' => round((float) EvaluationSubmission::avg('rating'), 2),
+            ],
 
             'get_active_rotation_periods' => RotationPeriod::where('status', 'ACTIVE')
                 ->orderBy('start_date')
@@ -240,6 +317,20 @@ class AiContextService
                 ])
                 ->toArray(),
 
+            'list_procedures' => Procedure::query()
+                ->when($search !== '', fn ($q) => $q->where('name', 'like', "%{$search}%"))
+                ->limit($limit)
+                ->get(['code', 'name', 'category'])
+                ->map(fn ($p) => ['code' => $p->code, 'name' => $p->name, 'category' => $p->category])
+                ->toArray(),
+
+            'list_diagnoses' => Diagnosis::query()
+                ->when($search !== '', fn ($q) => $q->where('name', 'like', "%{$search}%"))
+                ->limit($limit)
+                ->get(['icd_code', 'name', 'category'])
+                ->map(fn ($d) => ['icd_code' => $d->icd_code, 'name' => $d->name, 'category' => $d->category])
+                ->toArray(),
+
             default => ['error' => 'Tool tidak dikenal.'],
         };
     }
@@ -261,17 +352,33 @@ class AiContextService
     }
 
     /**
-     * Hitung jumlah baris dikelompokkan per kolom status (kolom internal, bukan input user).
+     * Hitung jumlah baris dikelompokkan per kolom (kolom internal, bukan input user).
      *
-     * @param  Builder  $query
      * @return array<string, int>
      */
-    private function groupCount($query, string $column): array
+    private function groupCount(Builder $query, string $column): array
     {
         return $query->selectRaw("{$column}, COUNT(*) as c")
             ->groupBy($column)
             ->pluck('c', $column)
             ->map(fn ($c) => (int) $c)
+            ->toArray();
+    }
+
+    /**
+     * Jumlah baris + total nominal, dikelompokkan per status.
+     *
+     * @return array<string, array{count: int, total: float}>
+     */
+    private function sumByStatus(Builder $query, string $amountColumn): array
+    {
+        return $query->selectRaw("status, COUNT(*) as c, COALESCE(SUM({$amountColumn}),0) as t")
+            ->groupBy('status')
+            ->get()
+            ->mapWithKeys(fn ($row) => [(string) $row->status => [
+                'count' => (int) $row->c,
+                'total' => (float) $row->t,
+            ]])
             ->toArray();
     }
 }

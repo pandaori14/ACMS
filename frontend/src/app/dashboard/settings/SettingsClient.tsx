@@ -192,6 +192,40 @@ export function SettingsClient() {
       );
     }
 
+    // Dropdown model AI (preset populer + opsi custom). Tetap sediakan input teks
+    // agar Super Admin bisa menempel model id persis dari build.nvidia.com.
+    if (setting.key === "ai_model" || setting.key === "ai_model_fallback") {
+      const presets = [
+        "meta/llama-3.3-70b-instruct",
+        "meta/llama-3.1-70b-instruct",
+        "meta/llama-3.1-8b-instruct",
+        "deepseek-ai/deepseek-v4-pro",
+        "nvidia/llama-3.1-nemotron-70b-instruct",
+        "qwen/qwen2.5-72b-instruct",
+      ];
+      const value = setting.value || "";
+      const isFallback = setting.key === "ai_model_fallback";
+      const isKnown = presets.includes(value) || (value === "" && isFallback);
+      return (
+        <div className="space-y-2">
+          <select
+            value={isKnown ? value : "__custom__"}
+            onChange={(e) => { if (e.target.value !== "__custom__") handleChange(setting.key, e.target.value); }}
+            className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm"
+          >
+            {isFallback && <option value="">— Tidak ada (nonaktif) —</option>}
+            {presets.map((m) => <option key={m} value={m}>{m}</option>)}
+            <option value="__custom__">Custom / model id lain…</option>
+          </select>
+          <Input
+            value={value}
+            onChange={(e) => handleChange(setting.key, e.target.value)}
+            placeholder="atau tempel model id persis dari build.nvidia.com"
+          />
+        </div>
+      );
+    }
+
     const fileKeys = ["app_logo", "app_favicon", "landing_hero_image"];
     if (fileKeys.includes(setting.key)) {
       return (

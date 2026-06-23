@@ -22,6 +22,9 @@ class AiAssistantService
 {
     private const MAX_TOOL_ROUNDS = 4;
 
+    /** Model yang sedang dipakai untuk panggilan ini (null = model utama; di-set saat fallback). */
+    private ?string $activeModel = null;
+
     public function __construct(private readonly AiContextService $context) {}
 
     public function isEnabled(): bool
@@ -42,6 +45,12 @@ class AiAssistantService
     public function model(): string
     {
         return (string) (Setting::getValue('ai_model') ?: config('services.ai.model'));
+    }
+
+    /** Model cadangan (opsional) untuk auto-fallback bila model utama gagal/sibuk. */
+    public function fallbackModel(): string
+    {
+        return trim((string) Setting::getValue('ai_model_fallback'));
     }
 
     /**
@@ -68,6 +77,30 @@ class AiAssistantService
 
         $tools = $this->context->toolDefinitions();
 
+        try {
+            return $this->converse($messages, $tools);
+        } catch (RuntimeException $e) {
+            // Auto-fallback: bila model utama gagal (sibuk/error upstream) dan ada
+            // model cadangan terkonfigurasi, coba sekali lagi dengan model cadangan.
+            $fallback = $this->fallbackModel();
+            if ($fallback !== '' && $this->activeModel === null && in_array($e->getCode(), [429, 502, 504], true)) {
+                Log::warning('AI Assistant: beralih ke model cadangan', ['fallback' => $fallback, 'code' => $e->getCode()]);
+                $this->activeModel = $fallback;
+
+                return $this->converse($messages, $tools);
+            }
+            throw $e;
+        }
+    }
+
+    /**
+     * Jalankan satu sesi percakapan (loop tool-calling) dengan model aktif.
+     *
+     * @param  array<int, mixed>  $messages
+     * @param  array<int, mixed>  $tools
+     */
+    private function converse(array $messages, array $tools): string
+    {
         for ($round = 0; $round < self::MAX_TOOL_ROUNDS; $round++) {
             $message = $this->callLlm($messages, $tools);
             $toolCalls = $message['tool_calls'] ?? null;
@@ -201,6 +234,11 @@ DATA & KEJUJURAN (sangat penting):
 - Tool hitungan (count_*) bersifat AKUMULATIF (total sepanjang waktu), BUKAN per tanggal. Jika ditanya "kemarin/hari ini/tanggal tertentu", jelaskan bahwa angka yang tersedia adalah total keseluruhan, bukan per tanggal — jangan mengarang angka harian.
 - Jika hasil tool kosong, sampaikan "belum ada data" dengan jelas.
 
+PERAN PENASIHAT (proaktif):
+- Kamu bukan sekadar pelapor angka — kamu penasihat operasional. Setelah menyajikan data, beri interpretasi singkat dan, bila ada indikasi masalah, sampaikan REKOMENDASI tindakan yang konkret dan bisa dilakukan.
+- Untuk pertanyaan umum seperti "ada masalah apa?" / "apa yang perlu ditindaklanjuti?", panggil get_system_health lalu soroti hal yang butuh perhatian (mis. banyak logbook menunggu verifikasi, insiden kritis terbuka, tagihan belum dibayar, presensi mencurigakan) beserta saran langkah.
+- Saran harus realistis sesuai wewenang Super Admin (mis. ingatkan preceptor verifikasi logbook, tindak lanjuti insiden kritis, tagih pembayaran tertunda). Jangan menjanjikan tindakan otomatis yang sistem tidak lakukan.
+
 FORMAT JAWABAN:
 - JAWAB HANYA dalam bahasa manusia. JANGAN PERNAH menampilkan JSON, kode, nama fungsi, atau sintaks tool-call kepada pengguna — itu urusan internal sistem.
 - Rapikan dengan Markdown: bullet list ("- ") untuk daftar, **tebal** untuk angka/poin penting. JANGAN gunakan tabel Markdown (tidak ter-render).
@@ -236,7 +274,7 @@ PROMPT;
     private function callLlm(array $messages, array $tools): array
     {
         $payload = [
-            'model' => $this->model(),
+            'model' => $this->activeModel ?? $this->model(),
             'messages' => $messages,
             'temperature' => 0.6,
         ];

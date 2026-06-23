@@ -220,7 +220,8 @@ class SettingSeeder extends Seeder
             // AI Assistant (Super Admin) — OpenAI-compatible (NVIDIA NIM / Ollama)
             ['key' => 'ai_enabled', 'group' => 'ai_assistant', 'value' => 'false', 'type' => 'boolean', 'description' => 'Aktifkan AI Assistant di panel Super Admin'],
             ['key' => 'ai_base_url', 'group' => 'ai_assistant', 'value' => 'https://integrate.api.nvidia.com/v1', 'type' => 'string', 'description' => 'Base URL endpoint OpenAI-compatible (NVIDIA NIM: https://integrate.api.nvidia.com/v1 · Ollama: http://localhost:11434/v1)'],
-            ['key' => 'ai_model', 'group' => 'ai_assistant', 'value' => 'meta/llama-3.1-8b-instruct', 'type' => 'string', 'description' => 'Nama model (cth: meta/llama-3.1-8b-instruct · Ollama: llama3.1)'],
+            ['key' => 'ai_model', 'group' => 'ai_assistant', 'value' => 'meta/llama-3.3-70b-instruct', 'type' => 'string', 'description' => 'Model utama. Pilih model dengan tool-calling kuat (cth: meta/llama-3.3-70b-instruct). Ollama: llama3.1'],
+            ['key' => 'ai_model_fallback', 'group' => 'ai_assistant', 'value' => 'meta/llama-3.1-8b-instruct', 'type' => 'string', 'description' => 'Model cadangan (opsional). Dipakai otomatis bila model utama gagal/sibuk (timeout, 429, error upstream). Kosongkan untuk nonaktif.'],
             ['key' => 'ai_api_key', 'group' => 'ai_assistant', 'value' => '', 'type' => 'secret', 'description' => 'API Key (mis. nvapi-... dari NVIDIA). Tersimpan terenkripsi & tidak pernah ditampilkan kembali.'],
             ['key' => 'ai_system_prompt', 'group' => 'ai_assistant', 'value' => '', 'type' => 'text', 'description' => 'Persona/instruksi tambahan untuk AI (opsional). Aturan dasar anti-mengarang, gaya bahasa, & pemakaian tool sudah ditanam di sistem; isi ini hanya pelengkap.'],
         ];
