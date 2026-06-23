@@ -72,28 +72,99 @@ class AiAssistantService
             $message = $this->callLlm($messages, $tools);
             $toolCalls = $message['tool_calls'] ?? null;
 
-            if (empty($toolCalls)) {
-                return trim((string) ($message['content'] ?? ''));
+            // (A) Tool-call NATIVE (cara yang benar).
+            if (! empty($toolCalls)) {
+                $messages[] = $message;
+                foreach ($toolCalls as $call) {
+                    $name = $call['function']['name'] ?? '';
+                    $decoded = json_decode($call['function']['arguments'] ?? '{}', true);
+                    $result = $this->context->execute($name, is_array($decoded) ? $decoded : []);
+                    $messages[] = [
+                        'role' => 'tool',
+                        'tool_call_id' => $call['id'] ?? '',
+                        'content' => json_encode($result, JSON_UNESCAPED_UNICODE),
+                    ];
+                }
+
+                continue;
             }
 
-            // Umpankan kembali hasil tool ber-whitelist.
-            $messages[] = $message;
-            foreach ($toolCalls as $call) {
-                $name = $call['function']['name'] ?? '';
-                $decoded = json_decode($call['function']['arguments'] ?? '{}', true);
-                $result = $this->context->execute($name, is_array($decoded) ? $decoded : []);
+            $content = (string) ($message['content'] ?? '');
+
+            // (B) FALLBACK: model lemah kadang menulis tool-call sebagai TEKS JSON
+            // (mis. {"function":"...","parameters":{...}}). Tangkap, eksekusi, lalu
+            // umpankan hasilnya agar model menjawab dalam prosa — JSON tak bocor ke user.
+            $textCall = $this->extractTextToolCall($content);
+            if ($textCall !== null) {
+                $result = $this->context->execute($textCall['name'], $textCall['args']);
+                $messages[] = ['role' => 'assistant', 'content' => $content];
                 $messages[] = [
-                    'role' => 'tool',
-                    'tool_call_id' => $call['id'] ?? '',
-                    'content' => json_encode($result, JSON_UNESCAPED_UNICODE),
+                    'role' => 'user',
+                    'content' => 'DATA SISTEM ('.$textCall['name'].'): '.json_encode($result, JSON_UNESCAPED_UNICODE)
+                        .'. Jawab permintaan saya sebelumnya HANYA berdasarkan data ini, dalam Bahasa Indonesia natural. Jangan tampilkan JSON atau nama fungsi.',
                 ];
+
+                continue;
             }
+
+            // (C) Jawaban prosa biasa.
+            return $this->sanitize($content);
         }
 
         // Batas ronde tool tercapai — minta jawaban final tanpa tool.
         $final = $this->callLlm($messages, []);
 
-        return trim((string) ($final['content'] ?? 'Maaf, permintaan tidak dapat diselesaikan saat ini.'));
+        return $this->sanitize((string) ($final['content'] ?? ''));
+    }
+
+    /**
+     * Tangkap tool-call yang ditulis model sebagai teks JSON. Mengembalikan
+     * ['name' => ..., 'args' => [...]] bila valid & ber-whitelist, atau null.
+     *
+     * @return array{name: string, args: array<string, mixed>}|null
+     */
+    private function extractTextToolCall(string $content): ?array
+    {
+        if (trim($content) === '' || ! str_contains($content, '{')) {
+            return null;
+        }
+
+        $text = preg_replace('/```(?:json)?/i', '', $content) ?? $content;
+        if (! preg_match('/\{.*\}/s', $text, $m)) {
+            return null;
+        }
+
+        $decoded = json_decode($m[0], true);
+        if (! is_array($decoded)) {
+            return null;
+        }
+
+        $name = $decoded['function'] ?? $decoded['name'] ?? $decoded['tool'] ?? null;
+        if (! is_string($name) || ! in_array($name, $this->context->allowed(), true)) {
+            return null;
+        }
+
+        $args = $decoded['parameters'] ?? $decoded['arguments'] ?? $decoded['args'] ?? [];
+        if (is_string($args)) {
+            $args = json_decode($args, true) ?: [];
+        }
+
+        return ['name' => $name, 'args' => is_array($args) ? $args : []];
+    }
+
+    /**
+     * Jaring pengaman terakhir: buang sisa JSON tool-call yang mungkin bocor ke
+     * teks jawaban, agar pengguna tidak pernah melihat sintaks internal.
+     */
+    private function sanitize(string $content): string
+    {
+        $clean = preg_replace('/```(?:json)?\s*\{.*?\}\s*```/s', '', $content) ?? $content;
+        $clean = preg_replace('/\{\s*"(?:function|name|tool)"\s*:.*?\}\s*\}?/s', '', $clean) ?? $clean;
+        $clean = trim($clean);
+
+        return $clean !== ''
+            ? $clean
+            : 'Maaf, saya belum bisa memproses permintaan itu dengan baik. Bisa coba diulang dengan kalimat lain?';
     }
 
     private function baseUrl(): string
@@ -122,16 +193,19 @@ GAYA BAHASA:
 - Jawab dalam Bahasa Indonesia yang natural, ramah, dan profesional — seperti rekan kerja yang membantu, bukan robot. Boleh hangat dan ringkas, hindari kalimat kaku atau template berulang.
 - Sapa secukupnya, jangan bertele-tele. Langsung ke inti, tapi tetap enak dibaca.
 
-DATA & KEJUJURAN (penting):
-- Untuk pertanyaan apa pun soal data sistem (jumlah, daftar mahasiswa/pengguna/RS/stase/ujian, status insiden, rotasi, dsb), WAJIB memanggil tool yang tersedia untuk mengambil data nyata.
-- DILARANG KERAS mengarang, menebak, atau "mengisi" nama, angka, email, atau fakta. Hanya gunakan data dari hasil tool.
-- Jika tidak ada tool yang cocok dengan permintaan, katakan terus terang bahwa data itu belum dapat kamu akses — jangan dikarang.
+DATA & KEJUJURAN (sangat penting):
+- Untuk pertanyaan soal data sistem (jumlah, daftar mahasiswa/pengguna/RS/stase/ujian/insiden, status, rotasi, dsb), WAJIB memanggil tool yang tersedia untuk mengambil data nyata.
+- DILARANG KERAS mengarang, menebak, atau "mengisi" nama, angka, email, tanggal, atau fakta. Hanya gunakan data dari hasil tool.
+- Jika tidak ada tool yang cocok, katakan terus terang: "Maaf, saya belum punya akses ke data itu." JANGAN dikarang. Contoh yang DI LUAR akses: data keuangan/honor/tagihan, nilai/transkrip individual, identitas pelapor insiden.
+- Identitas pelapor insiden bersifat ANONIM — JANGAN pernah menyebut atau menebak nama pelapor.
+- Tool hitungan (count_*) bersifat AKUMULATIF (total sepanjang waktu), BUKAN per tanggal. Jika ditanya "kemarin/hari ini/tanggal tertentu", jelaskan bahwa angka yang tersedia adalah total keseluruhan, bukan per tanggal — jangan mengarang angka harian.
 - Jika hasil tool kosong, sampaikan "belum ada data" dengan jelas.
 
 FORMAT JAWABAN:
-- Rapikan dengan Markdown: gunakan bullet list ("- ") untuk daftar, dan **tebal** untuk angka/poin penting. JANGAN gunakan tabel Markdown (tidak ter-render).
+- JAWAB HANYA dalam bahasa manusia. JANGAN PERNAH menampilkan JSON, kode, nama fungsi, atau sintaks tool-call kepada pengguna — itu urusan internal sistem.
+- Rapikan dengan Markdown: bullet list ("- ") untuk daftar, **tebal** untuk angka/poin penting. JANGAN gunakan tabel Markdown (tidak ter-render).
 - Jangan tampilkan ID/UUID teknis kecuali diminta khusus.
-- Untuk tugas menulis (memo, pengumuman, laporan, surat), susun draf yang rapi, terstruktur, dan siap pakai dengan gaya formal institusional.
+- Untuk tugas menulis (memo, pengumuman, laporan, surat), susun draf yang rapi, terstruktur, siap pakai, gaya formal institusional.
 PROMPT;
 
         return $persona !== '' ? $base."\n\nCatatan tambahan dari admin:\n".$persona : $base;

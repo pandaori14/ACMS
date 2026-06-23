@@ -46,6 +46,7 @@ class AiContextService
             'list_programs',
             'list_stase',
             'list_exams',
+            'list_recent_incidents',
         ];
     }
 
@@ -83,18 +84,27 @@ class AiContextService
             ],
         ];
 
+        $incidentArgs = [
+            'type' => 'object',
+            'properties' => [
+                'limit' => ['type' => 'integer', 'description' => 'Maksimum baris (default 50).'],
+                'status' => ['type' => 'string', 'description' => 'Filter status insiden: submitted, investigating, resolved (opsional).'],
+            ],
+        ];
+
         return [
-            $this->def('get_system_counts', 'Hitungan entitas inti: mahasiswa, rumah sakit, program studi, stase, ujian, pengguna.', $none),
-            $this->def('count_incidents_by_status', 'Jumlah laporan insiden dikelompokkan per status (submitted, investigating, resolved).', $none),
-            $this->def('count_logbooks_by_status', 'Jumlah entri logbook klinis per status.', $none),
-            $this->def('count_exams_by_status', 'Jumlah ujian per status (DRAFT, ONGOING, COMPLETED).', $none),
+            $this->def('get_system_counts', 'Hitungan TOTAL entitas inti: mahasiswa, rumah sakit, program studi, stase, ujian, pengguna.', $none),
+            $this->def('count_incidents_by_status', 'Jumlah TOTAL laporan insiden per status (akumulatif sepanjang waktu, BUKAN per tanggal).', $none),
+            $this->def('count_logbooks_by_status', 'Jumlah TOTAL entri logbook klinis per status (akumulatif sepanjang waktu, BUKAN per tanggal/hari tertentu).', $none),
+            $this->def('count_exams_by_status', 'Jumlah TOTAL ujian per status (DRAFT, ONGOING, COMPLETED).', $none),
             $this->def('get_active_rotation_periods', 'Daftar periode rotasi aktif (nama, tanggal mulai & selesai).', $none),
             $this->def('list_students', 'Daftar mahasiswa: nama, email, program studi, status. Dukung pencarian nama.', $listArgs),
             $this->def('list_users', 'Daftar pengguna sistem: nama, email, peran. Bisa difilter per peran.', $userArgs),
-            $this->def('list_hospitals', 'Daftar rumah sakit/wahana: kode, nama, tipe, status aktif.', $listArgs),
+            $this->def('list_hospitals', 'Daftar rumah sakit/wahana: kode, nama, tipe, alamat.', $listArgs),
             $this->def('list_programs', 'Daftar program studi: kode, nama, akreditasi.', $listArgs),
             $this->def('list_stase', 'Daftar stase: kode, nama, durasi (minggu), nilai lulus, program.', $listArgs),
             $this->def('list_exams', 'Daftar ujian: nama, tipe, status, tanggal, stase.', $examArgs),
+            $this->def('list_recent_incidents', 'Daftar insiden terbaru: tipe, severity, status, tanggal, lokasi, ringkasan. TANPA identitas pelapor (anonimitas dijaga).', $incidentArgs),
         ];
     }
 
@@ -210,6 +220,23 @@ class AiContextService
                     'status' => $e->status,
                     'date' => (string) $e->date,
                     'stase' => $e->stase?->name,
+                ])
+                ->toArray(),
+
+            // Insiden: TANPA reporter_id/identitas pelapor (anonimitas dijaga).
+            'list_recent_incidents' => IncidentReport::query()
+                ->when($status !== '', fn ($q) => $q->where('status', $status))
+                ->orderByDesc('incident_date')
+                ->limit($limit)
+                ->get(['incident_type', 'severity', 'status', 'incident_date', 'location', 'description', 'is_anonymous'])
+                ->map(fn ($r) => [
+                    'type' => $r->incident_type,
+                    'severity' => $r->severity,
+                    'status' => $r->status,
+                    'date' => (string) $r->incident_date,
+                    'location' => $r->location,
+                    'summary' => mb_strimwidth((string) $r->description, 0, 160, '…'),
+                    'anonymous' => (bool) $r->is_anonymous,
                 ])
                 ->toArray(),
 
