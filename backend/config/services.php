@@ -48,7 +48,7 @@ return [
         'base_url' => env('AI_BASE_URL', 'https://integrate.api.nvidia.com/v1'),
         'model' => env('AI_MODEL', 'meta/llama-3.1-8b-instruct'),
         'api_key' => env('AI_API_KEY'),
-        'timeout' => (int) env('AI_TIMEOUT', 30),
+        'timeout' => (int) env('AI_TIMEOUT', 60),
         'max_tokens' => (int) env('AI_MAX_TOKENS', 4096),
     ],
 

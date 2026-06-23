@@ -205,9 +205,12 @@ class AiAssistantService
         return rtrim((string) (Setting::getValue('ai_base_url') ?: config('services.ai.base_url')), '/');
     }
 
+    /** Timeout (detik). Bisa di-override via Setting ai_timeout (naikkan untuk model besar/reasoning yang lambat). */
     private function timeout(): int
     {
-        return (int) config('services.ai.timeout', 30);
+        $fromSetting = (int) Setting::getValue('ai_timeout', 0);
+
+        return $fromSetting > 0 ? $fromSetting : (int) config('services.ai.timeout', 60);
     }
 
     /** Batas token jawaban. Bisa di-override via Setting ai_max_tokens (mis. naikkan untuk model reasoning). */
