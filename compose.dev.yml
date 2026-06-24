@@ -28,7 +28,14 @@ services:
       target: dev
     container_name: acms-dev-backend
     restart: unless-stopped
-    env_file: ./backend/.env          # set DB_HOST=mysql, DB_PORT=3306 untuk mode container
+    env_file: ./backend/.env
+    # Override koneksi DB → container mysql (menimpa nilai XAMPP di .env, tanpa perlu mengeditnya).
+    environment:
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_DATABASE: acms_db
+      DB_USERNAME: root
+      DB_PASSWORD: root
     volumes:
       - ./backend:/var/www/html
       - /var/www/html/vendor          # jaga vendor (jangan tertimpa bind-mount)
