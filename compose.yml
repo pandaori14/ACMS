@@ -16,6 +16,9 @@ services:
     # Akses MySQL yang berjalan di HOST (bukan container).
     extra_hosts:
       - "host.containers.internal:host-gateway"
+    # File upload (lampiran insiden, logo, dll) HARUS persisten — jangan hilang saat rebuild.
+    volumes:
+      - acms-storage:/var/www/html/storage/app
     ports:
       - "127.0.0.1:8001:80"
 
@@ -41,6 +44,8 @@ services:
     env_file: ./backend/.env
     extra_hosts:
       - "host.containers.internal:host-gateway"
+    volumes:
+      - acms-storage:/var/www/html/storage/app
     command: php artisan queue:work --tries=3 --max-time=3600 --sleep=3
     depends_on:
       - backend
@@ -52,6 +57,11 @@ services:
     env_file: ./backend/.env
     extra_hosts:
       - "host.containers.internal:host-gateway"
+    volumes:
+      - acms-storage:/var/www/html/storage/app
     command: php artisan schedule:work
     depends_on:
       - backend
+
+volumes:
+  acms-storage:   # upload persisten (storage/app) lintas rebuild/deploy
