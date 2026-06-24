@@ -1,72 +1,35 @@
-#!/bin/bash
-# ==============================================================================
-# ACMS Automated Deployment Script
-# ==============================================================================
-# Usage: ./deploy.sh
-# This script automates pulling code, building frontend, and migrating backend.
-# Run this from the root directory of the project.
-# ==============================================================================
+#!/usr/bin/env bash
+# ACMS — deploy/update ke server via container (git pull + build + migrate).
+# Pakai: ./deploy.sh   (jalankan di root repo, di server).
+# Menggantikan skrip native/PM2 lama — kini berbasis Podman/Docker container.
+set -euo pipefail
+cd "$(dirname "$0")"
 
-# Stop execution if any command fails
-set -e
+# Pakai 'podman-compose' atau 'docker compose' sesuai yang tersedia.
+if command -v podman-compose >/dev/null 2>&1; then
+  COMPOSE="podman-compose"
+  RUNTIME="podman"
+elif podman compose version >/dev/null 2>&1; then
+  COMPOSE="podman compose"
+  RUNTIME="podman"
+else
+  COMPOSE="docker compose"
+  RUNTIME="docker"
+fi
 
-# Configuration
-PROJECT_DIR="$(pwd)"
-BACKEND_DIR="$PROJECT_DIR/backend"
-FRONTEND_DIR="$PROJECT_DIR/frontend"
-BRANCH="main"
+echo "==> [1/4] Tarik kode terbaru dari GitHub"
+git pull origin main
 
-echo "==========================================================="
-echo "🚀 Starting ACMS Deployment on $(date)"
-echo "==========================================================="
+echo "==> [2/4] Build image & start container (runtime: $RUNTIME)"
+$COMPOSE up -d --build
 
-echo "1️⃣  Pulling latest changes from Git (Branch: $BRANCH)..."
-git checkout $BRANCH
-git pull origin $BRANCH
+echo "==> [3/4] Migrasi DB + optimize cache"
+$RUNTIME exec acms-backend php artisan migrate --force
+$RUNTIME exec acms-backend php artisan config:cache
+$RUNTIME exec acms-backend php artisan route:cache
+$RUNTIME exec acms-backend php artisan view:cache
+$RUNTIME exec acms-backend php artisan storage:link || true
 
-echo "==========================================================="
-echo "2️⃣  Deploying Backend (Laravel)..."
-echo "==========================================================="
-cd $BACKEND_DIR
-
-echo "Installing PHP dependencies..."
-# Use --no-dev for production
-composer install --optimize-autoloader --no-interaction --no-dev
-
-echo "Clearing and caching Laravel configurations..."
-php artisan config:cache
-php artisan route:cache
-php artisan view:cache
-php artisan event:cache
-
-echo "Running Database Migrations..."
-# Remove --force if you want manual confirmation
-php artisan migrate --force
-
-# Restart PHP-FPM if necessary (requires sudo, might be configured in visudo)
-# echo "Restarting PHP-FPM..."
-# sudo systemctl reload php8.4-fpm
-
-echo "==========================================================="
-echo "3️⃣  Deploying Frontend (Next.js)..."
-echo "==========================================================="
-cd $FRONTEND_DIR
-
-echo "Installing Node dependencies..."
-npm ci
-
-echo "Building Next.js for production..."
-npm run build
-
-echo "==========================================================="
-echo "4️⃣  Restarting Services..."
-echo "==========================================================="
-cd $PROJECT_DIR
-
-echo "Restarting PM2 process for Frontend..."
-# Assuming PM2 process is named 'acms-frontend' via ecosystem.config.js
-pm2 reload acms-frontend || pm2 start ecosystem.config.js
-
-echo "==========================================================="
-echo "✅ Deployment completed successfully on $(date)!"
-echo "==========================================================="
+echo "==> [4/4] Selesai. Status container:"
+$RUNTIME ps --filter "name=acms-"
+echo "Selesai. ACMS aktif di /acms."

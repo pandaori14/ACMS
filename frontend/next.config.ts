@@ -2,6 +2,8 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   basePath: '/acms',
+  // Output ramping untuk container (hanya file yang dibutuhkan runtime).
+  output: 'standalone',
   async redirects() {
     return [
       {

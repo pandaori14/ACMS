@@ -1,0 +1,57 @@
+# ACMS — Compose PRODUKSI (Podman/Docker).
+# DB: memakai MySQL HOST yang sudah ada (lihat DEPLOYMENT.md untuk buat database+user).
+# Semua port hanya di-bind ke 127.0.0.1 → tak bentrok dengan aplikasi lain di server.
+#
+# Jalankan:  podman-compose up -d --build   (atau: docker compose up -d --build)
+
+services:
+  backend:
+    build:
+      context: ./backend
+      target: prod
+    image: localhost/acms-backend:latest
+    container_name: acms-backend
+    restart: unless-stopped
+    env_file: ./backend/.env
+    # Akses MySQL yang berjalan di HOST (bukan container).
+    extra_hosts:
+      - "host.containers.internal:host-gateway"
+    ports:
+      - "127.0.0.1:8001:80"
+
+  frontend:
+    build:
+      context: ./frontend
+      target: prod
+      args:
+        # URL publik ACMS (di-bake ke bundle). Set lewat env shell / root .env.
+        NEXT_PUBLIC_BACKEND_URL: "${ACMS_PUBLIC_URL:-https://domain.ums.ac.id/acms}"
+    image: localhost/acms-frontend:latest
+    container_name: acms-frontend
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:3001:3000"
+    depends_on:
+      - backend
+
+  queue:
+    image: localhost/acms-backend:latest
+    container_name: acms-queue
+    restart: unless-stopped
+    env_file: ./backend/.env
+    extra_hosts:
+      - "host.containers.internal:host-gateway"
+    command: php artisan queue:work --tries=3 --max-time=3600 --sleep=3
+    depends_on:
+      - backend
+
+  scheduler:
+    image: localhost/acms-backend:latest
+    container_name: acms-scheduler
+    restart: unless-stopped
+    env_file: ./backend/.env
+    extra_hosts:
+      - "host.containers.internal:host-gateway"
+    command: php artisan schedule:work
+    depends_on:
+      - backend

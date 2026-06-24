@@ -1,108 +1,181 @@
-# ACMS Production Deployment Guide (Subfolder Architecture)
+# DEPLOYMENT — ACMS via Podman (server kampus UMS)
 
-Panduan ini berisi instruksi khusus untuk meng-*hosting* aplikasi ACMS ke dalam *server* berbasis Nginx (seperti **alumnilink** atau **mmpiv2**) menggunakan pendekatan **Subfolder Isolation**. 
+Panduan deploy ACMS sebagai **container Podman** di server Ubuntu bersama (subpath `/acms`
+pada domain yang juga dipakai aplikasi lain), terisolasi dari aplikasi lain.
 
-Pendekatan ini dirancang 100% aman agar instalasi ACMS di rute `apps.kedok.ac.id/acms` tidak menimpa, mengubah, atau merusak aplikasi *root* maupun aplikasi-aplikasi tetangga lainnya (misal: `/app1`, `/app2`).
-
----
-
-## 1. Arsitektur Isolasi
-- **URL Frontend**: `https://apps.kedok.ac.id/acms`
-- **URL Backend API**: `https://apps.kedok.ac.id/acms-api`
-- **Frontend Port**: PM2 berjalan di `3015` (untuk mencegah bentrok dengan aplikasi Node.js tetangga).
+> Menggantikan pendekatan native/PM2 lama. Kini: Next.js & Laravel jalan di container
+> (port hanya di `127.0.0.1`), **Nginx host** mem-proxy `/acms` ke container, **MySQL host**
+> dipakai bersama (DB & user khusus ACMS). Beda runtime (PHP/Node) tak ganggu aplikasi lain.
 
 ---
 
-## 2. Pemasangan Konfigurasi Nginx
-Anda TIDAK PERLU menghapus atau merombak blok konfigurasi situs Anda saat ini. Cukup buka konfigurasi *server* Anda (misal `sudo nano /etc/nginx/sites-available/apps.kedok.ac.id`), lalu sisipkan **dua blok khusus ACMS** ini di dalamnya:
+## 1. Arsitektur
+
+```
+Browser → https://domain.ums.ac.id/acms
+            │
+   Nginx HOST (sudah ada, juga melayani /star dll)
+            ├── /acms/api  ─→ 127.0.0.1:8001  (container acms-backend: nginx+php-fpm → Laravel)
+            ├── /acms/sanctum ─→ 127.0.0.1:8001
+            └── /acms      ─→ 127.0.0.1:3001  (container acms-frontend: Next.js, basePath /acms)
+                                   │
+                container acms-queue & acms-scheduler (image backend, perintah beda)
+                                   │
+                        MySQL HOST (host.containers.internal:3306)
+```
+
+Container: `acms-backend`, `acms-frontend`, `acms-queue`, `acms-scheduler`.
+
+---
+
+## 2. Prasyarat server (sekali saja)
+
+```bash
+sudo apt update
+sudo apt install -y podman git
+sudo apt install -y podman-compose   # atau: pip3 install podman-compose
+podman --version && podman-compose --version
+```
+MySQL & Nginx host diasumsikan **sudah terpasang** (dipakai aplikasi lain).
+
+---
+
+## 3. Siapkan database MySQL (host)
+
+```sql
+CREATE DATABASE acms_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+-- '%' agar bisa diakses dari container (lihat catatan jaringan di §8).
+CREATE USER 'acms'@'%' IDENTIFIED BY 'GANTI_PASSWORD_KUAT';
+GRANT ALL PRIVILEGES ON acms_db.* TO 'acms'@'%';
+FLUSH PRIVILEGES;
+```
+
+---
+
+## 4. Clone & konfigurasi
+
+```bash
+cd /opt
+git clone https://github.com/pandaori14/ACMS.git acms
+cd acms
+
+cp backend/.env.production.example backend/.env
+nano backend/.env      # APP_URL, DB_PASSWORD, SESSION_DOMAIN, SANCTUM_STATEFUL_DOMAINS, MAIL_*, dll
+
+# URL publik untuk build frontend (di-bake ke bundle klien):
+export ACMS_PUBLIC_URL="https://domain.ums.ac.id/acms"
+```
+APP_KEY: setelah container hidup, `podman exec acms-backend php artisan key:generate` lalu salin
+ke `backend/.env` (atau set manual), kemudian deploy ulang agar config:cache memuatnya.
+
+---
+
+## 5. Build & jalankan
+
+```bash
+chmod +x deploy.sh scripts/backup-db.sh
+./deploy.sh
+podman exec acms-backend php artisan migrate --seed --force   # hanya saat pertama (isi data awal)
+podman ps   # 4 container acms-* harus Up
+```
+
+---
+
+## 6. Konfigurasi Nginx HOST (subpath /acms)
+
+Sisipkan ke server block domain yang sudah ada, **di atas** `location /` aplikasi lain:
 
 ```nginx
-server {
-    listen 80;
-    server_name apps.kedok.ac.id;
-
-    # ... Blok lokasi aplikasi lain (app1, app2) ada di sini ...
-
-    # [1] BLOK ACMS BACKEND (/acms-api)
-    location ^~ /acms-api {
-        # GANTI PATH INI ke tempat Anda menaruh folder ACMS!
-        alias /var/www/acms/backend/public;
-        try_files $uri $uri/ @acms_backend;
-        
-        location ~ /\.env { deny all; }
-        
-        location ~ \.php$ {
-            fastcgi_split_path_info ^(/acms-api)(/.*)$;
-            # Sesuaikan dengan versi PHP-FPM Anda (misal 8.2, 8.3, 8.4)
-            fastcgi_pass unix:/var/run/php/php8.4-fpm.sock;
-            fastcgi_param SCRIPT_FILENAME $request_filename;
-            include fastcgi_params;
-        }
-    }
-
-    location @acms_backend {
-        rewrite /acms-api/(.*)$ /acms-api/index.php?/$1 last;
-    }
-
-    # [2] BLOK ACMS FRONTEND (/acms)
-    location ^~ /acms {
-        # PM2 berjalan di port 3015
-        proxy_pass http://127.0.0.1:3015;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection 'upgrade';
-        proxy_set_header Host $host;
-        proxy_cache_bypass $http_upgrade;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-    }
+# --- ACMS (subpath /acms) ---
+location ^~ /acms/api/ {
+    proxy_pass         http://127.0.0.1:8001/api/;
+    proxy_set_header   Host $host;
+    proxy_set_header   X-Real-IP $remote_addr;
+    proxy_set_header   X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header   X-Forwarded-Proto $scheme;
+    client_max_body_size 25M;
+}
+location ^~ /acms/sanctum/ {
+    proxy_pass         http://127.0.0.1:8001/sanctum/;
+    proxy_set_header   Host $host;
+    proxy_set_header   X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header   X-Forwarded-Proto $scheme;
+}
+location ^~ /acms {
+    proxy_pass         http://127.0.0.1:3001;
+    proxy_set_header   Host $host;
+    proxy_set_header   X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header   X-Forwarded-Proto $scheme;
 }
 ```
-Lalu muat ulang Nginx: `sudo systemctl reload nginx`.
+`sudo nginx -t && sudo systemctl reload nginx`. SSL mengikuti sertifikat domain yang sudah ada.
+
+> `.env`: `APP_URL=https://domain.ums.ac.id/acms`, `SESSION_DOMAIN=domain.ums.ac.id`,
+> `SANCTUM_STATEFUL_DOMAINS=domain.ums.ac.id`, `SESSION_SECURE_COOKIE=true`.
+> Same-origin → tanpa pusing CORS.
 
 ---
 
-## 3. Konfigurasi Backend (Laravel)
-Saat melakukan instalasi *backend* (`cd backend`), salin `.env.example` ke `.env` dan atur:
-```env
-APP_ENV=production
-APP_DEBUG=false
-APP_URL=https://apps.kedok.ac.id/acms-api
+## 7. Backup harian (cron)
 
-# Tambahkan baris penyesuaian session domain & Sanctum stateful
-SANCTUM_STATEFUL_DOMAINS=apps.kedok.ac.id
-SESSION_DOMAIN=.kedok.ac.id
-```
-Jalankan dependensi:
 ```bash
-composer install --optimize-autoloader --no-dev
-php artisan key:generate
-php artisan migrate --force
+sudo crontab -e
+0 1 * * * ACMS_DB_PASS='GANTI_PASSWORD_KUAT' /opt/acms/scripts/backup-db.sh >> /var/log/acms-backup.log 2>&1
 ```
+Uji restore berkala: `gunzip < /var/backups/acms/acms_XXXX.sql.gz | mysql -u acms -p acms_db`.
 
 ---
 
-## 4. Konfigurasi Frontend (Next.js)
-Saat melakukan instalasi *frontend* (`cd frontend`), salin `.env.example` ke `.env`:
-```env
-NEXT_PUBLIC_API_URL=https://apps.kedok.ac.id/acms-api
-```
-Karena ini mode *subfolder*, aplikasi sudah dikonfigurasi melalui `next.config.ts` untuk menggunakan `basePath: '/acms'`. Jadi Anda tinggal melakukan *build*:
-```bash
-npm ci
-npm run build
-```
+## 8. Catatan jaringan: container → MySQL host
+
+Container mengakses MySQL host via `host.containers.internal` (sudah di-set di compose). Agar diterima:
+- Set `bind-address = 0.0.0.0` di `/etc/mysql/mysql.conf.d/mysqld.cnf`, **lalu batasi dengan firewall**
+  (`ufw`) agar port 3306 TIDAK terbuka ke publik — hanya lokal/podman.
+- User `acms'@'%'` (atau batasi ke subnet podman, mis. `10.88.0.0/16`).
+- Alternatif paling sederhana: jalankan dengan `--network host` lalu `DB_HOST=127.0.0.1`
+  (kurang terisolasi jaringan, tapi tanpa ubah bind-address).
 
 ---
 
-## 5. Menyalakan Proses PM2
-Dari folder utama proyek, jalankan:
-```bash
-pm2 start ecosystem.config.js
-pm2 save
-```
-Aplikasi frontend akan secara aman berlabuh di port `3015` menggunakan klaster Node.js, sepenuhnya terisolasi dari *port* 3000 *default*.
+## 9. Update rutin (fitur baru → server)
 
-## Selesai!
-Buka URL `https://apps.kedok.ac.id/acms` di *browser*. Anda akan langsung melihat aplikasi ACMS beroperasi penuh dengan backend tersambung ke rute `/acms-api`. Jika Anda menggunakan `deploy.sh` di kemudian hari, skrip itu sudah cukup cerdas untuk tidak merusak konfigurasi isolasi ini.
+Alur: kerja di PC → `git push` ke `main` → di server jalankan `./deploy.sh`.
+
+```bash
+cd /opt/acms && ./deploy.sh
+```
+Migrasi & cache otomatis; worker queue/scheduler ikut ter-update.
+
+### Rollback cepat
+```bash
+git checkout <tag-stabil>   # mis. v1.0
+./deploy.sh
+```
+Disarankan tag tiap rilis: `git tag v1.0 && git push --tags`.
+
+---
+
+## 10. Development pakai container (PC pribadi & kantor identik)
+
+```bash
+podman-compose -f compose.dev.yml up -d --build
+podman-compose -f compose.dev.yml exec backend composer install
+podman-compose -f compose.dev.yml exec backend php artisan key:generate
+podman-compose -f compose.dev.yml exec backend php artisan migrate --seed
+# Akses: http://localhost:3000/acms   (backend: http://localhost:8000)
+```
+`backend/.env` mode container-dev: `DB_HOST=mysql`, `DB_PORT=3306`, `DB_USERNAME=root`, `DB_PASSWORD=root`.
+Source di-bind-mount → edit langsung ter-refresh. (Tetap boleh pakai XAMPP bila lebih suka.)
+
+---
+
+## 11. Troubleshooting
+
+| Gejala | Cek |
+|--------|-----|
+| 502 di `/acms` | `podman ps` · `podman logs acms-frontend` |
+| 500 / error DB | `podman logs acms-backend` · koneksi MySQL host (§8) · `APP_KEY` terisi? |
+| Login gagal (419/CSRF) | `SESSION_DOMAIN` & `SANCTUM_STATEFUL_DOMAINS` = domain · `SESSION_SECURE_COOKIE=true` |
+| Aset/JS 404 | `ACMS_PUBLIC_URL` saat build = `https://domain.ums.ac.id/acms` |
+| Email tak terkirim | container `acms-queue` jalan? · kredensial `MAIL_*` |
+| Perubahan tak muncul | rebuild: `podman-compose up -d --build` (NEXT_PUBLIC di-bake saat build) |

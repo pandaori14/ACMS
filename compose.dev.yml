@@ -1,0 +1,58 @@
+# ACMS — Compose DEVELOPMENT (Podman/Docker).
+# Lingkungan identik di PC pribadi & kantor: PHP, Node, dan MySQL versi sama.
+# Source di-bind-mount → edit di host, langsung ter-refresh (hot reload).
+#
+# Setup pertama kali:
+#   podman-compose -f compose.dev.yml up -d --build
+#   podman-compose -f compose.dev.yml exec backend composer install
+#   podman-compose -f compose.dev.yml exec backend php artisan key:generate
+#   podman-compose -f compose.dev.yml exec backend php artisan migrate --seed
+# Akses:  http://localhost:3000/acms   (backend di http://localhost:8000)
+
+services:
+  mysql:
+    image: docker.io/library/mysql:8
+    container_name: acms-dev-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: acms_db
+      MYSQL_ROOT_PASSWORD: root
+    ports:
+      - "127.0.0.1:3307:3306"   # 3307 di host agar tak bentrok XAMPP (3306)
+    volumes:
+      - acms-dev-db:/var/lib/mysql
+
+  backend:
+    build:
+      context: ./backend
+      target: dev
+    container_name: acms-dev-backend
+    restart: unless-stopped
+    env_file: ./backend/.env          # set DB_HOST=mysql, DB_PORT=3306 untuk mode container
+    volumes:
+      - ./backend:/var/www/html
+      - /var/www/html/vendor          # jaga vendor (jangan tertimpa bind-mount)
+    ports:
+      - "127.0.0.1:8000:8000"
+    depends_on:
+      - mysql
+
+  frontend:
+    build:
+      context: ./frontend
+      target: dev
+    container_name: acms-dev-frontend
+    restart: unless-stopped
+    environment:
+      NEXT_PUBLIC_BACKEND_URL: "http://localhost:8000"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules             # jaga node_modules dari image
+      - /app/.next
+    ports:
+      - "127.0.0.1:3000:3000"
+    depends_on:
+      - backend
+
+volumes:
+  acms-dev-db:

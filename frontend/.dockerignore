@@ -1,0 +1,13 @@
+.git
+node_modules
+.next
+out
+.env
+.env.*
+!.env.production.example
+cypress
+cypress/videos
+cypress/screenshots
+Dockerfile
+.dockerignore
+npm-debug.log*
