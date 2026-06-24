@@ -14,8 +14,6 @@ services:
     restart: unless-stopped
     env_file: ./backend/.env
     # Akses MySQL yang berjalan di HOST (bukan container).
-    extra_hosts:
-      - "host.containers.internal:host-gateway"
     # File upload (lampiran insiden, logo, dll) HARUS persisten — jangan hilang saat rebuild.
     volumes:
       - acms-storage:/var/www/html/storage/app
@@ -42,8 +40,6 @@ services:
     container_name: acms-queue
     restart: unless-stopped
     env_file: ./backend/.env
-    extra_hosts:
-      - "host.containers.internal:host-gateway"
     volumes:
       - acms-storage:/var/www/html/storage/app
     command: php artisan queue:work --tries=3 --max-time=3600 --sleep=3
@@ -55,8 +51,6 @@ services:
     container_name: acms-scheduler
     restart: unless-stopped
     env_file: ./backend/.env
-    extra_hosts:
-      - "host.containers.internal:host-gateway"
     volumes:
       - acms-storage:/var/www/html/storage/app
     command: php artisan schedule:work
