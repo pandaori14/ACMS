@@ -165,15 +165,17 @@ Disarankan tag tiap rilis: `git tag v1.0 && git push --tags`.
 
 ## 10. Development pakai container (PC pribadi & kantor identik)
 
+Cukup 2 langkah (pakai `docker compose` atau `podman-compose`):
 ```bash
-podman-compose -f compose.dev.yml up -d --build
-podman-compose -f compose.dev.yml exec backend composer install
-podman-compose -f compose.dev.yml exec backend php artisan key:generate
-podman-compose -f compose.dev.yml exec backend php artisan migrate --seed
+docker compose -f compose.dev.yml up -d --build      # backend auto-install vendor saat start (tunggu ~1-2 mnt pertama kali)
+docker compose -f compose.dev.yml exec backend php artisan migrate --seed --force
 # Akses: http://localhost:3000/acms   (backend: http://localhost:8000)
+# Login dev: superadmin@acms.test / password
 ```
-`backend/.env` mode container-dev: `DB_HOST=mysql`, `DB_PORT=3306`, `DB_USERNAME=root`, `DB_PASSWORD=root`.
-Source di-bind-mount → edit langsung ter-refresh. (Tetap boleh pakai XAMPP bila lebih suka.)
+- Container memakai **`backend/.env.docker`** otomatis (DB → container `mysql`), **tanpa menyentuh `.env` XAMPP** Anda.
+- Source di-bind-mount → edit di host langsung ter-refresh. MySQL dev di container (volume `acms-dev-db`, port host 3307).
+- Berhenti: `docker compose -f compose.dev.yml down` (data DB tetap). Reset total: tambah `-v`.
+- (Tetap boleh pakai XAMPP untuk dev bila lebih suka — container dev hanya opsi konsistensi lintas-PC.)
 
 ---
 

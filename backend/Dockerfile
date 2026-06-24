@@ -23,9 +23,10 @@ ENV COMPOSER_ALLOW_SUPERUSER=1
 
 # ---------- dev: untuk lingkungan pengembangan (bind-mount source) ----------
 FROM base AS dev
-# Tidak meng-copy kode: di compose.dev source di-bind-mount agar perubahan langsung terlihat.
+# Source di-bind-mount saat runtime. vendor disimpan di volume persisten:
+# install otomatis bila belum ada, lalu jalankan dev server.
 EXPOSE 8000
-CMD ["sh", "-c", "php artisan serve --host=0.0.0.0 --port=8000"]
+CMD ["sh", "-c", "[ -f vendor/autoload.php ] || composer install --no-interaction --prefer-dist; php artisan serve --host=0.0.0.0 --port=8000"]
 
 # ---------- prod: nginx + php-fpm + supervisor ----------
 FROM base AS prod
