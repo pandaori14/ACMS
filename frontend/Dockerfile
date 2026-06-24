@@ -4,20 +4,20 @@
 #   target `prod` : build standalone, dijalankan dgn `node server.js`.
 
 # ---------- deps ----------
-FROM node:20-bookworm-slim AS deps
+FROM docker.io/library/node:20-bookworm-slim AS deps
 WORKDIR /app
 COPY package.json package-lock.json* ./
 RUN npm ci
 
 # ---------- dev ----------
-FROM node:20-bookworm-slim AS dev
+FROM docker.io/library/node:20-bookworm-slim AS dev
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 EXPOSE 3000
 CMD ["npm", "run", "dev"]
 
 # ---------- build (prod) ----------
-FROM node:20-bookworm-slim AS build
+FROM docker.io/library/node:20-bookworm-slim AS build
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
@@ -29,7 +29,7 @@ ENV NEXT_TELEMETRY_DISABLED=1
 RUN npm run build
 
 # ---------- runner (prod) ----------
-FROM node:20-bookworm-slim AS prod
+FROM docker.io/library/node:20-bookworm-slim AS prod
 WORKDIR /app
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1

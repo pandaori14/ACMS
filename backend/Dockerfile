@@ -4,7 +4,7 @@
 #   target `prod` : nginx + php-fpm + supervisor (siap produksi).
 
 # ---------- base: PHP 8.2 + ekstensi yang dibutuhkan ACMS ----------
-FROM php:8.2-fpm-bookworm AS base
+FROM docker.io/library/php:8.2-fpm-bookworm AS base
 
 # Ekstensi: pdo_mysql (DB), gd (DomPDF/Excel), zip/exif (Excel/upload),
 # bcmath/intl (perhitungan & lokal), pcntl (queue), opcache (performa).
@@ -16,7 +16,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Composer (dari image resmi)
-COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
+COPY --from=docker.io/library/composer:2 /usr/bin/composer /usr/bin/composer
 
 WORKDIR /var/www/html
 ENV COMPOSER_ALLOW_SUPERUSER=1
