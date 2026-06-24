@@ -75,9 +75,17 @@ ke `backend/.env` (atau set manual), kemudian deploy ulang agar config:cache mem
 ```bash
 chmod +x deploy.sh scripts/backup-db.sh
 ./deploy.sh
-podman exec acms-backend php artisan migrate --seed --force   # hanya saat pertama (isi data awal)
+
+# HANYA saat pertama — seeder PRODUKSI (esensial saja, TANPA data dummy & TANPA akun default).
+# Pastikan ADMIN_EMAIL & ADMIN_PASSWORD sudah diisi di backend/.env lebih dulu.
+podman exec acms-backend php artisan db:seed --class=ProductionSeeder --force
+
 podman ps   # 4 container acms-* harus Up
 ```
+
+> ⚠️ JANGAN pakai `migrate --seed` di produksi — itu memuat data dummy (mahasiswa/RS palsu)
+> dan 8 akun berpassword `password`. Selalu pakai `ProductionSeeder`.
+> Setelah login pertama, ganti password Super Admin lewat UI lalu kosongkan `ADMIN_PASSWORD` di `.env`.
 
 ---
 
