@@ -1,0 +1,9 @@
+# Normalisasi line-ending lintas OS (Windows dev ↔ Linux server).
+* text=auto
+
+# Skrip & file yang HARUS LF agar jalan di server Linux (CRLF bikin bash gagal).
+*.sh text eol=lf
+*.bash text eol=lf
+Dockerfile text eol=lf
+*.Dockerfile text eol=lf
+docker/** text eol=lf
