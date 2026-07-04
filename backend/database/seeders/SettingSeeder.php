@@ -170,6 +170,7 @@ class SettingSeeder extends Seeder
                     'reset_password' => ['enabled' => true, 'cc_emails' => '', 'notify_roles' => [], 'conditional_rules' => []],
                     'logbook_verified' => ['enabled' => false, 'cc_emails' => '', 'notify_roles' => [], 'conditional_rules' => []],
                     'rotation_assigned' => ['enabled' => true, 'cc_emails' => '', 'notify_roles' => [], 'conditional_rules' => []],
+                    'honorarium_paid' => ['enabled' => true, 'cc_emails' => '', 'notify_roles' => [], 'conditional_rules' => []],
                     'grade_published' => ['enabled' => false, 'cc_emails' => '', 'notify_roles' => [], 'conditional_rules' => []],
                     'finance_billing' => ['enabled' => false, 'cc_emails' => '', 'notify_roles' => [], 'conditional_rules' => []],
                     'consultation_submitted' => [
@@ -210,6 +211,7 @@ class SettingSeeder extends Seeder
             ['key' => 'email_template_welcome', 'group' => 'smtp', 'value' => 'Halo {name},\n\nSelamat datang di sistem ACMS. Akun Anda telah berhasil dibuat.', 'type' => 'text', 'description' => 'Template Email Selamat Datang'],
             ['key' => 'email_template_reset', 'group' => 'smtp', 'value' => 'Halo {name},\n\nKlik tautan berikut untuk mereset kata sandi Anda: {link}', 'type' => 'text', 'description' => 'Template Email Reset Password'],
             ['key' => 'email_template_honorarium_paid', 'group' => 'smtp', 'value' => 'Halo {name},\n\nHonorarium Anda untuk periode {period} sebesar {amount} telah dibayarkan. Terima kasih atas dedikasi Anda.', 'type' => 'text', 'description' => 'Template Email Honorarium Dibayar'],
+            ['key' => 'email_template_rotation_assigned', 'group' => 'smtp', 'value' => 'Halo {name},\n\nAnda ditempatkan pada stase {stase} di {hospital} untuk periode {period}. Silakan cek jadwal rotasi Anda di sistem ACMS.', 'type' => 'text', 'description' => 'Template Email Penempatan Rotasi'],
 
             // OAuth (SSO)
             ['key' => 'enable_google_sso', 'group' => 'oauth', 'value' => 'true', 'type' => 'boolean', 'description' => 'Aktifkan Login dengan Google (SSO)'],

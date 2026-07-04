@@ -21,7 +21,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Pencil, Trash2, Plus } from "lucide-react";
+import { Pencil, Trash2, Plus, Users } from "lucide-react";
+import { toast } from "sonner";
+import { getApiErrorMessage } from "@/lib/api-helpers";
 
 interface Hospital {
   id: string;
@@ -32,6 +34,27 @@ interface Hospital {
   latitude: number | null;
   longitude: number | null;
   radius_tolerance_meters: number | null;
+}
+
+interface CapacityRow {
+  id: string;
+  hospital_id: string;
+  stase_id: string;
+  rotation_period_id?: string | null;
+  max_students: number;
+  occupied: number;
+  stase?: { id: string; name?: string };
+  rotation_period?: { id: string; name?: string } | null;
+}
+
+interface StaseOption {
+  id: string;
+  name?: string;
+}
+
+interface PeriodOption {
+  id: string;
+  name?: string;
 }
 
 export default function HospitalManagement() {
@@ -116,6 +139,67 @@ export default function HospitalManagement() {
   const resetForm = () => {
     setEditingId(null);
     setFormData({ code: "", name: "", type: "", address: "", latitude: "", longitude: "", radius_tolerance_meters: "" });
+  };
+
+  // ---------- Kuota kapasitas per stase ----------
+  const [capacityHospital, setCapacityHospital] = useState<Hospital | null>(null);
+  const [capacities, setCapacities] = useState<CapacityRow[]>([]);
+  const [stases, setStases] = useState<StaseOption[]>([]);
+  const [periods, setPeriods] = useState<PeriodOption[]>([]);
+  const [capForm, setCapForm] = useState({ stase_id: "", rotation_period_id: "", max_students: 10 });
+  const [capLoading, setCapLoading] = useState(false);
+
+  const openCapacityDialog = async (hospital: Hospital) => {
+    setCapacityHospital(hospital);
+    setCapForm({ stase_id: "", rotation_period_id: "", max_students: 10 });
+    setCapLoading(true);
+    try {
+      const [capRes, staseRes, periodRes] = await Promise.all([
+        api.get(`/api/v1/rotation/capacities?hospital_id=${hospital.id}`),
+        api.get("/api/v1/academic/stase"),
+        api.get("/api/v1/rotation/periods"),
+      ]);
+      setCapacities(capRes.data.data || []);
+      setStases(staseRes.data.data || []);
+      setPeriods(periodRes.data.data || []);
+    } catch (err) {
+      toast.error(getApiErrorMessage(err, "Gagal memuat data kuota."));
+    } finally {
+      setCapLoading(false);
+    }
+  };
+
+  const refreshCapacities = async (hospitalId: string) => {
+    const res = await api.get(`/api/v1/rotation/capacities?hospital_id=${hospitalId}`);
+    setCapacities(res.data.data || []);
+  };
+
+  const saveCapacity = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!capacityHospital) return;
+    try {
+      await api.post("/api/v1/rotation/capacities", {
+        hospital_id: capacityHospital.id,
+        stase_id: capForm.stase_id,
+        rotation_period_id: capForm.rotation_period_id || null,
+        max_students: capForm.max_students,
+      });
+      toast.success("Kuota disimpan.");
+      refreshCapacities(capacityHospital.id);
+    } catch (err) {
+      toast.error(getApiErrorMessage(err, "Gagal menyimpan kuota."));
+    }
+  };
+
+  const deleteCapacity = async (id: string) => {
+    if (!capacityHospital) return;
+    try {
+      await api.delete(`/api/v1/rotation/capacities/${id}`);
+      toast.success("Kuota dihapus.");
+      refreshCapacities(capacityHospital.id);
+    } catch (err) {
+      toast.error(getApiErrorMessage(err, "Gagal menghapus kuota."));
+    }
   };
 
   return (
@@ -286,6 +370,9 @@ export default function HospitalManagement() {
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex justify-end gap-2">
+                        <Button variant="outline" size="sm" onClick={() => openCapacityDialog(hospital)} title="Kuota per stase">
+                          <Users className="h-4 w-4" />
+                        </Button>
                         <Button variant="outline" size="sm" onClick={() => handleEdit(hospital)}>
                           <Pencil className="h-4 w-4" />
                         </Button>
@@ -301,6 +388,87 @@ export default function HospitalManagement() {
           </table>
         </div>
       </div>
+
+      {/* Dialog kuota kapasitas per stase */}
+      <Dialog open={!!capacityHospital} onOpenChange={(open) => !open && setCapacityHospital(null)}>
+        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-xl">
+          <DialogHeader>
+            <DialogTitle>Kuota Mahasiswa — {capacityHospital?.name}</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground -mt-2">
+            Batas jumlah mahasiswa per stase. Penempatan rotasi otomatis ditolak bila kuota penuh.
+          </p>
+
+          {capLoading ? (
+            <Skeleton className="h-24 w-full" />
+          ) : (
+            <div className="space-y-2">
+              {capacities.length === 0 ? (
+                <p className="text-sm text-muted-foreground border border-dashed rounded-md p-4 text-center">
+                  Belum ada kuota diatur — semua stase tidak dibatasi.
+                </p>
+              ) : (
+                capacities.map((c) => (
+                  <div key={c.id} className="flex items-center justify-between border rounded-md p-3 text-sm">
+                    <div>
+                      <p className="font-medium">{c.stase?.name || "-"}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {c.rotation_period?.name || "Semua periode"} — terisi {c.occupied}/{c.max_students}
+                      </p>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-red-600 hover:text-red-700"
+                      onClick={() => deleteCapacity(c.id)}
+                      aria-label="Hapus kuota"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ))
+              )}
+            </div>
+          )}
+
+          <form onSubmit={saveCapacity} className="space-y-3 border-t pt-4">
+            <p className="text-sm font-medium">Tambah / perbarui kuota</p>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <select
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                required
+                value={capForm.stase_id}
+                onChange={(e) => setCapForm({ ...capForm, stase_id: e.target.value })}
+              >
+                <option value="">Pilih Stase</option>
+                {stases.map((s) => (
+                  <option key={s.id} value={s.id}>{s.name}</option>
+                ))}
+              </select>
+              <select
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                value={capForm.rotation_period_id}
+                onChange={(e) => setCapForm({ ...capForm, rotation_period_id: e.target.value })}
+              >
+                <option value="">Semua periode</option>
+                {periods.map((p) => (
+                  <option key={p.id} value={p.id}>{p.name}</option>
+                ))}
+              </select>
+              <Input
+                type="number"
+                min={1}
+                max={1000}
+                required
+                value={capForm.max_students}
+                onChange={(e) => setCapForm({ ...capForm, max_students: Number(e.target.value) })}
+                placeholder="Maks mhs"
+              />
+            </div>
+            <Button type="submit" className="w-full">Simpan Kuota</Button>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

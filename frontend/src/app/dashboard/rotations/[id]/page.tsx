@@ -14,6 +14,7 @@ import {
 import { UserCircle, HospitalIcon, AlertCircle } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { toast } from "sonner";
 
 interface Stase {
   id: string;
@@ -42,6 +43,15 @@ interface Assignment {
   student: Student;
 }
 
+interface Capacity {
+  id: string;
+  hospital_id: string;
+  stase_id: string;
+  rotation_period_id?: string | null;
+  max_students: number;
+  occupied: number;
+}
+
 export default function RotationScheduler({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = use(params);
   const periodId = resolvedParams.id;
@@ -54,6 +64,7 @@ export default function RotationScheduler({ params }: { params: Promise<{ id: st
   // Data State
   const [unassignedStudents, setUnassignedStudents] = useState<Student[]>([]);
   const [assignments, setAssignments] = useState<Assignment[]>([]);
+  const [capacities, setCapacities] = useState<Capacity[]>([]);
 
   useEffect(() => {
     fetchInitialData();
@@ -90,11 +101,21 @@ export default function RotationScheduler({ params }: { params: Promise<{ id: st
 
   const fetchAssignments = async () => {
     try {
-      const res = await api.get(`/api/v1/rotation/assignments?rotation_period_id=${periodId}&stase_id=${selectedStase}`);
-      setAssignments(res.data.data);
+      const [assignRes, capRes] = await Promise.all([
+        api.get(`/api/v1/rotation/assignments?rotation_period_id=${periodId}&stase_id=${selectedStase}`),
+        api.get(`/api/v1/rotation/capacities?stase_id=${selectedStase}`),
+      ]);
+      setAssignments(assignRes.data.data);
+      setCapacities(capRes.data.data || []);
     } catch (err) {
       console.error(err);
     }
+  };
+
+  // Kuota untuk RS pada stase terpilih (baris spesifik periode menang)
+  const getCapacityForHospital = (hospitalId: string): Capacity | undefined => {
+    const rows = capacities.filter((c) => c.hospital_id === hospitalId);
+    return rows.find((c) => c.rotation_period_id === periodId) || rows.find((c) => !c.rotation_period_id);
   };
 
   const onDragEnd = async (result: DropResult) => {
@@ -166,7 +187,7 @@ export default function RotationScheduler({ params }: { params: Promise<{ id: st
       
     } catch (err) {
       console.error(err);
-      alert("Gagal memindahkan mahasiswa: " + getApiErrorMessage(err, err instanceof Error ? err.message : "Terjadi kesalahan"));
+      toast.error(getApiErrorMessage(err, "Gagal memindahkan mahasiswa."));
       // Revert Optimistic updates
       fetchInitialData();
       fetchAssignments();
@@ -265,6 +286,8 @@ export default function RotationScheduler({ params }: { params: Promise<{ id: st
             <div className="flex-1 flex gap-6 overflow-x-auto pb-4">
               {hospitals.map((hospital) => {
                 const students = getStudentsForHospital(hospital.id);
+                const capacity = getCapacityForHospital(hospital.id);
+                const isFull = capacity ? students.length >= capacity.max_students : false;
                 return (
                   <div key={hospital.id} className="w-80 shrink-0 flex flex-col bg-white clean-card overflow-hidden shadow-sm">
                     <div className="p-4 border-b flex flex-col gap-2 relative overflow-hidden">
@@ -275,8 +298,16 @@ export default function RotationScheduler({ params }: { params: Promise<{ id: st
                         <span className="text-xs font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded">
                           {hospital.code}
                         </span>
-                        <span className="bg-slate-100 text-slate-700 text-xs px-2 py-1 rounded-full font-medium">
-                          {students.length}
+                        <span
+                          className={`text-xs px-2 py-1 rounded-full font-medium ${
+                            isFull
+                              ? "bg-red-100 text-red-700"
+                              : "bg-slate-100 text-slate-700"
+                          }`}
+                          title={capacity ? "Terisi / kuota maksimal" : "Kuota belum diatur"}
+                        >
+                          {capacity ? `${students.length}/${capacity.max_students}` : students.length}
+                          {isFull ? " • PENUH" : ""}
                         </span>
                       </div>
                       <h3 className="font-semibold text-slate-800 leading-tight pr-4">{hospital.name}</h3>
