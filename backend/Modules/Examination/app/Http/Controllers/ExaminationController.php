@@ -104,6 +104,56 @@ class ExaminationController extends Controller
     }
 
     /**
+     * Update exam — data dasar bisa diubah selama belum COMPLETED;
+     * tipe & stase hanya saat masih DRAFT (struktur ujian belum berjalan).
+     */
+    public function update(Request $request, $id)
+    {
+        $exam = Exam::findOrFail($id);
+
+        if ($exam->status === 'COMPLETED') {
+            return response()->json(['message' => 'Ujian yang sudah selesai tidak dapat diubah.'], 422);
+        }
+
+        $request->validate([
+            'name' => 'sometimes|required|string|max:255',
+            'type' => 'sometimes|required|in:OSCE,CBT,WRITTEN',
+            'stase_id' => 'sometimes|required|uuid|exists:stases,id',
+            'date' => 'sometimes|required|date',
+            'description' => 'nullable|string',
+        ]);
+
+        if ($exam->status !== 'DRAFT' && ($request->has('type') || $request->has('stase_id'))) {
+            return response()->json(['message' => 'Tipe ujian dan stase hanya dapat diubah saat status masih DRAFT.'], 422);
+        }
+
+        $exam->update($request->only(['name', 'type', 'stase_id', 'date', 'description']));
+
+        return response()->json(['message' => 'Ujian berhasil diperbarui.', 'data' => $exam->load('stase')]);
+    }
+
+    /**
+     * Delete exam — diblok bila sudah ada nilai yang masuk.
+     */
+    public function destroy($id)
+    {
+        $exam = Exam::withCount('participants')->findOrFail($id);
+
+        $hasScores = ExamScore::whereIn(
+            'exam_participant_id',
+            ExamParticipant::where('exam_id', $exam->id)->pluck('id')
+        )->exists();
+
+        if ($hasScores) {
+            return response()->json(['message' => 'Ujian sudah memiliki nilai dan tidak dapat dihapus.'], 422);
+        }
+
+        $exam->delete();
+
+        return response()->json(['message' => 'Ujian berhasil dihapus.']);
+    }
+
+    /**
      * Assign a participant to the exam.
      */
     public function assignParticipant(Request $request, $id)
@@ -141,6 +191,73 @@ class ExaminationController extends Controller
         ]);
 
         return response()->json(['message' => 'Assessor assigned', 'data' => $assessor->load(['assessor', 'examStation'])]);
+    }
+
+    /**
+     * Remove a participant — diblok bila peserta sudah punya nilai.
+     */
+    public function removeParticipant($id, $participantId)
+    {
+        $participant = ExamParticipant::where('exam_id', $id)->findOrFail($participantId);
+
+        if (ExamScore::where('exam_participant_id', $participant->id)->exists()) {
+            return response()->json(['message' => 'Peserta sudah memiliki nilai dan tidak dapat dikeluarkan.'], 422);
+        }
+
+        $participant->delete();
+
+        return response()->json(['message' => 'Peserta dikeluarkan dari ujian.']);
+    }
+
+    /**
+     * Remove an assessor from the exam.
+     */
+    public function removeAssessor($id, $assessorId)
+    {
+        $assessor = ExamAssessor::where('exam_id', $id)->findOrFail($assessorId);
+        $assessor->delete();
+
+        return response()->json(['message' => 'Penguji dihapus dari ujian.']);
+    }
+
+    /**
+     * Add an OSCE station (dengan template rubrik opsional).
+     */
+    public function addStation(Request $request, $id)
+    {
+        $request->validate([
+            'name' => 'required|string|max:255',
+            'description' => 'nullable|string',
+            'assessment_template_id' => 'nullable|uuid|exists:assessment_templates,id',
+        ]);
+
+        $exam = Exam::findOrFail($id);
+
+        $station = ExamStation::create([
+            'exam_id' => $exam->id,
+            'name' => $request->name,
+            'description' => $request->description,
+            'assessment_template_id' => $request->assessment_template_id,
+            'order' => ExamStation::where('exam_id', $exam->id)->max('order') + 1,
+        ]);
+
+        return response()->json(['message' => 'Stasiun ditambahkan.', 'data' => $station->load('assessmentTemplate')], 201);
+    }
+
+    /**
+     * Remove a station — diblok bila sudah ada nilai di stasiun tsb.
+     */
+    public function removeStation($id, $stationId)
+    {
+        $station = ExamStation::where('exam_id', $id)->findOrFail($stationId);
+
+        if (ExamScore::where('exam_station_id', $station->id)->exists()) {
+            return response()->json(['message' => 'Stasiun sudah memiliki nilai dan tidak dapat dihapus.'], 422);
+        }
+
+        $station->delete();
+
+        return response()->json(['message' => 'Stasiun dihapus.']);
     }
 
     public function storeScore(Request $request, $id)
