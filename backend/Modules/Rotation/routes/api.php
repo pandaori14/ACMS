@@ -31,6 +31,10 @@ Route::middleware(['auth:sanctum'])->prefix('v1/rotation')->group(function () {
     Route::apiResource('assignments', RotationAssignmentController::class)
         ->only(['index', 'show']);
     Route::middleware('permission:manage-rotations')->group(function () {
+        // Auto-scheduling: distribusi round-robin satu angkatan (preview → commit)
+        Route::post('schedule/preview', [RotationAssignmentController::class, 'schedulePreview']);
+        Route::post('schedule/commit', [RotationAssignmentController::class, 'scheduleCommit']);
+
         Route::post('assignments/bulk', [RotationAssignmentController::class, 'storeBulk']);
         Route::post('assignments', [RotationAssignmentController::class, 'store']);
         Route::match(['put', 'patch'], 'assignments/{assignment}', [RotationAssignmentController::class, 'update']);

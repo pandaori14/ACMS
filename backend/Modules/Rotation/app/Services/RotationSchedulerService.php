@@ -1,0 +1,322 @@
+<?php
+
+namespace Modules\Rotation\Services;
+
+use App\Services\NotificationService;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
+use Modules\Academic\Models\Stase;
+use Modules\Academic\Models\Student;
+use Modules\Rotation\Models\Hospital;
+use Modules\Rotation\Models\HospitalCapacity;
+use Modules\Rotation\Models\RotationAssignment;
+use Modules\Rotation\Models\RotationPeriod;
+
+/**
+ * Mesin penjadwalan rotasi otomatis (round-robin):
+ * distribusikan mahasiswa satu program/angkatan ke stase × RS pada satu
+ * periode — hormati kuota kapasitas, hindari stase yang sudah pernah
+ * dijalani, dan seimbangkan beban antar-stase & antar-RS.
+ *
+ * Juga menjadi satu-satunya sumber aturan konflik/kuota penempatan
+ * (dipakai pula oleh RotationAssignmentController untuk penempatan manual).
+ */
+class RotationSchedulerService
+{
+    /**
+     * Cek konflik penempatan tunggal: dobel di periode yang sama, atau kuota penuh.
+     * Mengembalikan pesan alasan, atau null bila aman.
+     */
+    public function assignmentConflict(array $data): ?string
+    {
+        $exists = RotationAssignment::where('rotation_period_id', $data['rotation_period_id'])
+            ->where('student_id', $data['student_id'])
+            ->exists();
+
+        if ($exists) {
+            return 'Mahasiswa sudah memiliki penempatan pada periode ini.';
+        }
+
+        return $this->capacityFull($data['hospital_id'], $data['stase_id'], $data['rotation_period_id']);
+    }
+
+    /**
+     * Guard kuota RS per stase (hospital_capacities). Baris spesifik-periode
+     * menang atas baris umum (period null). Tanpa baris = tidak dibatasi.
+     */
+    public function capacityFull(string $hospitalId, string $staseId, string $periodId): ?string
+    {
+        $max = $this->capacityLimit($hospitalId, $staseId, $periodId);
+        if ($max === null) {
+            return null;
+        }
+
+        $occupied = RotationAssignment::where('hospital_id', $hospitalId)
+            ->where('stase_id', $staseId)
+            ->where('rotation_period_id', $periodId)
+            ->count();
+
+        if ($occupied >= $max) {
+            return "Kuota penuh: RS ini hanya menampung {$max} mahasiswa untuk stase tersebut pada periode ini.";
+        }
+
+        return null;
+    }
+
+    /**
+     * Batas kuota efektif untuk slot RS×stase×periode (spesifik periode
+     * menang atas umum). Null = tidak dibatasi.
+     */
+    private function capacityLimit(string $hospitalId, string $staseId, string $periodId): ?int
+    {
+        $capacity = HospitalCapacity::where('hospital_id', $hospitalId)
+            ->where('stase_id', $staseId)
+            ->where(function ($q) use ($periodId) {
+                $q->where('rotation_period_id', $periodId)->orWhereNull('rotation_period_id');
+            })
+            ->orderByRaw('rotation_period_id IS NULL') // spesifik periode dulu
+            ->first();
+
+        return $capacity?->max_students;
+    }
+
+    /**
+     * Notifikasi penempatan ke mahasiswa (Aturan C — via SMTP matrix).
+     */
+    public function notifyStudentAssigned(RotationAssignment $assignment): void
+    {
+        $assignment->loadMissing(['student.user', 'stase', 'hospital', 'rotationPeriod']);
+        $email = $assignment->student?->user?->email;
+
+        if (! $email) {
+            return;
+        }
+
+        NotificationService::sendDynamicEmail(
+            $email,
+            'Penempatan Rotasi Klinik Anda',
+            'email_template_rotation_assigned',
+            'rotation_assigned',
+            [
+                'name' => $assignment->student->user->name,
+                'stase' => $assignment->stase?->name ?? '-',
+                'hospital' => $assignment->hospital?->name ?? '-',
+                'period' => $assignment->rotationPeriod?->name ?? '-',
+            ]
+        );
+    }
+
+    /**
+     * PREVIEW distribusi otomatis — TIDAK menulis DB.
+     *
+     * @return array{placements: array, unplaced: array, summary: array}
+     */
+    public function preview(string $periodId, ?string $cohortId = null): array
+    {
+        $period = RotationPeriod::findOrFail($periodId);
+
+        // Kandidat: mahasiswa aktif program terkait yang BELUM ditempatkan pada periode ini
+        $alreadyAssigned = RotationAssignment::where('rotation_period_id', $periodId)
+            ->pluck('student_id');
+
+        $students = Student::with('user:id,name,identity_number')
+            ->where('program_id', $period->program_id)
+            ->where('status', 'active')
+            ->when($cohortId, fn ($q) => $q->where('cohort_id', $cohortId))
+            ->whereNotIn('id', $alreadyAssigned)
+            ->get();
+
+        // Stase program (urut nama agar deterministik)
+        $stases = Stase::where('program_id', $period->program_id)->orderBy('name')->get();
+
+        if ($stases->isEmpty()) {
+            return [
+                'placements' => [],
+                'unplaced' => $students->map(fn ($s) => [
+                    'student_id' => $s->id,
+                    'name' => $s->user?->name,
+                    'reason' => 'Program belum memiliki stase.',
+                ])->all(),
+                'summary' => ['candidates' => $students->count(), 'placed' => 0],
+            ];
+        }
+
+        // RS kandidat per stase = RS yang punya baris kuota utk stase tsb;
+        // fallback: semua RS (tak dibatasi kuota).
+        $capacities = HospitalCapacity::with('hospital:id,name')
+            ->whereIn('stase_id', $stases->pluck('id'))
+            ->where(function ($q) use ($periodId) {
+                $q->where('rotation_period_id', $periodId)->orWhereNull('rotation_period_id');
+            })
+            ->get();
+
+        $allHospitals = Hospital::orderBy('name')->get(['id', 'name']);
+
+        // Okupansi berjalan (DB + draft yang sedang disusun)
+        $occupancy = []; // "hospital|stase" => count
+        RotationAssignment::where('rotation_period_id', $periodId)
+            ->get(['hospital_id', 'stase_id'])
+            ->each(function ($a) use (&$occupancy) {
+                $key = $a->hospital_id.'|'.$a->stase_id;
+                $occupancy[$key] = ($occupancy[$key] ?? 0) + 1;
+            });
+
+        // Beban stase (untuk pemerataan round-robin antar mahasiswa)
+        $staseLoad = $stases->mapWithKeys(fn ($s) => [$s->id => 0])->all();
+
+        // Riwayat stase per mahasiswa (lintas periode) — jangan diulang
+        $history = RotationAssignment::whereIn('student_id', $students->pluck('id'))
+            ->get(['student_id', 'stase_id'])
+            ->groupBy('student_id')
+            ->map(fn ($rows) => $rows->pluck('stase_id')->all());
+
+        $placements = [];
+        $unplaced = [];
+
+        foreach ($students as $student) {
+            $done = collect($history->get($student->id, []));
+
+            // Kandidat stase: belum pernah dijalani, urut beban paling ringan
+            $candidateStases = $stases
+                ->reject(fn ($s) => $done->contains($s->id))
+                ->sortBy(fn ($s) => $staseLoad[$s->id])
+                ->values();
+
+            if ($candidateStases->isEmpty()) {
+                $unplaced[] = [
+                    'student_id' => $student->id,
+                    'name' => $student->user?->name,
+                    'reason' => 'Semua stase program sudah pernah dijalani.',
+                ];
+
+                continue;
+            }
+
+            $placed = false;
+            foreach ($candidateStases as $stase) {
+                $hospital = $this->pickHospital($stase->id, $periodId, $capacities, $allHospitals, $occupancy);
+                if ($hospital === null) {
+                    continue; // semua RS penuh utk stase ini → coba stase berikutnya
+                }
+
+                $key = $hospital['id'].'|'.$stase->id;
+                $occupancy[$key] = ($occupancy[$key] ?? 0) + 1;
+                $staseLoad[$stase->id]++;
+
+                $placements[] = [
+                    'student_id' => $student->id,
+                    'student_name' => $student->user?->name,
+                    'identity_number' => $student->user?->identity_number,
+                    'stase_id' => $stase->id,
+                    'stase_name' => $stase->name,
+                    'hospital_id' => $hospital['id'],
+                    'hospital_name' => $hospital['name'],
+                ];
+                $placed = true;
+                break;
+            }
+
+            if (! $placed) {
+                $unplaced[] = [
+                    'student_id' => $student->id,
+                    'name' => $student->user?->name,
+                    'reason' => 'Kuota semua RS penuh untuk stase yang tersisa.',
+                ];
+            }
+        }
+
+        return [
+            'placements' => $placements,
+            'unplaced' => $unplaced,
+            'summary' => [
+                'candidates' => $students->count(),
+                'placed' => count($placements),
+            ],
+        ];
+    }
+
+    /**
+     * COMMIT hasil preview: transaksi + re-cek konflik/kuota per baris
+     * (race guard) + notifikasi per mahasiswa.
+     *
+     * @param  array<int, array{student_id:string, stase_id:string, hospital_id:string}>  $placements
+     * @return array{created:int, skipped:array}
+     */
+    public function commit(string $periodId, array $placements): array
+    {
+        $created = 0;
+        $skipped = [];
+        $toNotify = [];
+
+        DB::transaction(function () use ($periodId, $placements, &$created, &$skipped, &$toNotify) {
+            foreach ($placements as $p) {
+                $data = [
+                    'rotation_period_id' => $periodId,
+                    'student_id' => $p['student_id'],
+                    'stase_id' => $p['stase_id'],
+                    'hospital_id' => $p['hospital_id'],
+                    'status' => 'confirmed',
+                ];
+
+                if ($reason = $this->assignmentConflict($data)) {
+                    $skipped[] = ['student_id' => $p['student_id'], 'reason' => $reason];
+
+                    continue;
+                }
+
+                $toNotify[] = RotationAssignment::create($data);
+                $created++;
+            }
+        });
+
+        // Notifikasi di luar transaksi (email di-queue oleh NotificationService)
+        foreach ($toNotify as $assignment) {
+            $this->notifyStudentAssigned($assignment);
+        }
+
+        return ['created' => $created, 'skipped' => $skipped];
+    }
+
+    /**
+     * Pilih RS untuk satu slot stase: RS ber-kuota dengan SISA terbanyak;
+     * bila stase tak punya baris kuota sama sekali → RS mana pun (beban tersedikit).
+     *
+     * @return array{id:string, name:string}|null null bila semua penuh
+     */
+    private function pickHospital(
+        string $staseId,
+        string $periodId,
+        Collection $capacities,
+        Collection $allHospitals,
+        array $occupancy
+    ): ?array {
+        $rows = $capacities->where('stase_id', $staseId);
+
+        if ($rows->isEmpty()) {
+            // Tak dibatasi kuota → seimbangkan beban antar semua RS
+            $best = $allHospitals->sortBy(
+                fn ($h) => $occupancy[$h->id.'|'.$staseId] ?? 0
+            )->first();
+
+            return $best ? ['id' => $best->id, 'name' => $best->name] : null;
+        }
+
+        // Baris spesifik periode menang atas baris umum utk RS yang sama
+        $byHospital = $rows->groupBy('hospital_id')->map(function ($group) {
+            return $group->firstWhere('rotation_period_id', '!=', null) ?? $group->first();
+        });
+
+        $best = null;
+        $bestRemaining = 0;
+        foreach ($byHospital as $hospitalId => $cap) {
+            $used = $occupancy[$hospitalId.'|'.$staseId] ?? 0;
+            $remaining = $cap->max_students - $used;
+            if ($remaining > $bestRemaining) {
+                $bestRemaining = $remaining;
+                $best = ['id' => $hospitalId, 'name' => $cap->hospital?->name ?? '-'];
+            }
+        }
+
+        return $best;
+    }
+}

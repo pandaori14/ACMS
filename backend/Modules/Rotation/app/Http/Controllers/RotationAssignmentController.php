@@ -3,15 +3,16 @@
 namespace Modules\Rotation\Http\Controllers;
 
 use App\Http\Controllers\Controller;
-use App\Services\NotificationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Modules\Academic\Models\Student;
-use Modules\Rotation\Models\HospitalCapacity;
 use Modules\Rotation\Models\RotationAssignment;
+use Modules\Rotation\Services\RotationSchedulerService;
 
 class RotationAssignmentController extends Controller
 {
+    public function __construct(private RotationSchedulerService $scheduler) {}
+
     public function index(Request $request)
     {
         $query = RotationAssignment::with(['rotationPeriod', 'student.user', 'stase', 'hospital', 'preceptor']);
@@ -52,12 +53,12 @@ class RotationAssignmentController extends Controller
             'status' => 'required|string|in:pending,confirmed,in_progress,completed,remedial',
         ]);
 
-        if ($reason = $this->assignmentConflict($validated)) {
+        if ($reason = $this->scheduler->assignmentConflict($validated)) {
             return response()->json(['message' => $reason], 409);
         }
 
         $assignment = RotationAssignment::create($validated);
-        $this->notifyStudentAssigned($assignment);
+        $this->scheduler->notifyStudentAssigned($assignment);
 
         return response()->json([
             'data' => $assignment->load(['student.user', 'stase', 'hospital']),
@@ -93,7 +94,7 @@ class RotationAssignmentController extends Controller
                 'status' => $validated['status'],
             ];
 
-            if ($reason = $this->assignmentConflict($data)) {
+            if ($reason = $this->scheduler->assignmentConflict($data)) {
                 $student = Student::with('user')->find($studentId);
                 $skipped[] = [
                     'student_id' => $studentId,
@@ -105,13 +106,55 @@ class RotationAssignmentController extends Controller
             }
 
             $assignment = RotationAssignment::create($data);
-            $this->notifyStudentAssigned($assignment);
+            $this->scheduler->notifyStudentAssigned($assignment);
             $created++;
         }
 
         return response()->json([
             'message' => "Penempatan selesai: {$created} mahasiswa ditempatkan, ".count($skipped).' dilewati.',
             'data' => ['created' => $created, 'skipped' => $skipped],
+        ]);
+    }
+
+    /**
+     * AUTO-SCHEDULING: preview distribusi round-robin (dry-run, tanpa menulis DB).
+     */
+    public function schedulePreview(Request $request)
+    {
+        $validated = $request->validate([
+            'rotation_period_id' => 'required|uuid|exists:rotation_periods,id',
+            'cohort_id' => 'nullable|uuid|exists:cohorts,id',
+        ]);
+
+        $result = $this->scheduler->preview(
+            $validated['rotation_period_id'],
+            $validated['cohort_id'] ?? null
+        );
+
+        return response()->json([
+            'message' => "Preview: {$result['summary']['placed']} dari {$result['summary']['candidates']} mahasiswa dapat ditempatkan.",
+            'data' => $result,
+        ]);
+    }
+
+    /**
+     * AUTO-SCHEDULING: terapkan hasil preview (dengan re-cek konflik/kuota).
+     */
+    public function scheduleCommit(Request $request)
+    {
+        $validated = $request->validate([
+            'rotation_period_id' => 'required|uuid|exists:rotation_periods,id',
+            'placements' => 'required|array|min:1|max:500',
+            'placements.*.student_id' => 'required|uuid|exists:students,id',
+            'placements.*.stase_id' => 'required|uuid|exists:stases,id',
+            'placements.*.hospital_id' => 'required|uuid|exists:hospitals,id',
+        ]);
+
+        $result = $this->scheduler->commit($validated['rotation_period_id'], $validated['placements']);
+
+        return response()->json([
+            'message' => "Jadwal diterapkan: {$result['created']} penempatan dibuat, ".count($result['skipped']).' dilewati.',
+            'data' => $result,
         ]);
     }
 
@@ -136,7 +179,7 @@ class RotationAssignmentController extends Controller
         $movesSlot = $validated['hospital_id'] !== $assignment->hospital_id
             || $validated['stase_id'] !== $assignment->stase_id;
         if ($movesSlot) {
-            $reason = $this->capacityFull(
+            $reason = $this->scheduler->capacityFull(
                 $validated['hospital_id'],
                 $validated['stase_id'],
                 $assignment->rotation_period_id
@@ -160,79 +203,5 @@ class RotationAssignmentController extends Controller
         $assignment->delete();
 
         return response()->json(['message' => 'Rotation Assignment deleted successfully']);
-    }
-
-    /**
-     * Cek konflik penempatan: mahasiswa dobel di periode yg sama, atau kuota penuh.
-     * Mengembalikan pesan alasan, atau null bila aman.
-     */
-    private function assignmentConflict(array $data): ?string
-    {
-        $exists = RotationAssignment::where('rotation_period_id', $data['rotation_period_id'])
-            ->where('student_id', $data['student_id'])
-            ->exists();
-
-        if ($exists) {
-            return 'Mahasiswa sudah memiliki penempatan pada periode ini.';
-        }
-
-        return $this->capacityFull($data['hospital_id'], $data['stase_id'], $data['rotation_period_id']);
-    }
-
-    /**
-     * Guard kapasitas RS per stase (hospital_capacities). Aturan pencocokan:
-     * baris kapasitas spesifik-periode menang atas baris umum (period null).
-     * Tanpa baris kapasitas = tidak dibatasi.
-     */
-    private function capacityFull(string $hospitalId, string $staseId, string $periodId): ?string
-    {
-        $capacity = HospitalCapacity::where('hospital_id', $hospitalId)
-            ->where('stase_id', $staseId)
-            ->where(function ($q) use ($periodId) {
-                $q->where('rotation_period_id', $periodId)->orWhereNull('rotation_period_id');
-            })
-            ->orderByRaw('rotation_period_id IS NULL') // spesifik periode dulu
-            ->first();
-
-        if (! $capacity) {
-            return null;
-        }
-
-        $occupied = RotationAssignment::where('hospital_id', $hospitalId)
-            ->where('stase_id', $staseId)
-            ->where('rotation_period_id', $periodId)
-            ->count();
-
-        if ($occupied >= $capacity->max_students) {
-            return "Kuota penuh: RS ini hanya menampung {$capacity->max_students} mahasiswa untuk stase tersebut pada periode ini.";
-        }
-
-        return null;
-    }
-
-    /**
-     * Notifikasi penempatan ke mahasiswa (Aturan C — via SMTP matrix).
-     */
-    private function notifyStudentAssigned(RotationAssignment $assignment): void
-    {
-        $assignment->loadMissing(['student.user', 'stase', 'hospital', 'rotationPeriod']);
-        $email = $assignment->student?->user?->email;
-
-        if (! $email) {
-            return;
-        }
-
-        NotificationService::sendDynamicEmail(
-            $email,
-            'Penempatan Rotasi Klinik Anda',
-            'email_template_rotation_assigned',
-            'rotation_assigned',
-            [
-                'name' => $assignment->student->user->name,
-                'stase' => $assignment->stase?->name ?? '-',
-                'hospital' => $assignment->hospital?->name ?? '-',
-                'period' => $assignment->rotationPeriod?->name ?? '-',
-            ]
-        );
     }
 }

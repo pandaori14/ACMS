@@ -11,9 +11,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { UserCircle, HospitalIcon, AlertCircle } from "lucide-react";
+import { UserCircle, HospitalIcon, AlertCircle, Wand2 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { toast } from "sonner";
 
 interface Stase {
@@ -50,6 +57,33 @@ interface Capacity {
   rotation_period_id?: string | null;
   max_students: number;
   occupied: number;
+}
+
+interface CohortOption {
+  id: string;
+  name?: string;
+}
+
+interface SchedulePlacement {
+  student_id: string;
+  student_name?: string | null;
+  identity_number?: string | null;
+  stase_id: string;
+  stase_name?: string | null;
+  hospital_id: string;
+  hospital_name?: string | null;
+}
+
+interface ScheduleUnplaced {
+  student_id: string;
+  name?: string | null;
+  reason: string;
+}
+
+interface SchedulePreviewResult {
+  placements: SchedulePlacement[];
+  unplaced: ScheduleUnplaced[];
+  summary: { candidates: number; placed: number };
 }
 
 export default function RotationScheduler({ params }: { params: Promise<{ id: string }> }) {
@@ -116,6 +150,65 @@ export default function RotationScheduler({ params }: { params: Promise<{ id: st
   const getCapacityForHospital = (hospitalId: string): Capacity | undefined => {
     const rows = capacities.filter((c) => c.hospital_id === hospitalId);
     return rows.find((c) => c.rotation_period_id === periodId) || rows.find((c) => !c.rotation_period_id);
+  };
+
+  // ---------- Auto-scheduling (round-robin) ----------
+  const [isAutoOpen, setIsAutoOpen] = useState(false);
+  const [cohorts, setCohorts] = useState<CohortOption[]>([]);
+  const [autoCohort, setAutoCohort] = useState("");
+  const [previewResult, setPreviewResult] = useState<SchedulePreviewResult | null>(null);
+  const [isPreviewing, setIsPreviewing] = useState(false);
+  const [isCommitting, setIsCommitting] = useState(false);
+
+  const openAutoSchedule = async () => {
+    setPreviewResult(null);
+    setAutoCohort("");
+    setIsAutoOpen(true);
+    try {
+      const res = await api.get("/api/v1/academic/cohorts");
+      setCohorts(res.data.data || []);
+    } catch {
+      setCohorts([]);
+    }
+  };
+
+  const runPreview = async () => {
+    setIsPreviewing(true);
+    setPreviewResult(null);
+    try {
+      const res = await api.post("/api/v1/rotation/schedule/preview", {
+        rotation_period_id: periodId,
+        cohort_id: autoCohort || null,
+      });
+      setPreviewResult(res.data.data);
+    } catch (err) {
+      toast.error(getApiErrorMessage(err, "Gagal membuat preview jadwal."));
+    } finally {
+      setIsPreviewing(false);
+    }
+  };
+
+  const commitSchedule = async () => {
+    if (!previewResult || previewResult.placements.length === 0) return;
+    setIsCommitting(true);
+    try {
+      const res = await api.post("/api/v1/rotation/schedule/commit", {
+        rotation_period_id: periodId,
+        placements: previewResult.placements.map((p) => ({
+          student_id: p.student_id,
+          stase_id: p.stase_id,
+          hospital_id: p.hospital_id,
+        })),
+      });
+      toast.success(res.data.message);
+      setIsAutoOpen(false);
+      fetchInitialData();
+      fetchAssignments();
+    } catch (err) {
+      toast.error(getApiErrorMessage(err, "Gagal menerapkan jadwal."));
+    } finally {
+      setIsCommitting(false);
+    }
   };
 
   const onDragEnd = async (result: DropResult) => {
@@ -207,18 +300,23 @@ export default function RotationScheduler({ params }: { params: Promise<{ id: st
           <p className="text-muted-foreground mt-1">Tarik dan letakkan mahasiswa ke rumah sakit tujuan.</p>
         </div>
 
-        <div className="flex items-center gap-4 bg-white p-2 rounded-xl shadow-sm border">
-          <span className="text-sm font-medium pl-2">Filter Stase:</span>
-          <Select value={selectedStase} onValueChange={(v) => setSelectedStase(v ?? "")}>
-            <SelectTrigger className="w-[250px] border-none shadow-none">
-              <SelectValue placeholder="Pilih Stase" />
-            </SelectTrigger>
-            <SelectContent>
-              {stases.map((stase) => (
-                <SelectItem key={stase.id} value={stase.id}>{stase.name}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+        <div className="flex items-center gap-3">
+          <Button onClick={openAutoSchedule} className="gap-2 bg-blue-900 hover:bg-blue-800 text-white">
+            <Wand2 className="h-4 w-4" /> Jadwalkan Otomatis
+          </Button>
+          <div className="flex items-center gap-4 bg-white p-2 rounded-xl shadow-sm border">
+            <span className="text-sm font-medium pl-2">Filter Stase:</span>
+            <Select value={selectedStase} onValueChange={(v) => setSelectedStase(v ?? "")}>
+              <SelectTrigger className="w-[250px] border-none shadow-none">
+                <SelectValue placeholder="Pilih Stase" />
+              </SelectTrigger>
+              <SelectContent>
+                {stases.map((stase) => (
+                  <SelectItem key={stase.id} value={stase.id}>{stase.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         </div>
       </div>
 
@@ -358,6 +456,105 @@ export default function RotationScheduler({ params }: { params: Promise<{ id: st
           </div>
         </DragDropContext>
       )}
+
+      {/* Dialog auto-scheduling */}
+      <Dialog open={isAutoOpen} onOpenChange={setIsAutoOpen}>
+        <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Jadwalkan Otomatis (Round-Robin)</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground -mt-2">
+            Mahasiswa yang belum ditempatkan pada periode ini akan didistribusikan merata ke semua
+            stase &amp; RS — menghormati kuota, dan tidak mengulang stase yang sudah pernah dijalani.
+          </p>
+
+          <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-end">
+            <div className="flex-1 space-y-1">
+              <label className="text-sm font-medium">Filter Angkatan (opsional)</label>
+              <select
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                value={autoCohort}
+                onChange={(e) => setAutoCohort(e.target.value)}
+              >
+                <option value="">Semua angkatan</option>
+                {cohorts.map((c) => (
+                  <option key={c.id} value={c.id}>{c.name}</option>
+                ))}
+              </select>
+            </div>
+            <Button onClick={runPreview} disabled={isPreviewing} variant="outline">
+              {isPreviewing ? "Menghitung..." : "Preview Jadwal"}
+            </Button>
+          </div>
+
+          {previewResult && (
+            <div className="space-y-4">
+              <div className="flex gap-2 text-sm">
+                <span className="px-2 py-1 rounded bg-emerald-100 text-emerald-700 font-medium">
+                  {previewResult.summary.placed} tertempatkan
+                </span>
+                <span className="px-2 py-1 rounded bg-amber-100 text-amber-700 font-medium">
+                  {previewResult.unplaced.length} tidak tertempatkan
+                </span>
+                <span className="px-2 py-1 rounded bg-slate-100 text-slate-600">
+                  dari {previewResult.summary.candidates} kandidat
+                </span>
+              </div>
+
+              {previewResult.placements.length > 0 && (
+                <div className="border rounded-md overflow-hidden">
+                  <div className="max-h-64 overflow-y-auto">
+                    <table className="w-full text-sm">
+                      <thead className="bg-slate-50 dark:bg-slate-900 sticky top-0">
+                        <tr className="text-left text-xs text-muted-foreground">
+                          <th className="px-3 py-2">Mahasiswa</th>
+                          <th className="px-3 py-2">Stase</th>
+                          <th className="px-3 py-2">Rumah Sakit</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y">
+                        {previewResult.placements.map((p) => (
+                          <tr key={p.student_id}>
+                            <td className="px-3 py-2">
+                              <p className="font-medium">{p.student_name}</p>
+                              <p className="text-xs text-muted-foreground">{p.identity_number}</p>
+                            </td>
+                            <td className="px-3 py-2">{p.stase_name}</td>
+                            <td className="px-3 py-2">{p.hospital_name}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+
+              {previewResult.unplaced.length > 0 && (
+                <div className="rounded-md border border-amber-200 bg-amber-50 dark:bg-amber-950/30 p-3">
+                  <p className="text-sm font-medium text-amber-800 dark:text-amber-200 mb-1">
+                    Tidak tertempatkan:
+                  </p>
+                  <ul className="list-disc pl-5 text-xs text-amber-700 dark:text-amber-300 space-y-0.5 max-h-28 overflow-y-auto">
+                    {previewResult.unplaced.map((u) => (
+                      <li key={u.student_id}>{u.name} — {u.reason}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              <Button
+                className="w-full bg-blue-900 hover:bg-blue-800 text-white"
+                disabled={isCommitting || previewResult.placements.length === 0}
+                onClick={commitSchedule}
+              >
+                {isCommitting
+                  ? "Menerapkan..."
+                  : `Terapkan Jadwal (${previewResult.placements.length} penempatan)`}
+              </Button>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
