@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuthStore } from "@/store/useAuthStore";
-import { Home, CalendarSync, ClipboardList, CheckCircle, Menu, BookOpen, FileText } from "lucide-react";
+import { Home, CalendarSync, ClipboardList, CheckCircle, Menu, BookOpen, FileText, MapPin } from "lucide-react";
 
 export function BottomNav() {
   const pathname = usePathname();
@@ -20,6 +20,7 @@ export function BottomNav() {
     { title: "Beranda", url: "/dashboard", icon: Home, permissions: ["view-dashboard"] },
     { title: "Rotasi", url: "/dashboard/rotations", icon: CalendarSync, permissions: ["view-rotations", "manage-rotations"] },
     { title: "Logbook", url: "/dashboard/clinical/logbooks", icon: ClipboardList, permissions: ["view-logbook"] },
+    { title: "Presensi", url: "/dashboard/clinical/attendance", icon: MapPin, permissions: ["view-logbook"] },
     { title: "Verifikasi", url: "/dashboard/clinical/verification", icon: CheckCircle, permissions: ["verify-logbook"] },
     { title: "Penilaian", url: "/dashboard/assessments/create", icon: FileText, permissions: ["create-assessments"] },
     { title: "Ujian", url: "/dashboard/examinations", icon: CheckCircle, permissions: ["take-examinations", "manage-examinations"] },

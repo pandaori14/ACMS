@@ -27,9 +27,12 @@ class DashboardController extends Controller
 
     private function getStudentStats($user)
     {
+        // rotation_assignments.student_id menunjuk profil STUDENTS (bukan users)
+        $studentProfileId = $user->student?->id;
+
         // Active Assignment
         $activeAssignment = RotationAssignment::with(['stase', 'hospital', 'preceptor', 'rotationPeriod'])
-            ->where('student_id', $user->id)
+            ->where('student_id', $studentProfileId)
             ->whereHas('rotationPeriod', function ($q) {
                 $q->where('start_date', '<=', now())
                     ->where('end_date', '>=', now());

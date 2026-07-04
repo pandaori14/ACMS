@@ -50,10 +50,16 @@ class GradeCalculationService
         $letterGrade = $this->getLetterGrade($finalScore);
 
         // 4. Save or Update Grade
+        // PENTING: stase_grades.student_id ber-FK ke USERS, sedangkan
+        // rotation_assignments.student_id menunjuk profil STUDENTS —
+        // wajib dipetakan ke user_id (dulu salah tulis → FK gagal /
+        // mahasiswa tak pernah melihat nilainya).
+        $assignment->loadMissing('student');
+
         $grade = StaseGrade::updateOrCreate(
             ['rotation_assignment_id' => $assignment->id],
             [
-                'student_id' => $assignment->student_id,
+                'student_id' => $assignment->student->user_id,
                 'logbook_score' => $logbookScore,
                 'minicex_score' => $minicexScore,
                 'dops_score' => $dopsScore,

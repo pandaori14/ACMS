@@ -38,10 +38,14 @@ class LogbookSubmittedNotification extends Notification implements ShouldQueue
      */
     public function toArray(object $notifiable): array
     {
+        // LogbookEntry tidak punya relasi stase langsung — lewat rotationAssignment
+        $studentName = $this->logbook->student?->user?->name ?? 'Mahasiswa';
+        $staseName = $this->logbook->rotationAssignment?->stase?->name ?? 'stase';
+
         return [
-            'title' => 'New Logbook Submitted',
-            'message' => "Student {$this->logbook->student->user->name} has submitted a new logbook for {$this->logbook->stase->name}.",
-            'url' => '/dashboard/preceptor/logbook-verification',
+            'title' => 'Logbook Baru Menunggu Verifikasi',
+            'message' => "{$studentName} mengajukan logbook baru pada {$staseName}.",
+            'url' => '/dashboard/clinical/verification',
             'type' => 'logbook_submitted',
             'logbook_id' => $this->logbook->id,
         ];

@@ -81,6 +81,7 @@ export function AppSidebar() {
         { title: "Jadwal Rotasi", url: "/dashboard/rotations", icon: CalendarSync, permissions: ["view-rotations", "manage-rotations"] },
         { title: "Logbook Klinis", url: "/dashboard/clinical/logbooks", icon: ClipboardList, permissions: ["view-logbook"] },
         { title: "Verifikasi Logbook", url: "/dashboard/clinical/verification", icon: CheckCircle, permissions: ["verify-logbook"] },
+        { title: "Presensi", url: "/dashboard/clinical/attendance", icon: MapPin, permissions: ["view-logbook"] },
         { title: "Rekap Presensi", url: "/dashboard/clinical/attendance/recap", icon: MapPin, permissions: ["view-attendance-recap"] },
       ]
     },

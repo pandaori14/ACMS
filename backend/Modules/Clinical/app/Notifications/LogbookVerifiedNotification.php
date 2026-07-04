@@ -38,13 +38,17 @@ class LogbookVerifiedNotification extends Notification implements ShouldQueue
      */
     public function toArray(object $notifiable): array
     {
-        $statusText = $this->logbook->status === 'verified' ? 'verified' : 'rejected';
+        $isVerified = $this->logbook->status === 'verified';
+        // LogbookEntry tidak punya relasi stase langsung — lewat rotationAssignment
+        $staseName = $this->logbook->rotationAssignment?->stase?->name ?? 'stase Anda';
 
         return [
-            'title' => 'Logbook '.ucfirst($statusText),
-            'message' => "Your logbook for {$this->logbook->stase->name} has been {$statusText} by your preceptor.",
+            'title' => $isVerified ? 'Logbook Diverifikasi' : 'Logbook Ditolak',
+            'message' => $isVerified
+                ? "Logbook Anda pada {$staseName} telah diverifikasi oleh pembimbing."
+                : "Logbook Anda pada {$staseName} ditolak — silakan perbaiki dan ajukan ulang.",
             'url' => '/dashboard/clinical/logbooks',
-            'type' => 'logbook_'.$statusText,
+            'type' => 'logbook_'.($isVerified ? 'verified' : 'rejected'),
             'logbook_id' => $this->logbook->id,
         ];
     }

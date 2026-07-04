@@ -23,9 +23,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Plus, Calendar, ArrowRight, Trash2 } from "lucide-react";
+import { Plus, Calendar, ArrowRight, Trash2, Building2, Stethoscope, MapPin } from "lucide-react";
 import { toast } from "sonner";
 import { getApiErrorMessage } from "@/lib/api-helpers";
+import { useAuthStore } from "@/store/useAuthStore";
 
 interface Program {
   id: string;
@@ -41,7 +42,27 @@ interface RotationPeriod {
   program: Program;
 }
 
+interface MyAssignment {
+  id: string;
+  status: string;
+  stase?: { name?: string; duration_weeks?: number } | null;
+  hospital?: { name?: string; address?: string | null } | null;
+  preceptor?: { name?: string } | null;
+  rotation_period?: { name?: string; start_date?: string; end_date?: string } | null;
+}
+
+const MY_STATUS_BADGE: Record<string, string> = {
+  pending: "bg-slate-100 text-slate-700",
+  confirmed: "bg-blue-100 text-blue-700",
+  in_progress: "bg-green-100 text-green-700",
+  completed: "bg-emerald-100 text-emerald-700",
+  remedial: "bg-orange-100 text-orange-700",
+};
+
 export default function RotationPeriodsPage() {
+  const user = useAuthStore((state) => state.user);
+  const canManage = user?.permissions?.includes("manage-rotations");
+
   const [isOpen, setIsOpen] = useState(false);
   const [formData, setFormData] = useState({
     program_id: "",
@@ -56,7 +77,18 @@ export default function RotationPeriodsPage() {
     queryFn: async (): Promise<RotationPeriod[]> => {
       const res = await api.get("/api/v1/rotation/periods");
       return res.data.data || [];
-    }
+    },
+    enabled: !!canManage,
+  });
+
+  // Mahasiswa: jadwal rotasi milik sendiri (backend otomatis membatasi)
+  const { data: myAssignmentsData, isLoading: loadingMine } = useQuery({
+    queryKey: ['my_rotation_assignments'],
+    queryFn: async (): Promise<MyAssignment[]> => {
+      const res = await api.get("/api/v1/rotation/assignments");
+      return res.data.data || [];
+    },
+    enabled: !canManage,
   });
 
   const { data: programsData, isLoading: loadingPrograms } = useQuery({
@@ -98,6 +130,88 @@ export default function RotationPeriodsPage() {
   const resetForm = () => {
     setFormData({ program_id: "", name: "", start_date: "", end_date: "", status: "draft" });
   };
+
+  // ---------- View MAHASISWA: jadwal rotasi milik sendiri ----------
+  if (!canManage) {
+    const myAssignments = myAssignmentsData || [];
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Jadwal Rotasi Saya</h1>
+          <p className="text-muted-foreground mt-1">
+            Penempatan stase dan rumah sakit Anda selama pendidikan klinik.
+          </p>
+        </div>
+
+        {loadingMine ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <Skeleton className="h-44 rounded-xl" />
+            <Skeleton className="h-44 rounded-xl" />
+          </div>
+        ) : myAssignments.length === 0 ? (
+          <div className="py-16 text-center clean-card border-dashed">
+            <Calendar className="mx-auto h-12 w-12 text-slate-300 mb-3" />
+            <h3 className="text-lg font-medium">Belum Ada Penempatan</h3>
+            <p className="text-muted-foreground mt-2">
+              Anda belum ditempatkan pada stase manapun. Hubungi admin program studi Anda.
+            </p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {myAssignments.map((a) => (
+              <div key={a.id} className="clean-card p-6 bg-white space-y-4">
+                <div className="flex justify-between items-start">
+                  <div className="flex items-center gap-2">
+                    <div className="bg-blue-50 text-blue-700 rounded-lg p-2 inline-flex">
+                      <Stethoscope className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <h3 className="font-bold text-lg leading-tight">{a.stase?.name || "-"}</h3>
+                      <p className="text-xs text-slate-500">
+                        {a.rotation_period?.name}
+                        {a.stase?.duration_weeks ? ` — ${a.stase.duration_weeks} minggu` : ""}
+                      </p>
+                    </div>
+                  </div>
+                  <span className={`text-xs font-medium px-2 py-1 rounded-full ${MY_STATUS_BADGE[a.status] || "bg-slate-100 text-slate-700"}`}>
+                    {a.status.replace("_", " ").toUpperCase()}
+                  </span>
+                </div>
+
+                <div className="space-y-2 text-sm text-slate-600 border-t pt-3">
+                  <div className="flex items-start gap-2">
+                    <Building2 className="h-4 w-4 mt-0.5 shrink-0 text-slate-400" />
+                    <div>
+                      <p className="font-medium text-slate-900">{a.hospital?.name || "-"}</p>
+                      {a.hospital?.address && <p className="text-xs text-slate-500">{a.hospital.address}</p>}
+                    </div>
+                  </div>
+                  {a.rotation_period?.start_date && (
+                    <div className="flex items-center gap-2">
+                      <Calendar className="h-4 w-4 shrink-0 text-slate-400" />
+                      <span>
+                        {new Date(a.rotation_period.start_date).toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" })}
+                        {" — "}
+                        {a.rotation_period.end_date
+                          ? new Date(a.rotation_period.end_date).toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" })
+                          : "-"}
+                      </span>
+                    </div>
+                  )}
+                  {a.preceptor?.name && (
+                    <div className="flex items-center gap-2">
+                      <MapPin className="h-4 w-4 shrink-0 text-slate-400" />
+                      <span>Pembimbing: <span className="font-medium text-slate-900">{a.preceptor.name}</span></span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
