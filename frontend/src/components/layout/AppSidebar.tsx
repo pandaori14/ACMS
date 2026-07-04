@@ -118,6 +118,8 @@ export function AppSidebar() {
       items: [
         { title: "AI Assistant", url: "/dashboard/ai-assistant", icon: Bot, permissions: ["manage-settings"] },
         { title: "Manajemen Pengguna", url: "/dashboard/users", icon: Users, permissions: ["manage-users"] },
+        { title: "Mahasiswa", url: "/dashboard/academic/students", icon: GraduationCap, permissions: ["manage-academic-master"] },
+        { title: "Angkatan", url: "/dashboard/academic/cohorts", icon: CalendarSync, permissions: ["manage-academic-master"] },
         { title: "Master Kompetensi", url: "/dashboard/academic/competencies", icon: ClipboardList, permissions: ["manage-academic-master"] },
         { title: "Master Rubrik", url: "/dashboard/rubrics", icon: FileText, permissions: ["manage-academic-master"] },
         { title: "Fakultas & Prodi", url: "/dashboard/academic/faculty", icon: Building, permissions: ["manage-academic-master"] },

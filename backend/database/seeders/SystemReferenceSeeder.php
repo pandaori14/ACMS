@@ -77,5 +77,26 @@ class SystemReferenceSeeder extends Seeder
                 ]
             );
         }
+
+        // Status mahasiswa (dipakai form CRUD & import mahasiswa)
+        $studentStatuses = [
+            ['name' => 'Aktif', 'value' => 'active'],
+            ['name' => 'Cuti', 'value' => 'leave'],
+            ['name' => 'Lulus', 'value' => 'graduated'],
+            ['name' => 'Drop Out', 'value' => 'dropout'],
+        ];
+
+        foreach ($studentStatuses as $status) {
+            SystemReference::updateOrCreate(
+                [
+                    'category' => 'student_statuses',
+                    'value' => $status['value'],
+                ],
+                [
+                    'name' => $status['name'],
+                    'is_active' => true,
+                ]
+            );
+        }
     }
 }

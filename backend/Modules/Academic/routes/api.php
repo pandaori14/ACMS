@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use Modules\Academic\Http\Controllers\CohortController;
 use Modules\Academic\Http\Controllers\CompetencyController;
 use Modules\Academic\Http\Controllers\FacultyController;
 use Modules\Academic\Http\Controllers\ProgramController;
@@ -15,17 +16,55 @@ use Modules\Academic\Http\Controllers\StudentController;
 | Academic sebelumnya memakai /api/academic (tanpa versi) — kini distandarkan
 | ke /api/v1/academic. Prefix lama dipertahankan sebagai ALIAS DEPRECATED agar
 | pemanggil yang belum migrasi tetap berjalan; hapus setelah semua klien pindah.
+|
+| RBAC: endpoint baca dipakai lintas peran (rotasi, nilai, logbook) — cukup
+| auth:sanctum. Semua MUTASI data master digating permission
+| manage-academic-master (Aturan A CLAUDE.md).
 */
 $registerAcademicRoutes = function () {
+    // --- Baca (lintas peran) ---
     Route::get('/faculties', [FacultyController::class, 'index']);
-    Route::post('/faculties', [FacultyController::class, 'store']);
-
     Route::get('/programs', [ProgramController::class, 'index']);
-    Route::post('/programs', [ProgramController::class, 'store']);
-
-    Route::apiResource('stase', StaseController::class);
-    Route::apiResource('competencies', CompetencyController::class);
+    Route::get('/cohorts', [CohortController::class, 'index']);
+    Route::get('stase', [StaseController::class, 'index']);
+    Route::get('stase/{stase}', [StaseController::class, 'show']);
+    Route::get('competencies', [CompetencyController::class, 'index']);
+    Route::get('competencies/{competency}', [CompetencyController::class, 'show']);
     Route::get('students', [StudentController::class, 'index']);
+
+    // --- Mutasi data master (admin akademik) ---
+    Route::middleware('permission:manage-academic-master')->group(function () {
+        Route::post('/faculties', [FacultyController::class, 'store']);
+        Route::put('/faculties/{id}', [FacultyController::class, 'update']);
+        Route::delete('/faculties/{id}', [FacultyController::class, 'destroy']);
+
+        Route::post('/programs', [ProgramController::class, 'store']);
+        Route::put('/programs/{id}', [ProgramController::class, 'update']);
+        Route::delete('/programs/{id}', [ProgramController::class, 'destroy']);
+
+        Route::post('/cohorts', [CohortController::class, 'store']);
+        Route::get('/cohorts/{id}', [CohortController::class, 'show']);
+        Route::put('/cohorts/{id}', [CohortController::class, 'update']);
+        Route::delete('/cohorts/{id}', [CohortController::class, 'destroy']);
+
+        Route::post('competencies', [CompetencyController::class, 'store']);
+        Route::match(['put', 'patch'], 'competencies/{competency}', [CompetencyController::class, 'update']);
+        Route::delete('competencies/{competency}', [CompetencyController::class, 'destroy']);
+
+        Route::post('students', [StudentController::class, 'store']);
+        Route::get('students/import-template', [StudentController::class, 'importTemplate']);
+        Route::post('students/import', [StudentController::class, 'import']);
+        Route::get('students/{id}', [StudentController::class, 'show']);
+        Route::put('students/{id}', [StudentController::class, 'update']);
+        Route::delete('students/{id}', [StudentController::class, 'destroy']);
+    });
+
+    // Mutasi stase punya permission sendiri (sesuai menu "Manajemen Stase").
+    Route::middleware('permission:manage-stase')->group(function () {
+        Route::post('stase', [StaseController::class, 'store']);
+        Route::match(['put', 'patch'], 'stase/{stase}', [StaseController::class, 'update']);
+        Route::delete('stase/{stase}', [StaseController::class, 'destroy']);
+    });
 };
 
 // Kanonik (standar): /api/v1/academic/*

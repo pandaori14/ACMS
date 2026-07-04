@@ -36,6 +36,15 @@ export interface Stase {
   program?: Program;
 }
 
+export interface Cohort {
+  id: string;
+  program_id?: string;
+  name?: string;
+  year?: number;
+  students_count?: number;
+  program?: Program;
+}
+
 export interface Student {
   id: string;
   user_id?: string;
@@ -44,9 +53,12 @@ export interface Student {
   email?: string;
   user?: { id: string; name?: string; email?: string; identity_number?: string };
   identity_number?: string;
+  program_id?: string;
+  cohort_id?: string;
   program?: Program;
   cohort?: { id: string; name?: string };
   status?: string;
+  enrollment_date?: string;
 }
 
 export interface RotationAssignment {

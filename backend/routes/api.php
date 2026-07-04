@@ -63,6 +63,9 @@ Route::middleware('auth:sanctum')->group(function () {
     // Core
     Route::apiResource('users', UserController::class)->middleware('permission:manage-users');
 
+    // Referensi aktif per kategori (read-only, semua user login) — untuk dropdown form
+    Route::get('/references/{category}', [SystemReferenceController::class, 'byCategory']);
+
     // Settings & Master Data (Protected by manage-settings)
     Route::middleware('permission:manage-settings')->group(function () {
         Route::apiResource('system-references', SystemReferenceController::class);

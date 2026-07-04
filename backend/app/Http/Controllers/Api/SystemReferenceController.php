@@ -28,6 +28,20 @@ class SystemReferenceController extends Controller
     }
 
     /**
+     * Referensi aktif per kategori — read-only untuk SEMUA user terautentikasi
+     * (dipakai dropdown form lintas modul; manajemen tetap di manage-settings).
+     */
+    public function byCategory(string $category)
+    {
+        return response()->json([
+            'data' => SystemReference::where('category', $category)
+                ->where('is_active', true)
+                ->orderBy('name')
+                ->get(['id', 'category', 'name', 'value']),
+        ]);
+    }
+
+    /**
      * Store a newly created resource in storage.
      */
     public function store(Request $request)
