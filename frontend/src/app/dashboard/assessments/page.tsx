@@ -19,8 +19,12 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { BookOpen, FileText, CheckCircle2 } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { BookOpen, FileText, CheckCircle2, Pencil, Trash2 } from "lucide-react";
 import { useAuthStore } from "@/store/useAuthStore";
+import { toast } from "sonner";
+import { getApiErrorMessage } from "@/lib/api-helpers";
 
 interface AssessmentScore {
   id: string;
@@ -46,7 +50,14 @@ export default function AssessmentHistoryPage() {
   const [selectedAssessment, setSelectedAssessment] = useState<Assessment | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [acknowledging, setAcknowledging] = useState(false);
-  
+
+  // Edit & hapus (preceptor/admin)
+  const [editing, setEditing] = useState<Assessment | null>(null);
+  const [editScores, setEditScores] = useState<Record<string, number>>({});
+  const [editFeedback, setEditFeedback] = useState("");
+  const [isSavingEdit, setIsSavingEdit] = useState(false);
+  const [deleting, setDeleting] = useState<Assessment | null>(null);
+
   const user = useAuthStore((state) => state.user);
   const isStudent = user?.roles?.includes("Mahasiswa");
 
@@ -95,6 +106,49 @@ export default function AssessmentHistoryPage() {
   const viewDetails = (assessment: Assessment) => {
     setSelectedAssessment(assessment);
     setIsDialogOpen(true);
+  };
+
+  const openEdit = (a: Assessment) => {
+    const scores: Record<string, number> = {};
+    a.template?.rubric_schema?.indicators?.forEach((ind) => {
+      const found = a.scores?.find((s) => s.rubric_key === ind.key);
+      scores[ind.key] = found ? Number(found.score) : 0;
+    });
+    setEditScores(scores);
+    setEditFeedback(a.feedback_notes || "");
+    setEditing(a);
+  };
+
+  const handleSaveEdit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editing) return;
+    setIsSavingEdit(true);
+    try {
+      await api.put(`/api/v1/assessments/${editing.id}`, {
+        scores: editScores,
+        feedback_notes: editFeedback,
+      });
+      toast.success("Penilaian diperbarui.");
+      setEditing(null);
+      fetchAssessments();
+    } catch (err) {
+      toast.error(getApiErrorMessage(err, "Gagal memperbarui penilaian."));
+    } finally {
+      setIsSavingEdit(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!deleting) return;
+    try {
+      await api.delete(`/api/v1/assessments/${deleting.id}`);
+      toast.success("Penilaian dihapus.");
+      fetchAssessments();
+    } catch (err) {
+      toast.error(getApiErrorMessage(err, "Gagal menghapus penilaian."));
+    } finally {
+      setDeleting(null);
+    }
   };
 
   return (
@@ -156,10 +210,26 @@ export default function AssessmentHistoryPage() {
                     <span className="font-bold text-lg">{a.total_score}</span>
                   </TableCell>
                   <TableCell>{getStatusBadge(a.status)}</TableCell>
-                  <TableCell className="text-right">
+                  <TableCell className="text-right whitespace-nowrap">
                     <Button variant="outline" size="sm" onClick={() => viewDetails(a)}>
                       Detail
                     </Button>
+                    {!isStudent && a.status !== "acknowledged" && (
+                      <>
+                        <Button variant="ghost" size="sm" className="ml-1" onClick={() => openEdit(a)} aria-label="Edit">
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-red-600 hover:text-red-700"
+                          onClick={() => setDeleting(a)}
+                          aria-label="Hapus"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </>
+                    )}
                   </TableCell>
                 </TableRow>
               ))
@@ -236,6 +306,70 @@ export default function AssessmentHistoryPage() {
               )}
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog edit penilaian */}
+      <Dialog open={!!editing} onOpenChange={(open) => !open && setEditing(null)}>
+        <DialogContent className="sm:max-w-xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Edit Penilaian — {editing?.student?.name}</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleSaveEdit} className="space-y-4 pt-2">
+            <div className="space-y-3">
+              {editing?.template?.rubric_schema?.indicators?.map((ind) => (
+                <div key={ind.key} className="flex items-center justify-between gap-4 text-sm">
+                  <span className="flex-1">{ind.label}</span>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <Input
+                      type="number"
+                      className="w-24"
+                      min={0}
+                      max={ind.max_score}
+                      step="0.01"
+                      value={editScores[ind.key] ?? 0}
+                      onChange={(e) =>
+                        setEditScores({ ...editScores, [ind.key]: Number(e.target.value) })
+                      }
+                    />
+                    <span className="text-muted-foreground">/ {ind.max_score}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Umpan Balik</label>
+              <Textarea
+                required
+                rows={4}
+                value={editFeedback}
+                onChange={(e) => setEditFeedback(e.target.value)}
+              />
+            </div>
+            <Button type="submit" className="w-full" disabled={isSavingEdit}>
+              {isSavingEdit ? "Menyimpan..." : "Simpan Perubahan"}
+            </Button>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Konfirmasi hapus penilaian */}
+      <Dialog open={!!deleting} onOpenChange={(open) => !open && setDeleting(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Hapus Penilaian?</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-slate-600 dark:text-slate-300">
+            Penilaian {deleting?.template?.name} untuk{" "}
+            <span className="font-semibold">{deleting?.student?.name}</span> akan dihapus.
+            Penilaian yang sudah disetujui mahasiswa tidak dapat dihapus.
+          </p>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="outline" onClick={() => setDeleting(null)}>Batal</Button>
+            <Button className="bg-red-600 hover:bg-red-700 text-white" onClick={handleDelete}>
+              Hapus
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
     </div>

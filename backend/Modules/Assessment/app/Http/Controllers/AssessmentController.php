@@ -123,28 +123,7 @@ class AssessmentController extends Controller
         try {
             // Strict Validation: Validate scores against the template rubric_schema
             $template = AssessmentTemplate::findOrFail($request->assessment_template_id);
-            $indicators = $template->rubric_schema['indicators'] ?? [];
-            $validScores = [];
-            $totalScore = 0;
-
-            foreach ($indicators as $indicator) {
-                $key = $indicator['key'];
-                $weight = $indicator['weight'] ?? 0; // percentage out of 100
-                $maxScore = $indicator['max_score'] ?? 100;
-
-                // If a score is provided, ensure it's not greater than max_score
-                $submittedScore = $request->scores[$key] ?? 0;
-                $submittedScore = min(max(0, (float) $submittedScore), (float) $maxScore);
-
-                $validScores[$key] = $submittedScore;
-
-                if (isset($indicator['weight'])) {
-                    // normalized score * weight percentage
-                    $totalScore += ($submittedScore / $maxScore) * $weight;
-                } else {
-                    $totalScore += $submittedScore;
-                }
-            }
+            [$validScores, $totalScore] = $this->computeScores($template, $request->scores);
 
             $assessment = ClinicalAssessment::create([
                 'rotation_assignment_id' => $request->rotation_assignment_id,
@@ -201,6 +180,126 @@ class AssessmentController extends Controller
         }
 
         return response()->json(['data' => $assessment]);
+    }
+
+    /**
+     * Update an assessment (creator preceptor or admin) — locked once acknowledged.
+     */
+    public function update(Request $request, $id)
+    {
+        $assessment = ClinicalAssessment::with('scores')->findOrFail($id);
+        $user = $request->user();
+
+        if (! $this->canManage($user, $assessment)) {
+            return response()->json(['message' => 'Anda tidak berhak mengubah penilaian ini.'], 403);
+        }
+
+        if ($assessment->status === 'acknowledged' && ! $user->hasRole('Super Admin')) {
+            return response()->json(['message' => 'Penilaian yang sudah di-acknowledge mahasiswa terkunci dan tidak dapat diubah.'], 422);
+        }
+
+        $request->validate([
+            'assessment_date' => 'sometimes|required|date',
+            'scores' => 'sometimes|required|array',
+            'feedback_notes' => 'sometimes|required|string',
+            'status' => 'sometimes|required|in:draft,submitted',
+        ]);
+
+        DB::beginTransaction();
+        try {
+            $data = $request->only(['assessment_date', 'feedback_notes', 'status']);
+
+            if ($request->has('scores')) {
+                $template = AssessmentTemplate::findOrFail($assessment->assessment_template_id);
+                [$validScores, $totalScore] = $this->computeScores($template, $request->scores);
+
+                $assessment->scores()->delete();
+                foreach ($validScores as $key => $scoreValue) {
+                    AssessmentScore::create([
+                        'clinical_assessment_id' => $assessment->id,
+                        'rubric_key' => $key,
+                        'score' => $scoreValue,
+                    ]);
+                }
+                $data['total_score'] = $totalScore;
+            }
+
+            $assessment->update($data);
+            DB::commit();
+
+            return response()->json([
+                'message' => 'Penilaian berhasil diperbarui.',
+                'data' => $assessment->fresh(['template', 'student', 'preceptor', 'scores']),
+            ]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+
+            return response()->json(['message' => 'Gagal memperbarui penilaian.'], 500);
+        }
+    }
+
+    /**
+     * Delete an assessment — locked once acknowledged (except Super Admin).
+     */
+    public function destroy(Request $request, $id)
+    {
+        $assessment = ClinicalAssessment::findOrFail($id);
+        $user = $request->user();
+
+        if (! $this->canManage($user, $assessment)) {
+            return response()->json(['message' => 'Anda tidak berhak menghapus penilaian ini.'], 403);
+        }
+
+        if ($assessment->status === 'acknowledged' && ! $user->hasRole('Super Admin')) {
+            return response()->json(['message' => 'Penilaian yang sudah di-acknowledge mahasiswa terkunci dan tidak dapat dihapus.'], 422);
+        }
+
+        DB::transaction(function () use ($assessment) {
+            $assessment->scores()->delete();
+            $assessment->delete();
+        });
+
+        return response()->json(['message' => 'Penilaian berhasil dihapus.']);
+    }
+
+    /**
+     * Kreator penilaian, atau admin (Super Admin/Admin Prodi), boleh mengelola.
+     */
+    private function canManage($user, ClinicalAssessment $assessment): bool
+    {
+        return $assessment->preceptor_id === $user->id
+            || $user->hasRole(['Super Admin', 'Admin Prodi']);
+    }
+
+    /**
+     * Validasi skor terhadap rubric_schema template; kembalikan [skor valid, total].
+     *
+     * @return array{0: array<string, float>, 1: float}
+     */
+    private function computeScores(AssessmentTemplate $template, array $scores): array
+    {
+        $indicators = $template->rubric_schema['indicators'] ?? [];
+        $validScores = [];
+        $totalScore = 0;
+
+        foreach ($indicators as $indicator) {
+            $key = $indicator['key'];
+            $weight = $indicator['weight'] ?? 0;
+            $maxScore = $indicator['max_score'] ?? 100;
+
+            $submittedScore = $scores[$key] ?? 0;
+            $submittedScore = min(max(0, (float) $submittedScore), (float) $maxScore);
+
+            $validScores[$key] = $submittedScore;
+
+            if (isset($indicator['weight'])) {
+                $totalScore += ($submittedScore / $maxScore) * $weight;
+            } else {
+                $totalScore += $submittedScore;
+            }
+        }
+
+        return [$validScores, $totalScore];
     }
 
     /**

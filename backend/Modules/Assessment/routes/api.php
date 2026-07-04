@@ -6,12 +6,19 @@ use Modules\Assessment\Http\Controllers\GradeController;
 
 Route::prefix('v1/assessments')->middleware(['auth:sanctum'])->group(function () {
     Route::get('/templates', [AssessmentController::class, 'getTemplates']);
-    Route::post('/templates', [AssessmentController::class, 'storeTemplate']);
-    Route::put('/templates/{id}', [AssessmentController::class, 'updateTemplate']);
-    Route::delete('/templates/{id}', [AssessmentController::class, 'destroyTemplate']);
+
+    // Mutasi template rubrik = data master (Aturan A)
+    Route::middleware('permission:manage-academic-master')->group(function () {
+        Route::post('/templates', [AssessmentController::class, 'storeTemplate']);
+        Route::put('/templates/{id}', [AssessmentController::class, 'updateTemplate']);
+        Route::delete('/templates/{id}', [AssessmentController::class, 'destroyTemplate']);
+    });
+
     Route::get('/', [AssessmentController::class, 'index']);
     Route::post('/', [AssessmentController::class, 'store']);
     Route::get('/{id}', [AssessmentController::class, 'show']);
+    Route::put('/{id}', [AssessmentController::class, 'update']);
+    Route::delete('/{id}', [AssessmentController::class, 'destroy']);
     Route::patch('/{id}/acknowledge', [AssessmentController::class, 'acknowledge']);
 });
 
