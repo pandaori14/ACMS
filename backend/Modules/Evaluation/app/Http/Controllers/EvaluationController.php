@@ -3,10 +3,13 @@
 namespace Modules\Evaluation\Http\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Modules\Evaluation\Models\EvaluationQuestion;
 use Modules\Evaluation\Models\EvaluationSubmission;
+use Modules\Rotation\Models\Hospital;
 use Modules\Rotation\Models\RotationAssignment;
 
 class EvaluationController extends Controller
@@ -87,5 +90,120 @@ class EvaluationController extends Controller
         return response()->json([
             'is_submitted' => $isSubmitted,
         ]);
+    }
+
+    /**
+     * Laporan agregat ANONIM per target (preceptor/RS): rata-rata rating,
+     * jumlah responden, rincian per pertanyaan, dan komentar tanpa identitas.
+     * Target dengan responden < ambang anonimitas disembunyikan.
+     */
+    public function report(Request $request)
+    {
+        $minResponses = max(1, min(10, (int) $request->get('min_responses', 3)));
+
+        $rows = EvaluationSubmission::with('question')
+            ->when($request->filled('target_type'), function ($q) use ($request) {
+                $type = $request->target_type === 'HOSPITAL'
+                    ? Hospital::class
+                    : User::class;
+                $q->where('target_type', $type);
+            })
+            ->get();
+
+        $report = $rows
+            ->groupBy(fn ($r) => $r->target_type.'|'.$r->target_id)
+            ->map(function ($group) {
+                /** @var Collection $group */
+                $first = $group->first();
+                $isHospital = $first->target_type === Hospital::class;
+
+                $targetName = $isHospital
+                    ? Hospital::find($first->target_id)?->name
+                    : User::find($first->target_id)?->name;
+
+                $perQuestion = $group->groupBy('evaluation_question_id')->map(function ($answers) {
+                    return [
+                        'question' => $answers->first()->question?->question_text,
+                        'average' => round($answers->avg('rating'), 2),
+                        'count' => $answers->count(),
+                    ];
+                })->values();
+
+                return [
+                    'target_type' => $isHospital ? 'HOSPITAL' : 'PRECEPTOR',
+                    'target_name' => $targetName ?? 'Tidak diketahui',
+                    'respondents' => $group->pluck('student_id')->unique()->count(),
+                    'average_rating' => round($group->avg('rating'), 2),
+                    'per_question' => $perQuestion,
+                    // Komentar anonim — tanpa identitas mahasiswa, urutan diacak
+                    'comments' => $group->pluck('comment')->filter()->unique()->shuffle()->values(),
+                ];
+            })
+            ->filter(fn ($t) => $t['respondents'] >= $minResponses)
+            ->sortBy('target_name')
+            ->values();
+
+        return response()->json([
+            'data' => $report,
+            'meta' => [
+                'min_responses' => $minResponses,
+                'note' => 'Target dengan responden kurang dari ambang disembunyikan demi anonimitas.',
+            ],
+        ]);
+    }
+
+    // ---------- Bank pertanyaan (manage-academic-master) ----------
+
+    public function allQuestions()
+    {
+        return response()->json([
+            'data' => EvaluationQuestion::withCount('submissions')->orderBy('target_type')->get(),
+        ]);
+    }
+
+    public function storeQuestion(Request $request)
+    {
+        $validated = $request->validate([
+            'target_type' => 'required|in:PRECEPTOR,HOSPITAL',
+            'question_text' => 'required|string|max:500',
+            'is_active' => 'boolean',
+        ]);
+
+        $question = EvaluationQuestion::create($validated + ['is_active' => $validated['is_active'] ?? true]);
+
+        return response()->json(['message' => 'Pertanyaan ditambahkan.', 'data' => $question], 201);
+    }
+
+    public function updateQuestion(Request $request, string $id)
+    {
+        $question = EvaluationQuestion::findOrFail($id);
+
+        $validated = $request->validate([
+            'target_type' => 'sometimes|required|in:PRECEPTOR,HOSPITAL',
+            'question_text' => 'sometimes|required|string|max:500',
+            'is_active' => 'boolean',
+        ]);
+
+        $question->update($validated);
+
+        return response()->json(['message' => 'Pertanyaan diperbarui.', 'data' => $question]);
+    }
+
+    public function destroyQuestion(string $id)
+    {
+        $question = EvaluationQuestion::withCount('submissions')->findOrFail($id);
+
+        if ($question->submissions_count > 0) {
+            // Sudah dipakai jawaban → nonaktifkan saja agar data historis utuh
+            $question->update(['is_active' => false]);
+
+            return response()->json([
+                'message' => 'Pertanyaan sudah memiliki jawaban — dinonaktifkan (tidak dihapus) agar data historis tetap utuh.',
+            ]);
+        }
+
+        $question->delete();
+
+        return response()->json(['message' => 'Pertanyaan dihapus.']);
     }
 }
