@@ -13,9 +13,17 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Loader2, ChevronLeft, ChevronRight, AlertTriangle, MapPin } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Loader2, ChevronLeft, ChevronRight, AlertTriangle, MapPin, Pencil } from "lucide-react";
 import { toast } from "sonner";
 import api from "@/lib/api";
+import { getApiErrorMessage } from "@/lib/api-helpers";
 
 interface RecapRow {
   id: string;
@@ -94,6 +102,35 @@ export default function RecapClient() {
     fetchRecap();
   }, [fetchRecap]);
 
+  // Koreksi kehadiran (review pengajuan izin/sakit & anomali GPS)
+  const [correcting, setCorrecting] = useState<RecapRow | null>(null);
+  const [correctForm, setCorrectForm] = useState({ status: "PRESENT", notes: "" });
+  const [savingCorrection, setSavingCorrection] = useState(false);
+
+  const openCorrect = (row: RecapRow) => {
+    setCorrectForm({ status: row.status.toUpperCase(), notes: "" });
+    setCorrecting(row);
+  };
+
+  const handleCorrect = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!correcting) return;
+    setSavingCorrection(true);
+    try {
+      await api.put(`/api/v1/clinical/attendance/${correcting.id}/correct`, {
+        status: correctForm.status,
+        notes: correctForm.notes || undefined,
+      });
+      toast.success("Kehadiran dikoreksi.");
+      setCorrecting(null);
+      fetchRecap();
+    } catch (err) {
+      toast.error(getApiErrorMessage(err, "Gagal mengoreksi kehadiran."));
+    } finally {
+      setSavingCorrection(false);
+    }
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-end gap-4">
@@ -130,18 +167,19 @@ export default function RecapClient() {
               <TableHead>Check-in</TableHead>
               <TableHead>Check-out</TableHead>
               <TableHead>Status</TableHead>
+              <TableHead className="text-right">Aksi</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {isLoading ? (
               <TableRow>
-                <TableCell colSpan={6} className="text-center h-32">
+                <TableCell colSpan={7} className="text-center h-32">
                   <Loader2 className="w-6 h-6 animate-spin mx-auto text-muted-foreground" />
                 </TableCell>
               </TableRow>
             ) : rows.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6} className="text-center h-32 text-muted-foreground">
+                <TableCell colSpan={7} className="text-center h-32 text-muted-foreground">
                   Tidak ada catatan presensi.
                 </TableCell>
               </TableRow>
@@ -206,6 +244,11 @@ export default function RecapClient() {
                         )}
                       </div>
                     </TableCell>
+                    <TableCell className="text-right">
+                      <Button variant="ghost" size="sm" onClick={() => openCorrect(row)} aria-label="Koreksi">
+                        <Pencil className="w-4 h-4" />
+                      </Button>
+                    </TableCell>
                   </TableRow>
                 );
               })
@@ -237,6 +280,53 @@ export default function RecapClient() {
           </Button>
         </div>
       </div>
+
+      {/* Dialog koreksi kehadiran */}
+      <Dialog open={!!correcting} onOpenChange={(open) => !open && setCorrecting(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              Koreksi Kehadiran — {correcting?.rotation_assignment?.student?.user?.name}
+            </DialogTitle>
+          </DialogHeader>
+          {correcting?.flag_reason && (
+            <p className="text-sm bg-amber-50 dark:bg-amber-950/30 text-amber-800 dark:text-amber-200 rounded-md p-3">
+              {correcting.flag_reason}
+            </p>
+          )}
+          <form onSubmit={handleCorrect} className="space-y-4 pt-1">
+            <div className="space-y-2">
+              <Label>Status Kehadiran</Label>
+              <select
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                value={correctForm.status}
+                onChange={(e) => setCorrectForm({ ...correctForm, status: e.target.value })}
+              >
+                <option value="PRESENT">Hadir (PRESENT)</option>
+                <option value="LATE">Terlambat (LATE)</option>
+                <option value="ABSENT">Tidak Hadir (ABSENT)</option>
+                <option value="SICK">Sakit (SICK)</option>
+                <option value="LEAVE">Izin (LEAVE)</option>
+              </select>
+            </div>
+            <div className="space-y-2">
+              <Label>Catatan koreksi (opsional)</Label>
+              <Textarea
+                rows={2}
+                placeholder="Contoh: Surat dokter diverifikasi valid."
+                value={correctForm.notes}
+                onChange={(e) => setCorrectForm({ ...correctForm, notes: e.target.value })}
+              />
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Koreksi menyelesaikan penandaan (flag) dan tercatat atas nama Anda.
+            </p>
+            <Button type="submit" className="w-full" disabled={savingCorrection}>
+              {savingCorrection ? "Menyimpan..." : "Simpan Koreksi"}
+            </Button>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

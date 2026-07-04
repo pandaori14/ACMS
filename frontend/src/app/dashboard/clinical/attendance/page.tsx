@@ -4,8 +4,17 @@ import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { MapPin, Clock, LogIn, LogOut, CheckCircle2 } from "lucide-react";
+import { getApiErrorMessage } from "@/lib/api-helpers";
+import { MapPin, Clock, LogIn, LogOut, CheckCircle2, CalendarOff } from "lucide-react";
 import api from "@/lib/api";
 
 interface AttendanceStatus {
@@ -21,6 +30,31 @@ export default function AttendancePage() {
   const [processing, setProcessing] = useState(false);
   const [, setLocation] = useState<{lat: number, lng: number} | null>(null);
   const [locationError, setLocationError] = useState("");
+
+  // Pengajuan izin/sakit
+  const [isLeaveOpen, setIsLeaveOpen] = useState(false);
+  const [leaveForm, setLeaveForm] = useState({
+    date: new Date().toISOString().slice(0, 10),
+    type: "SICK",
+    notes: "",
+  });
+  const [submittingLeave, setSubmittingLeave] = useState(false);
+
+  const handleSubmitLeave = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSubmittingLeave(true);
+    try {
+      const res = await api.post("/api/v1/clinical/attendance/leave", leaveForm);
+      toast.success(res.data.message);
+      setIsLeaveOpen(false);
+      setLeaveForm({ date: new Date().toISOString().slice(0, 10), type: "SICK", notes: "" });
+      fetchStatus();
+    } catch (err) {
+      toast.error(getApiErrorMessage(err, "Gagal mengirim pengajuan."));
+    } finally {
+      setSubmittingLeave(false);
+    }
+  };
 
   const fetchStatus = async () => {
     try {
@@ -100,11 +134,18 @@ export default function AttendancePage() {
 
   return (
     <div className="max-w-3xl mx-auto space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Presensi Kehadiran</h1>
-        <p className="text-muted-foreground">
-          Catat kehadiran Anda di rumah sakit dengan verifikasi lokasi (GPS).
-        </p>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Presensi Kehadiran</h1>
+          <p className="text-muted-foreground">
+            Catat kehadiran Anda di rumah sakit dengan verifikasi lokasi (GPS).
+          </p>
+        </div>
+        {status?.rotation && (
+          <Button variant="outline" onClick={() => setIsLeaveOpen(true)}>
+            <CalendarOff className="h-4 w-4 mr-2" /> Ajukan Izin / Sakit
+          </Button>
+        )}
       </div>
 
       {!status?.rotation ? (
@@ -199,6 +240,56 @@ export default function AttendancePage() {
           )}
         </div>
       )}
+
+      {/* Dialog pengajuan izin/sakit */}
+      <Dialog open={isLeaveOpen} onOpenChange={setIsLeaveOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Ajukan Izin / Sakit</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleSubmitLeave} className="space-y-4 pt-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Tanggal</label>
+                <Input
+                  type="date"
+                  required
+                  value={leaveForm.date}
+                  onChange={(e) => setLeaveForm({ ...leaveForm, date: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Jenis</label>
+                <select
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                  value={leaveForm.type}
+                  onChange={(e) => setLeaveForm({ ...leaveForm, type: e.target.value })}
+                >
+                  <option value="SICK">Sakit</option>
+                  <option value="LEAVE">Izin</option>
+                </select>
+              </div>
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Alasan (wajib, min. 5 karakter)</label>
+              <Textarea
+                required
+                minLength={5}
+                rows={3}
+                placeholder="Contoh: Demam tinggi, surat dokter menyusul."
+                value={leaveForm.notes}
+                onChange={(e) => setLeaveForm({ ...leaveForm, notes: e.target.value })}
+              />
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Pengajuan akan ditandai untuk direview pembimbing/admin pada rekap presensi.
+            </p>
+            <Button type="submit" className="w-full" disabled={submittingLeave}>
+              {submittingLeave ? "Mengirim..." : "Kirim Pengajuan"}
+            </Button>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

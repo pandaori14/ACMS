@@ -247,4 +247,98 @@ class AttendanceController extends Controller
             ],
         ]);
     }
+
+    /**
+     * Pengajuan izin/sakit oleh mahasiswa untuk tanggal tertentu.
+     * Membuat record SICK/LEAVE ber-flag agar terlihat di rekap untuk direview.
+     */
+    public function submitLeave(Request $request)
+    {
+        $validated = $request->validate([
+            'date' => 'required|date',
+            'type' => 'required|in:SICK,LEAVE',
+            'notes' => 'required|string|min:5|max:500',
+        ]);
+
+        $user = Auth::user();
+        if (! $user->student) {
+            return response()->json(['message' => 'Hanya mahasiswa yang dapat mengajukan izin/sakit.'], 403);
+        }
+        $studentId = $user->student->id;
+
+        $assignment = RotationAssignment::where('student_id', $studentId)
+            ->whereHas('rotationPeriod', function ($q) use ($validated) {
+                $q->where('start_date', '<=', $validated['date'])
+                    ->where('end_date', '>=', $validated['date']);
+            })
+            ->first();
+
+        if (! $assignment) {
+            return response()->json(['message' => 'Tidak ada penempatan rotasi aktif pada tanggal tersebut.'], 422);
+        }
+
+        $existing = AttendanceRecord::where('student_id', $studentId)
+            ->where('rotation_assignment_id', $assignment->id)
+            ->whereDate('date', $validated['date'])
+            ->first();
+
+        if ($existing && $existing->check_in_time) {
+            return response()->json(['message' => 'Anda sudah check-in pada tanggal tersebut — izin tidak dapat diajukan.'], 422);
+        }
+        if ($existing && in_array($existing->status, ['SICK', 'LEAVE'], true)) {
+            return response()->json(['message' => 'Pengajuan izin/sakit untuk tanggal tersebut sudah ada.'], 422);
+        }
+
+        $payload = [
+            'student_id' => $studentId,
+            'rotation_assignment_id' => $assignment->id,
+            'date' => $validated['date'],
+            'status' => $validated['type'],
+            'notes' => $validated['notes'],
+            'is_flagged' => true,
+            'flag_reason' => 'Pengajuan '.($validated['type'] === 'SICK' ? 'sakit' : 'izin').' — menunggu review',
+        ];
+
+        $record = $existing
+            ? tap($existing)->update($payload)
+            : AttendanceRecord::create($payload);
+
+        return response()->json([
+            'message' => 'Pengajuan berhasil dikirim dan menunggu review pembimbing/admin.',
+            'data' => $record,
+        ], 201);
+    }
+
+    /**
+     * Koreksi kehadiran oleh Dodiknis (mahasiswa bimbingannya) atau admin:
+     * ubah status/catatan dan selesaikan flag review.
+     */
+    public function correct(Request $request, string $id)
+    {
+        $validated = $request->validate([
+            'status' => 'required|in:PRESENT,LATE,ABSENT,SICK,LEAVE',
+            'notes' => 'nullable|string|max:500',
+        ]);
+
+        $record = AttendanceRecord::with('rotationAssignment')->findOrFail($id);
+        $user = $request->user();
+
+        // Dodiknis hanya boleh mengoreksi mahasiswa yang dibimbingnya
+        $isAdmin = $user->hasAnyRole(['Super Admin', 'Admin Prodi', 'Kaprodi']);
+        if (! $isAdmin && $record->rotationAssignment?->preceptor_id !== $user->id) {
+            return response()->json(['message' => 'Anda hanya dapat mengoreksi kehadiran mahasiswa bimbingan Anda.'], 403);
+        }
+
+        $record->update([
+            'status' => $validated['status'],
+            'notes' => $validated['notes'] ?? $record->notes,
+            'is_flagged' => false,
+            'flag_reason' => "Dikoreksi oleh {$user->name} (".now()->format('d/m/Y H:i').')',
+        ]);
+
+        return response()->json([
+            'message' => 'Kehadiran berhasil dikoreksi.',
+            'data' => $record->fresh(),
+        ]);
+    }
 }
