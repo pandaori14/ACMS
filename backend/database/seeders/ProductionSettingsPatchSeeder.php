@@ -4,6 +4,7 @@ namespace Database\Seeders;
 
 use App\Models\Setting;
 use Illuminate\Database\Seeder;
+use Spatie\Permission\Models\Role;
 
 /**
  * Patch settings untuk server PRODUKSI yang sudah live — AMAN dijalankan
@@ -58,6 +59,14 @@ class ProductionSettingsPatchSeeder extends Seeder
         // 3. Referensi baru (student_statuses dll) — updateOrCreate per
         //    (category, value): aman, referensi tambahan admin tidak tersentuh.
         $this->call(SystemReferenceSeeder::class);
+
+        // 4. Grant permission ADDITIVE (JANGAN syncPermissions di produksi —
+        //    me-reset kustomisasi RBAC dari UI). Kaprodi wajib manage-grades
+        //    agar loop approve nilai berjalan.
+        $kaprodi = Role::where('name', 'Kaprodi')->first();
+        if ($kaprodi && ! $kaprodi->hasPermissionTo('manage-grades')) {
+            $kaprodi->givePermissionTo('manage-grades');
+        }
 
         $this->command?->info('Patch settings produksi selesai (idempotent).');
     }

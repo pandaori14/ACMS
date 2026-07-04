@@ -21,6 +21,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
+import { useAuthStore } from "@/store/useAuthStore";
+import { toast } from "sonner";
+import { getApiErrorMessage } from "@/lib/api-helpers";
 
 
 export default function GradeManagementPage() {
@@ -29,6 +32,12 @@ export default function GradeManagementPage() {
   const [selectedAssignment, setSelectedAssignment] = useState<string>("");
   const [loading, setLoading] = useState(false);
   const [calculating, setCalculating] = useState(false);
+
+  // Selaras kontrak backend: approve = Kaprodi/Super Admin;
+  // publish = Kaprodi/Admin Prodi/Super Admin.
+  const user = useAuthStore((state) => state.user);
+  const canApprove = user?.roles?.some((r) => ["Kaprodi", "Super Admin"].includes(r));
+  const canPublish = user?.roles?.some((r) => ["Kaprodi", "Admin Prodi", "Super Admin"].includes(r));
   
   const fetchGrades = useCallback(async () => {
     setLoading(true);
@@ -73,18 +82,38 @@ export default function GradeManagementPage() {
   const handleApprove = async (id: string) => {
     try {
       await api.patch(`/api/v1/grades/${id}/approve`);
+      toast.success("Nilai disetujui.");
       fetchGrades();
     } catch (err) {
-      console.error("Approval failed", err);
+      toast.error(getApiErrorMessage(err, "Gagal menyetujui nilai."));
     }
   };
 
   const handlePublish = async (id: string) => {
     try {
       await api.patch(`/api/v1/grades/${id}/publish`);
+      toast.success("Nilai diterbitkan ke mahasiswa.");
       fetchGrades();
     } catch (err) {
-      console.error("Publishing failed", err);
+      toast.error(getApiErrorMessage(err, "Gagal menerbitkan nilai."));
+    }
+  };
+
+  const handleDownloadTranscript = async (studentId?: string, studentName?: string) => {
+    if (!studentId) return;
+    toast.loading("Membuat PDF transkrip...", { id: "transcript-dl" });
+    try {
+      const res = await api.get(`/api/v1/export/transcript/${studentId}`, { responseType: "blob" });
+      const url = window.URL.createObjectURL(new Blob([res.data]));
+      const link = document.createElement("a");
+      link.href = url;
+      link.setAttribute("download", `Transkrip_${(studentName || "Mahasiswa").replace(/\s+/g, "_")}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      link.parentNode?.removeChild(link);
+      toast.success("Transkrip diunduh.", { id: "transcript-dl" });
+    } catch {
+      toast.error("Gagal mengunduh transkrip.", { id: "transcript-dl" });
     }
   };
 
@@ -195,17 +224,20 @@ export default function GradeManagementPage() {
                   </TableCell>
                   <TableCell>{getStatusBadge(grade.status)}</TableCell>
                     <TableCell className="text-right space-x-2">
-                      {grade.status === "draft" && (
+                      {grade.status === "draft" && canApprove && (
                         <Button variant="outline" size="sm" onClick={() => handleApprove(grade.id)} className="gap-1 text-blue-600">
                           <CheckCircle className="h-3 w-3" /> Approve
                         </Button>
                       )}
-                      {grade.status === "approved" && (
+                      {grade.status === "draft" && !canApprove && (
+                        <span className="text-xs text-muted-foreground">Menunggu approve Kaprodi</span>
+                      )}
+                      {grade.status === "approved" && canPublish && (
                         <Button variant="default" size="sm" onClick={() => handlePublish(grade.id)} className="gap-1">
                           <Send className="h-3 w-3" /> Publish
                         </Button>
                       )}
-                      <Button variant="secondary" size="sm" onClick={() => window.open(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/v1/export/transcript/${grade.student_id}`, '_blank')} className="gap-1">
+                      <Button variant="secondary" size="sm" onClick={() => handleDownloadTranscript(grade.student_id, grade.student?.name)} className="gap-1">
                         <Download className="h-3 w-3" /> PDF
                       </Button>
                     </TableCell>

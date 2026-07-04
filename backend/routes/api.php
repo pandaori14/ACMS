@@ -56,9 +56,13 @@ Route::middleware('auth:sanctum')->group(function () {
     // Analytics
     Route::get('/analytics', [AnalyticsController::class, 'index']);
 
-    // Exports
-    Route::get('/export/transcript/{studentId}', [ExportController::class, 'exportTranscriptPdf']);
-    Route::get('/export/billings', [ExportController::class, 'exportBillingExcel']);
+    // Exports — path kanonik v1 (dipakai frontend) + alias lama
+    Route::get('/v1/export/transcript/{studentId}', [ExportController::class, 'exportTranscriptPdf'])
+        ->middleware('permission:view-transcripts');
+    Route::get('/export/transcript/{studentId}', [ExportController::class, 'exportTranscriptPdf'])
+        ->middleware('permission:view-transcripts');
+    Route::get('/export/billings', [ExportController::class, 'exportBillingExcel'])
+        ->middleware('permission:manage-finance');
 
     // Core
     Route::apiResource('users', UserController::class)->middleware('permission:manage-users');

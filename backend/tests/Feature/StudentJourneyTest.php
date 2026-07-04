@@ -218,6 +218,9 @@ class StudentJourneyTest extends TestCase
         $gradeId = StaseGrade::where('rotation_assignment_id', $assignmentId)->value('id');
         $this->assertNotNull($gradeId, 'Nilai stase harus terbentuk setelah kalkulasi.');
 
+        // Kontrak: approve HANYA Kaprodi (Admin Prodi ditolak)
+        $this->actingAs($this->adminProdi)->patchJson("/api/v1/grades/{$gradeId}/approve")->assertForbidden();
+
         $this->actingAs($this->kaprodi)->patchJson("/api/v1/grades/{$gradeId}/approve")->assertOk();
         $this->actingAs($this->kaprodi)->patchJson("/api/v1/grades/{$gradeId}/publish")->assertOk();
 
@@ -229,6 +232,15 @@ class StudentJourneyTest extends TestCase
         // Dashboard mahasiswa kini menampilkan nilai terbaru
         $res = $this->actingAs($studentUser)->getJson('/api/dashboard/stats');
         $res->assertOk()->assertJsonCount(1, 'recent_grades');
+
+        // Unduh PDF transkrip sendiri = boleh; transkrip orang lain = 403
+        $res = $this->actingAs($studentUser)->get("/api/v1/export/transcript/{$studentUser->id}");
+        $res->assertOk();
+        $this->assertStringContainsString('pdf', strtolower($res->headers->get('content-type') ?? ''));
+
+        $this->actingAs($studentUser)
+            ->getJson("/api/v1/export/transcript/{$this->kaprodi->id}")
+            ->assertForbidden();
 
         // ===== 12. MAHASISWA: melihat jadwal ujian yang diikutinya =====
         $res = $this->actingAs($this->adminProdi)->postJson('/api/v1/examinations', [

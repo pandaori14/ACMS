@@ -69,12 +69,13 @@ class RolePermissionSeeder extends Seeder
             'manage-consultations', 'submit-consultation', 'configure-incident-form',
         ]);
 
-        // Kaprodi
+        // Kaprodi — manage-grades WAJIB: Kaprodi satu-satunya peran (selain
+        // Super Admin) yang boleh approve nilai; tanpa ini menu nilai tak muncul.
         $kaprodi = Role::firstOrCreate(['name' => 'Kaprodi', 'guard_name' => 'web']);
         $kaprodi->syncPermissions([
             'view-dashboard', 'view-analytics', 'view-transcripts', 'report-incidents', 'manage-incidents',
             'view-audit-logs', 'view-attendance-recap', 'manage-consultations', 'submit-consultation',
-            'view-anonymous-identity',
+            'view-anonymous-identity', 'manage-grades',
         ]);
 
         // Dodiknis

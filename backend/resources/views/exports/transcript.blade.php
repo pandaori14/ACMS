@@ -21,10 +21,9 @@
 <body>
 
     <div class="header">
-        <p class="kop-title">KEMENTERIAN PENDIDIKAN, KEBUDAYAAN, RISET, DAN TEKNOLOGI</p>
-        <p class="kop-subtitle">UNIVERSITAS ACMS</p>
+        <p class="kop-title">UNIVERSITAS MUHAMMADIYAH SURAKARTA</p>
         <p class="kop-subtitle">FAKULTAS KEDOKTERAN</p>
-        <p style="font-size: 12px; margin:0;">Jl. Pendidikan No. 123, Kampus Terpadu, Telp. (021) 123456</p>
+        <p style="font-size: 12px; margin:0;">Jl. A. Yani, Pabelan, Kartasura, Surakarta 57162</p>
     </div>
 
     <h2 style="text-align: center; text-transform: uppercase;">Transkrip Prestasi Akademik Profesi Dokter</h2>
@@ -36,14 +35,14 @@
             <td width="78%"><strong>{{ $student->name }}</strong></td>
         </tr>
         <tr>
-            <td>NIM / No. Identitas</td>
+            <td>NIM</td>
             <td>:</td>
-            <td>{{ substr($student->id, 0, 8) }}</td>
+            <td>{{ $student->identity_number ?? '-' }}</td>
         </tr>
         <tr>
             <td>Program Studi</td>
             <td>:</td>
-            <td>Profesi Dokter</td>
+            <td>{{ $student->program->name ?? 'Profesi Dokter' }}</td>
         </tr>
     </table>
 
@@ -60,7 +59,7 @@
             @foreach($grades as $index => $grade)
             <tr>
                 <td>{{ $index + 1 }}</td>
-                <td class="text-left">{{ $grade->stase->name }}</td>
+                <td class="text-left">{{ $grade->rotationAssignment->stase->name ?? '-' }}</td>
                 <td>{{ $grade->final_score }}</td>
                 <td>{{ $grade->letter_grade }}</td>
             </tr>
@@ -70,16 +69,23 @@
                 <td colspan="4">Belum ada stase yang diselesaikan.</td>
             </tr>
             @endif
+            @if(!$grades->isEmpty() && $average !== null)
+            <tr>
+                <td colspan="2" class="text-left" style="font-weight: bold;">Rata-rata</td>
+                <td style="font-weight: bold;">{{ $average }}</td>
+                <td></td>
+            </tr>
+            @endif
         </tbody>
     </table>
 
     <div class="footer">
         <div class="signature">
-            <p>Jakarta, {{ $date }}</p>
+            <p>Surakarta, {{ $date }}</p>
             <p>Dekan Fakultas Kedokteran,</p>
             <br><br><br><br>
-            <p><strong>Prof. Dr. dr. Budi Santoso, Sp.PD.</strong></p>
-            <p>NIP. 19700101 200003 1 001</p>
+            <p><strong>(..........................................)</strong></p>
+            <p>NIP.</p>
         </div>
     </div>
 
