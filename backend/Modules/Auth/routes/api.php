@@ -15,11 +15,15 @@ use Modules\Auth\Http\Controllers\AuthController;
  */
 
 Route::prefix('auth')->group(function () {
-    // Anti brute-force ditangani di AuthController::login (RateLimiter per email+IP).
+    // Anti brute-force ditangani di AuthController (RateLimiter per email+IP).
     Route::post('/login', [AuthController::class, 'login']);
+    Route::post('/forgot-password', [AuthController::class, 'forgotPassword']);
+    Route::post('/reset-password', [AuthController::class, 'resetPassword']);
 
     Route::middleware('auth:sanctum')->group(function () {
         Route::post('/logout', [AuthController::class, 'logout']);
         Route::get('/me', [AuthController::class, 'me']);
+        Route::post('/change-password', [AuthController::class, 'changePassword']);
+        Route::put('/profile', [AuthController::class, 'updateProfile']);
     });
 });

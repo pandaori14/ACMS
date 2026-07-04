@@ -5,6 +5,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { useAuthStore } from "@/store/useAuthStore";
 import api from "@/lib/api";
 import { ApiError, AppSetting } from "@/lib/api-helpers";
@@ -145,6 +146,11 @@ export function LoginForm() {
         {errors.password && (
           <p className="login-field-error">{errors.password.message}</p>
         )}
+        <div className="text-right">
+          <Link href="/forgot-password" className="text-xs text-blue-700 hover:underline">
+            Lupa password?
+          </Link>
+        </div>
       </div>
 
       {/* Submit Button */}

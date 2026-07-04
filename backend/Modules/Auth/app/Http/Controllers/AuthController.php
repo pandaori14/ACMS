@@ -4,9 +4,12 @@ namespace Modules\Auth\Http\Controllers;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Services\NotificationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
@@ -90,6 +93,124 @@ class AuthController extends Controller
         $user = $request->user();
 
         return response()->json([
+            'user' => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+                'roles' => $user->getRoleNames(),
+                'permissions' => $user->getAllPermissions()->pluck('name'),
+            ],
+        ]);
+    }
+
+    /**
+     * Kirim tautan reset password (self-service).
+     * Respons SELALU generik 200 — jangan bocorkan email terdaftar/tidak.
+     */
+    public function forgotPassword(Request $request): JsonResponse
+    {
+        $request->validate(['email' => ['required', 'email']]);
+
+        // Rate limit ketat: 3 permintaan / 10 menit per email+IP (via
+        // RateLimiter controller — throttle middleware tak menempel di modul).
+        $throttleKey = 'forgot|'.Str::lower($request->input('email')).'|'.$request->ip();
+        if (RateLimiter::tooManyAttempts($throttleKey, 3)) {
+            $seconds = RateLimiter::availableIn($throttleKey);
+
+            return response()->json([
+                'message' => "Terlalu banyak permintaan. Coba lagi dalam {$seconds} detik.",
+            ], 429);
+        }
+        RateLimiter::hit($throttleKey, 600);
+
+        $user = User::where('email', Str::lower($request->input('email')))->first();
+
+        if ($user) {
+            $token = Password::broker()->createToken($user);
+            $link = url('/reset-password?token='.$token.'&email='.urlencode($user->email));
+
+            NotificationService::sendDynamicEmail(
+                $user->email,
+                'Reset Password Akun ACMS',
+                'email_template_reset',
+                'reset_password',
+                [
+                    'name' => $user->name,
+                    'link' => $link,
+                ]
+            );
+        }
+
+        return response()->json([
+            'message' => 'Jika email terdaftar, tautan reset password telah dikirim. Silakan cek kotak masuk Anda.',
+        ]);
+    }
+
+    /**
+     * Setel password baru memakai token dari email.
+     */
+    public function resetPassword(Request $request): JsonResponse
+    {
+        $request->validate([
+            'token' => ['required', 'string'],
+            'email' => ['required', 'email'],
+            'password' => ['required', 'string', 'min:8', 'confirmed'],
+        ]);
+
+        $status = Password::reset(
+            $request->only('email', 'password', 'password_confirmation', 'token'),
+            function (User $user, string $password) {
+                $user->forceFill([
+                    'password' => Hash::make($password),
+                    'remember_token' => Str::random(60),
+                ])->save();
+            }
+        );
+
+        if ($status !== Password::PASSWORD_RESET) {
+            return response()->json([
+                'message' => 'Tautan reset tidak valid atau sudah kedaluwarsa. Silakan minta tautan baru.',
+            ], 422);
+        }
+
+        return response()->json([
+            'message' => 'Password berhasil diubah. Silakan login dengan password baru Anda.',
+        ]);
+    }
+
+    /**
+     * Ganti password sendiri (user sudah login).
+     */
+    public function changePassword(Request $request): JsonResponse
+    {
+        $request->validate([
+            'current_password' => ['required', 'current_password'],
+            'password' => ['required', 'string', 'min:8', 'confirmed'],
+        ]);
+
+        $request->user()->update([
+            'password' => Hash::make($request->input('password')),
+        ]);
+
+        return response()->json([
+            'message' => 'Password berhasil diganti.',
+        ]);
+    }
+
+    /**
+     * Perbarui profil sendiri (saat ini: nama).
+     */
+    public function updateProfile(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+        ]);
+
+        $user = $request->user();
+        $user->update($validated);
+
+        return response()->json([
+            'message' => 'Profil berhasil diperbarui.',
             'user' => [
                 'id' => $user->id,
                 'name' => $user->name,
