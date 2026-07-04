@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 import api from "@/lib/api";
+import { getApiErrorMessage } from "@/lib/api-helpers";
+import { toast } from "sonner";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { ClipboardList, Plus, Edit, Trash2, Loader2, Search } from "lucide-react";
@@ -68,10 +70,10 @@ export function CompetenciesClient() {
     if (!confirm("Apakah Anda yakin ingin menghapus kompetensi ini?")) return;
     try {
       await api.delete(`/api/v1/academic/competencies/${id}`);
+      toast.success("Kompetensi dihapus.");
       fetchCompetencies();
     } catch (err) {
-      console.error(err);
-      alert("Gagal menghapus kompetensi");
+      toast.error(getApiErrorMessage(err, "Gagal menghapus kompetensi."));
     }
   };
 
@@ -85,10 +87,10 @@ export function CompetenciesClient() {
         await api.post("/api/v1/academic/competencies", form);
       }
       setOpen(false);
+      toast.success(editingId ? "Kompetensi diperbarui." : "Kompetensi ditambahkan.");
       fetchCompetencies();
     } catch (err) {
-      console.error(err);
-      alert("Gagal menyimpan kompetensi");
+      toast.error(getApiErrorMessage(err, "Gagal menyimpan kompetensi."));
     } finally {
       setSaving(false);
     }

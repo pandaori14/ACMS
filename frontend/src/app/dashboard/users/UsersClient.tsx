@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import api from "@/lib/api";
 import { ApiError } from "@/lib/api-helpers";
+import { toast } from "sonner";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Users, Plus, Edit, Trash2, Loader2, Search } from "lucide-react";
@@ -136,10 +137,11 @@ export function UsersClient() {
     if (!confirm("Apakah Anda yakin ingin menghapus pengguna ini?")) return;
     try {
       await api.delete(`/api/users/${id}`);
+      toast.success("Pengguna dihapus.");
       refetchUsers();
     } catch (err) {
       console.error(err);
-      alert("Gagal menghapus pengguna");
+      toast.error("Gagal menghapus pengguna.");
     }
   };
 
@@ -158,6 +160,7 @@ export function UsersClient() {
         await api.post("/api/users", payload);
       }
       setOpen(false);
+      toast.success(editingId ? "Pengguna diperbarui." : "Pengguna ditambahkan.");
       refetchUsers();
     } catch (err) {
       console.error("FULL ERROR", err);
@@ -170,7 +173,7 @@ export function UsersClient() {
       } else if (e.response?.data?.message) {
         msg = e.response.data.message;
       }
-      alert(msg);
+      toast.error(msg);
     } finally {
       setSaving(false);
     }

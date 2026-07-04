@@ -24,6 +24,8 @@ import {
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Plus, Calendar, ArrowRight, Trash2 } from "lucide-react";
+import { toast } from "sonner";
+import { getApiErrorMessage } from "@/lib/api-helpers";
 
 interface Program {
   id: string;
@@ -75,10 +77,10 @@ export default function RotationPeriodsPage() {
       await api.post("/api/v1/rotation/periods", formData);
       setIsOpen(false);
       resetForm();
+      toast.success("Periode rotasi disimpan.");
       refetchPeriods();
     } catch (err) {
-      console.error(err);
-      alert("Gagal menyimpan periode rotasi");
+      toast.error(getApiErrorMessage(err, "Gagal menyimpan periode rotasi."));
     }
   };
 
@@ -86,9 +88,10 @@ export default function RotationPeriodsPage() {
     if (!confirm("Apakah Anda yakin ingin menghapus periode ini?")) return;
     try {
       await api.delete(`/api/v1/rotation/periods/${id}`);
+      toast.success("Periode rotasi dihapus.");
       refetchPeriods();
     } catch (err) {
-      console.error(err);
+      toast.error(getApiErrorMessage(err, "Gagal menghapus periode rotasi."));
     }
   };
 

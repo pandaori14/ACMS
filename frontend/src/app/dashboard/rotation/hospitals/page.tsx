@@ -105,10 +105,10 @@ export default function HospitalManagement() {
       }
       setIsOpen(false);
       resetForm();
+      toast.success("Data rumah sakit disimpan.");
       fetchHospitals();
     } catch (err) {
-      console.error(err);
-      alert("Gagal menyimpan data rumah sakit");
+      toast.error(getApiErrorMessage(err, "Gagal menyimpan data rumah sakit."));
     }
   };
 
