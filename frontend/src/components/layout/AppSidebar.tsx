@@ -63,12 +63,15 @@ export function AppSidebar() {
   // sebagai "Konfigurasi Insiden" (CONFIGURE), selain itu sebagai "Lapor Insiden" (OPERATE).
   const canConfigureIncident = userRole === "Super Admin" || (user?.permissions?.includes("configure-incident-form") ?? false);
   const canManageIncidents = userRole === "Super Admin" || (user?.permissions?.includes("manage-incidents") ?? false);
+  // Dodiknis punya menu khusus: dasbor preceptor & honorarium miliknya sendiri
+  const isDodiknis = user?.roles?.includes("Dodiknis") ?? false;
 
   const navGroups = [
     {
       label: "Utama",
       items: [
         { title: "Dashboard", url: "/dashboard", icon: Home, permissions: ["view-dashboard"] },
+        ...(isDodiknis ? [{ title: "Dasbor Preceptor", url: "/dashboard/preceptor", icon: ClipboardList, permissions: ["view-dashboard"] }] : []),
         { title: "Notifikasi", url: "/dashboard/notifications", icon: Bell, permissions: ["view-dashboard"] },
         { title: "Analytics & Reports", url: "/dashboard/analytics", icon: BarChart2, permissions: ["view-analytics"] },
       ]
@@ -113,6 +116,7 @@ export function AppSidebar() {
       items: [
         { title: "Tagihan RS", url: "/dashboard/finance/hospitals", icon: Building2, permissions: ["manage-finance"] },
         { title: "Honorarium", url: "/dashboard/finance/preceptors", icon: FileText, permissions: ["manage-finance"] },
+        ...(isDodiknis ? [{ title: "Honorarium Saya", url: "/dashboard/finance/preceptors", icon: FileText, permissions: ["view-dashboard"] }] : []),
       ]
     },
     {

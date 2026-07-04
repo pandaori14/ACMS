@@ -7,6 +7,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Modules\Clinical\Models\LogbookEntry;
+use Modules\Rotation\Models\RotationAssignment;
 
 class PreceptorController extends Controller
 {
@@ -44,16 +45,30 @@ class PreceptorController extends Controller
         }
 
         // Count assessments conducted by this preceptor
+        // (kolomnya preceptor_id — 'assessor_id' tidak ada → dulu SQL error)
         $assessmentsCount = DB::table('clinical_assessments')
-            ->where('assessor_id', $user->id)
+            ->where('preceptor_id', $user->id)
             ->whereNull('deleted_at')
             ->count();
+
+        // Roster mahasiswa bimbingan pada periode berjalan
+        $activeStudents = RotationAssignment::with([
+            'student.user:id,name,identity_number',
+            'stase:id,name',
+            'hospital:id,name',
+        ])
+            ->where('preceptor_id', $user->id)
+            ->whereHas('rotationPeriod', function ($q) {
+                $q->where('start_date', '<=', now())->where('end_date', '>=', now());
+            })
+            ->get();
 
         return response()->json([
             'data' => [
                 'assigned_students' => $assignedStudentsCount,
                 'pending_logbooks' => $pendingLogbooksCount,
                 'total_assessments' => $assessmentsCount,
+                'active_students' => $activeStudents,
             ],
         ]);
     }
