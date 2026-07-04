@@ -4,6 +4,7 @@ namespace Modules\Assessment\Http\Controllers;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Services\NotificationService;
 use Illuminate\Http\Request;
 use Modules\Academic\Models\Student;
 use Modules\Assessment\Models\StaseGrade;
@@ -106,12 +107,30 @@ class GradeController extends Controller
             return response()->json(['message' => 'Unauthorized'], 403);
         }
 
-        $grade = StaseGrade::findOrFail($id);
+        $grade = StaseGrade::with(['student', 'rotationAssignment.stase'])->findOrFail($id);
         if ($grade->status !== 'approved') {
             return response()->json(['message' => 'Grade must be approved before publishing'], 400);
         }
 
         $grade->update(['status' => 'published']);
+
+        // Aturan C: nilai terbit → notifikasi mahasiswa via SMTP matrix
+        // (context grade_value memungkinkan aturan kondisional, mis. nilai E).
+        if ($grade->student && $grade->student->email) {
+            NotificationService::sendDynamicEmail(
+                $grade->student->email,
+                'Nilai Stase Anda Telah Terbit',
+                'email_template_grade_published',
+                'grade_published',
+                [
+                    'name' => $grade->student->name,
+                    'stase' => $grade->rotationAssignment?->stase?->name ?? '-',
+                    'grade' => $grade->letter_grade ?? '-',
+                    'score' => (string) $grade->final_score,
+                ],
+                ['grade_value' => $grade->letter_grade]
+            );
+        }
 
         return response()->json([
             'message' => 'Grade published successfully',
