@@ -209,6 +209,7 @@ class SettingSeeder extends Seeder
             ],
             ['key' => 'email_template_welcome', 'group' => 'smtp', 'value' => 'Halo {name},\n\nSelamat datang di sistem ACMS. Akun Anda telah berhasil dibuat.', 'type' => 'text', 'description' => 'Template Email Selamat Datang'],
             ['key' => 'email_template_reset', 'group' => 'smtp', 'value' => 'Halo {name},\n\nKlik tautan berikut untuk mereset kata sandi Anda: {link}', 'type' => 'text', 'description' => 'Template Email Reset Password'],
+            ['key' => 'email_template_honorarium_paid', 'group' => 'smtp', 'value' => 'Halo {name},\n\nHonorarium Anda untuk periode {period} sebesar {amount} telah dibayarkan. Terima kasih atas dedikasi Anda.', 'type' => 'text', 'description' => 'Template Email Honorarium Dibayar'],
 
             // OAuth (SSO)
             ['key' => 'enable_google_sso', 'group' => 'oauth', 'value' => 'true', 'type' => 'boolean', 'description' => 'Aktifkan Login dengan Google (SSO)'],

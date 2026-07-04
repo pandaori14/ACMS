@@ -3,6 +3,7 @@
 namespace Modules\Finance\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Services\NotificationService;
 use Illuminate\Http\Request;
 use Modules\Finance\Jobs\CalculatePreceptorHonorarium;
 use Modules\Finance\Models\Honorarium;
@@ -64,6 +65,51 @@ class HonorariumController extends Controller
         return response()->json([
             'message' => 'Status honorarium berhasil diperbarui.',
             'data' => $honorarium,
+        ]);
+    }
+
+    /**
+     * Catat pembayaran honorarium → PAID + notifikasi email ke preceptor
+     * (Aturan C: dikonfigurasi via SMTP matrix, bukan hardcode penerima).
+     */
+    public function recordPayment(Request $request, $id)
+    {
+        $validated = $request->validate([
+            'paid_at' => 'nullable|date',
+            'payment_method' => 'required|string|max:50',
+            'payment_reference' => 'nullable|string|max:100',
+        ]);
+
+        $honorarium = Honorarium::with('preceptor')->findOrFail($id);
+
+        if ($honorarium->status === 'PAID') {
+            return response()->json(['message' => 'Honorarium ini sudah tercatat dibayar.'], 422);
+        }
+
+        $honorarium->update([
+            'status' => 'PAID',
+            'paid_at' => $validated['paid_at'] ?? now(),
+            'payment_method' => $validated['payment_method'],
+            'payment_reference' => $validated['payment_reference'] ?? null,
+        ]);
+
+        if ($honorarium->preceptor && $honorarium->preceptor->email) {
+            NotificationService::sendDynamicEmail(
+                $honorarium->preceptor->email,
+                'Honorarium Anda Telah Dibayarkan',
+                'email_template_honorarium_paid',
+                'honorarium_paid',
+                [
+                    'name' => $honorarium->preceptor->name,
+                    'period' => $honorarium->period,
+                    'amount' => 'Rp '.number_format((float) $honorarium->amount, 0, ',', '.'),
+                ]
+            );
+        }
+
+        return response()->json([
+            'message' => 'Pembayaran honorarium berhasil dicatat.',
+            'data' => $honorarium->load('preceptor'),
         ]);
     }
 }

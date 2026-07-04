@@ -20,8 +20,24 @@ interface Billing {
   status: string;
   amount: number;
   notes?: string | null;
+  invoice_number?: string | null;
+  paid_at?: string | null;
+  payment_method?: string | null;
+  payment_reference?: string | null;
   hospital?: { name: string } | null;
 }
+
+interface PaymentForm {
+  paid_at: string;
+  payment_method: string;
+  payment_reference: string;
+}
+
+const EMPTY_PAYMENT: PaymentForm = {
+  paid_at: new Date().toISOString().slice(0, 10),
+  payment_method: "Transfer Bank",
+  payment_reference: "",
+};
 
 export default function HospitalBillingsPage() {
   const queryClient = useQueryClient();
@@ -55,18 +71,40 @@ export default function HospitalBillingsPage() {
     }
   });
 
-  const markPaidMutation = useMutation({
-    mutationFn: async (id: string) => {
-      return api.put(`/api/v1/finance/billings/${id}/status`, { status: "PAID" });
+  // Catat pembayaran (metode + referensi + tanggal) — bukan sekadar ubah status
+  const [payingBilling, setPayingBilling] = useState<Billing | null>(null);
+  const [paymentForm, setPaymentForm] = useState<PaymentForm>(EMPTY_PAYMENT);
+
+  const recordPaymentMutation = useMutation({
+    mutationFn: async ({ id, form }: { id: string; form: PaymentForm }) => {
+      return api.post(`/api/v1/finance/billings/${id}/payment`, form);
     },
     onSuccess: () => {
-      toast.success("Status tagihan berhasil diubah menjadi PAID.");
+      toast.success("Pembayaran tagihan berhasil dicatat.");
       queryClient.invalidateQueries({ queryKey: ['billings'] });
+      setPayingBilling(null);
     },
     onError: (error) => {
-      toast.error("Gagal mengubah status: " + getApiErrorMessage(error, error.message));
+      toast.error(getApiErrorMessage(error, "Gagal mencatat pembayaran."));
     }
   });
+
+  const downloadInvoice = async (billing: Billing) => {
+    toast.loading("Membuat invoice PDF...", { id: "invoice-dl" });
+    try {
+      const res = await api.get(`/api/v1/finance/billings/${billing.id}/invoice`, { responseType: "blob" });
+      const url = window.URL.createObjectURL(new Blob([res.data]));
+      const link = document.createElement("a");
+      link.href = url;
+      link.setAttribute("download", `Invoice_${(billing.hospital?.name || "RS").replace(/\s+/g, "_")}_${billing.period}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      link.parentNode?.removeChild(link);
+      toast.success("Invoice diunduh.", { id: "invoice-dl" });
+    } catch {
+      toast.error("Gagal mengunduh invoice.", { id: "invoice-dl" });
+    }
+  };
 
 
 
@@ -164,18 +202,89 @@ export default function HospitalBillingsPage() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <p className="text-sm text-muted-foreground mb-4">Catatan: {billing.notes || "-"}</p>
-                
-                {billing.status === "PENDING" && (
-                  <Button variant="outline" disabled={markPaidMutation.isPending} className="w-full text-green-600 hover:text-green-700 hover:bg-green-50" onClick={() => markPaidMutation.mutate(billing.id)}>
-                    <CheckCircle className="mr-2 h-4 w-4" /> Tandai Lunas
-                  </Button>
+                <p className="text-sm text-muted-foreground mb-2">Catatan: {billing.notes || "-"}</p>
+                {billing.status === "PAID" && billing.paid_at && (
+                  <p className="text-xs text-emerald-600 mb-2">
+                    Dibayar {new Date(billing.paid_at).toLocaleDateString("id-ID")}
+                    {billing.payment_method ? ` via ${billing.payment_method}` : ""}
+                    {billing.payment_reference ? ` (ref: ${billing.payment_reference})` : ""}
+                  </p>
                 )}
+
+                <div className="flex flex-col gap-2 mt-2">
+                  {billing.status === "PENDING" && (
+                    <Button
+                      variant="outline"
+                      className="w-full text-green-600 hover:text-green-700 hover:bg-green-50"
+                      onClick={() => {
+                        setPaymentForm(EMPTY_PAYMENT);
+                        setPayingBilling(billing);
+                      }}
+                    >
+                      <CheckCircle className="mr-2 h-4 w-4" /> Catat Pembayaran
+                    </Button>
+                  )}
+                  <Button variant="outline" className="w-full" onClick={() => downloadInvoice(billing)}>
+                    <FileText className="mr-2 h-4 w-4" /> Unduh Invoice PDF
+                  </Button>
+                </div>
               </CardContent>
             </Card>
           ))
         )}
       </div>
+
+      {/* Dialog catat pembayaran */}
+      <Dialog open={!!payingBilling} onOpenChange={(open) => !open && setPayingBilling(null)}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Catat Pembayaran Tagihan</DialogTitle>
+            <DialogDescription>
+              {payingBilling?.hospital?.name} — {payingBilling?.period} — Rp{" "}
+              {new Intl.NumberFormat("id-ID").format(payingBilling?.amount || 0)}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-2">
+            <div className="space-y-2">
+              <Label>Tanggal Pembayaran</Label>
+              <Input
+                type="date"
+                value={paymentForm.paid_at}
+                onChange={(e) => setPaymentForm({ ...paymentForm, paid_at: e.target.value })}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Metode Pembayaran</Label>
+              <select
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                value={paymentForm.payment_method}
+                onChange={(e) => setPaymentForm({ ...paymentForm, payment_method: e.target.value })}
+              >
+                <option value="Transfer Bank">Transfer Bank</option>
+                <option value="Virtual Account">Virtual Account</option>
+                <option value="Tunai">Tunai</option>
+                <option value="Lainnya">Lainnya</option>
+              </select>
+            </div>
+            <div className="space-y-2">
+              <Label>No. Referensi / Bukti (opsional)</Label>
+              <Input
+                placeholder="Contoh: TRX-20260704-001"
+                value={paymentForm.payment_reference}
+                onChange={(e) => setPaymentForm({ ...paymentForm, payment_reference: e.target.value })}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              disabled={recordPaymentMutation.isPending}
+              onClick={() => payingBilling && recordPaymentMutation.mutate({ id: payingBilling.id, form: paymentForm })}
+            >
+              {recordPaymentMutation.isPending ? "Menyimpan..." : "Simpan Pembayaran"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

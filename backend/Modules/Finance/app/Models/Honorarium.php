@@ -18,6 +18,9 @@ class Honorarium extends Model
         'amount',
         'status',
         'notes',
+        'paid_at',
+        'payment_method',
+        'payment_reference',
     ];
 
     public function preceptor()

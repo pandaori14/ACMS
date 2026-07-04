@@ -16,6 +16,10 @@ class Billing extends Model
         'amount',
         'status',
         'notes',
+        'invoice_number',
+        'paid_at',
+        'payment_method',
+        'payment_reference',
     ];
 
     public function hospital()

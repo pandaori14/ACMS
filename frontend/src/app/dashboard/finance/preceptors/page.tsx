@@ -21,8 +21,23 @@ interface Honorarium {
   status: string;
   amount: number;
   notes?: string | null;
+  paid_at?: string | null;
+  payment_method?: string | null;
+  payment_reference?: string | null;
   preceptor?: { name: string } | null;
 }
+
+interface PaymentForm {
+  paid_at: string;
+  payment_method: string;
+  payment_reference: string;
+}
+
+const EMPTY_PAYMENT: PaymentForm = {
+  paid_at: new Date().toISOString().slice(0, 10),
+  payment_method: "Transfer Bank",
+  payment_reference: "",
+};
 
 export default function PreceptorHonorariumsPage() {
   const user = useAuthStore((state) => state.user);
@@ -36,7 +51,8 @@ export default function PreceptorHonorariumsPage() {
     exam_rate: 100000
   });
 
-  const isAdmin = user?.roles.includes("Admin Prodi") || user?.roles.includes("Finance");
+  // Gate pakai permission (mencakup Keuangan, Admin Prodi, Super Admin)
+  const isAdmin = user?.permissions?.includes("manage-finance");
 
   const { data: honorariums = [] } = useQuery({
     queryKey: ['honorariums'],
@@ -60,16 +76,20 @@ export default function PreceptorHonorariumsPage() {
     }
   });
 
-  const markPaidMutation = useMutation({
-    mutationFn: async (id: string) => {
-      return api.put(`/api/v1/finance/honorariums/${id}/status`, { status: "PAID" });
+  const [payingHonor, setPayingHonor] = useState<Honorarium | null>(null);
+  const [paymentForm, setPaymentForm] = useState<PaymentForm>(EMPTY_PAYMENT);
+
+  const recordPaymentMutation = useMutation({
+    mutationFn: async ({ id, form }: { id: string; form: PaymentForm }) => {
+      return api.post(`/api/v1/finance/honorariums/${id}/payment`, form);
     },
     onSuccess: () => {
-      toast.success("Status honorarium berhasil diubah menjadi PAID.");
+      toast.success("Pembayaran honorarium dicatat. Notifikasi dikirim ke preceptor.");
       queryClient.invalidateQueries({ queryKey: ['honorariums'] });
+      setPayingHonor(null);
     },
     onError: (error) => {
-      toast.error("Gagal mengubah status: " + getApiErrorMessage(error, error.message));
+      toast.error(getApiErrorMessage(error, "Gagal mencatat pembayaran."));
     }
   });
 
@@ -155,11 +175,25 @@ export default function PreceptorHonorariumsPage() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <p className="text-sm text-muted-foreground mb-4">Catatan: {honor.notes || "-"}</p>
-                
+                <p className="text-sm text-muted-foreground mb-2">Catatan: {honor.notes || "-"}</p>
+                {honor.status === "PAID" && honor.paid_at && (
+                  <p className="text-xs text-emerald-600 mb-2">
+                    Dibayar {new Date(honor.paid_at).toLocaleDateString("id-ID")}
+                    {honor.payment_method ? ` via ${honor.payment_method}` : ""}
+                    {honor.payment_reference ? ` (ref: ${honor.payment_reference})` : ""}
+                  </p>
+                )}
+
                 {isAdmin && honor.status === "PENDING" && (
-                  <Button variant="outline" disabled={markPaidMutation.isPending} className="w-full text-green-600 hover:text-green-700 hover:bg-green-50" onClick={() => markPaidMutation.mutate(honor.id)}>
-                    <CheckCircle className="mr-2 h-4 w-4" /> Tandai Lunas (Cair)
+                  <Button
+                    variant="outline"
+                    className="w-full text-green-600 hover:text-green-700 hover:bg-green-50"
+                    onClick={() => {
+                      setPaymentForm(EMPTY_PAYMENT);
+                      setPayingHonor(honor);
+                    }}
+                  >
+                    <CheckCircle className="mr-2 h-4 w-4" /> Catat Pembayaran
                   </Button>
                 )}
               </CardContent>
@@ -167,6 +201,58 @@ export default function PreceptorHonorariumsPage() {
           ))
         )}
       </div>
+
+      {/* Dialog catat pembayaran honorarium */}
+      <Dialog open={!!payingHonor} onOpenChange={(open) => !open && setPayingHonor(null)}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Catat Pembayaran Honorarium</DialogTitle>
+            <DialogDescription>
+              {payingHonor?.preceptor?.name} — {payingHonor?.period} — Rp{" "}
+              {new Intl.NumberFormat("id-ID").format(payingHonor?.amount || 0)}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-2">
+            <div className="space-y-2">
+              <Label>Tanggal Pembayaran</Label>
+              <Input
+                type="date"
+                value={paymentForm.paid_at}
+                onChange={(e) => setPaymentForm({ ...paymentForm, paid_at: e.target.value })}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Metode Pembayaran</Label>
+              <select
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                value={paymentForm.payment_method}
+                onChange={(e) => setPaymentForm({ ...paymentForm, payment_method: e.target.value })}
+              >
+                <option value="Transfer Bank">Transfer Bank</option>
+                <option value="Virtual Account">Virtual Account</option>
+                <option value="Tunai">Tunai</option>
+                <option value="Lainnya">Lainnya</option>
+              </select>
+            </div>
+            <div className="space-y-2">
+              <Label>No. Referensi / Bukti (opsional)</Label>
+              <Input
+                placeholder="Contoh: TRX-20260704-001"
+                value={paymentForm.payment_reference}
+                onChange={(e) => setPaymentForm({ ...paymentForm, payment_reference: e.target.value })}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              disabled={recordPaymentMutation.isPending}
+              onClick={() => payingHonor && recordPaymentMutation.mutate({ id: payingHonor.id, form: paymentForm })}
+            >
+              {recordPaymentMutation.isPending ? "Menyimpan..." : "Simpan Pembayaran"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

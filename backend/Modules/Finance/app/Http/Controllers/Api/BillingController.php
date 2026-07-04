@@ -3,7 +3,9 @@
 namespace Modules\Finance\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Modules\Finance\Jobs\CalculateHospitalBilling;
 use Modules\Finance\Models\Billing;
 
@@ -58,6 +60,62 @@ class BillingController extends Controller
             'message' => 'Status tagihan berhasil diperbarui.',
             'data' => $billing,
         ]);
+    }
+
+    /**
+     * Catat pembayaran tagihan: tanggal, metode, referensi → status PAID.
+     */
+    public function recordPayment(Request $request, $id)
+    {
+        $validated = $request->validate([
+            'paid_at' => 'nullable|date',
+            'payment_method' => 'required|string|max:50',
+            'payment_reference' => 'nullable|string|max:100',
+        ]);
+
+        $billing = Billing::findOrFail($id);
+
+        if ($billing->status === 'PAID') {
+            return response()->json(['message' => 'Tagihan ini sudah tercatat lunas.'], 422);
+        }
+
+        $billing->update([
+            'status' => 'PAID',
+            'paid_at' => $validated['paid_at'] ?? now(),
+            'payment_method' => $validated['payment_method'],
+            'payment_reference' => $validated['payment_reference'] ?? null,
+        ]);
+
+        return response()->json([
+            'message' => 'Pembayaran tagihan berhasil dicatat.',
+            'data' => $billing->load('hospital'),
+        ]);
+    }
+
+    /**
+     * Unduh invoice PDF. Nomor invoice dibuat sekali (INV/ACMS/tahun/urut).
+     */
+    public function invoice($id)
+    {
+        $billing = Billing::with('hospital')->findOrFail($id);
+
+        if (! $billing->invoice_number) {
+            DB::transaction(function () use ($billing) {
+                $year = now()->format('Y');
+                $count = Billing::whereNotNull('invoice_number')
+                    ->where('invoice_number', 'like', "INV/ACMS/{$year}/%")
+                    ->lockForUpdate()
+                    ->count();
+                $billing->update([
+                    'invoice_number' => sprintf('INV/ACMS/%s/%04d', $year, $count + 1),
+                ]);
+            });
+            $billing->refresh();
+        }
+
+        $pdf = Pdf::loadView('finance::pdf.invoice', compact('billing'));
+
+        return $pdf->download('Invoice_'.str_replace('/', '-', $billing->invoice_number).'.pdf');
     }
 
     public function export(Request $request)
