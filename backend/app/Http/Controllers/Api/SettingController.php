@@ -29,7 +29,7 @@ class SettingController extends Controller
      */
     public function publicSettings()
     {
-        $settings = Setting::whereIn('group', ['general', 'landing', 'guide'])
+        $settings = Setting::whereIn('group', ['general', 'landing', 'guide', 'help'])
             ->orWhere('key', 'enable_google_sso')
             ->get();
 

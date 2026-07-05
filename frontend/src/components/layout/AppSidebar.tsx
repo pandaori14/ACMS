@@ -17,7 +17,7 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
-import { Building, BookOpen, Home, Settings, Settings2, LogOut, FileText, Building2, GraduationCap, CalendarSync, ClipboardList, CheckCircle, BarChart2, Users, ShieldAlert, Database, ScrollText, MapPin, MessageSquare, MessageSquareDot, Bell, Bot } from "lucide-react";
+import { Building, BookOpen, Home, Settings, Settings2, LogOut, FileText, Building2, GraduationCap, CalendarSync, ClipboardList, CheckCircle, BarChart2, Users, ShieldAlert, Database, ScrollText, MapPin, MessageSquare, MessageSquareDot, Bell, Bot, LifeBuoy } from "lucide-react";
 import api from "@/lib/api";
 import { useRouter } from "next/navigation";
 
@@ -78,6 +78,7 @@ export function AppSidebar() {
         { title: "Analytics & Reports", url: "/dashboard/analytics", icon: BarChart2, permissions: ["view-analytics"] },
         { title: "Dashboard Eksekutif", url: "/dashboard/analytics/executive", icon: BarChart2, permissions: ["view-executive-analytics"] },
         { title: "Pusat Laporan", url: "/dashboard/reports", icon: FileText, permissions: ["view-attendance-recap", "manage-grades", "view-analytics", "manage-incidents", "manage-finance", "view-logbook"] },
+        { title: "Pusat Bantuan", url: "/dashboard/help", icon: LifeBuoy, permissions: ["view-dashboard"] },
       ]
     },
     {

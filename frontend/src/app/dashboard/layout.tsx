@@ -4,6 +4,7 @@ import { BottomNav } from "@/components/layout/BottomNav";
 import { NotificationBell } from "@/components/NotificationBell";
 import { UserMenu } from "@/components/layout/UserMenu";
 import { TwoFactorBanner } from "@/components/layout/TwoFactorBanner";
+import { OnboardingTour } from "@/components/OnboardingTour";
 
 export default function DashboardLayout({
   children,
@@ -33,6 +34,7 @@ export default function DashboardLayout({
         </div>
 
         <TwoFactorBanner />
+        <OnboardingTour />
 
         <div className="p-4 md:p-8">
           {children}

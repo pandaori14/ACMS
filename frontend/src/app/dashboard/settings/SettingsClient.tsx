@@ -62,6 +62,7 @@ const SECTIONS: Section[] = [
       { id: "smtp", label: "SMTP (Email)", icon: Mail, description: "Server email, template, dan matriks notifikasi otomatis." },
       { id: "oauth", label: "OAuth (SSO)", icon: Key, description: "Kredensial Google Single Sign-On." },
       { id: "guide", label: "Panduan", icon: BookOpen, description: "Konten panduan pelaporan insiden per peran (Markdown)." },
+      { id: "help", label: "Pusat Bantuan", icon: BookOpen, description: "Konten Pusat Bantuan per peran (Markdown) — tampil di menu Bantuan semua pengguna." },
       { id: "ai_assistant", label: "AI Assistant", icon: Bot, description: "Konfigurasi LLM (NVIDIA NIM / Ollama): aktif, base URL, model, API key (terenkripsi), system prompt." },
     ],
   },
