@@ -16,6 +16,9 @@ class Exam extends Model
         'type',
         'stase_id',
         'date',
+        'start_time',
+        'duration_minutes',
+        'passing_score',
         'status',
         'description',
     ];
@@ -38,5 +41,18 @@ class Exam extends Model
     public function assessors()
     {
         return $this->hasMany(ExamAssessor::class, 'exam_id');
+    }
+
+    public function questions()
+    {
+        return $this->hasMany(ExamQuestion::class, 'exam_id')->orderBy('order');
+    }
+
+    /**
+     * Ambang lulus efektif: kolom ujian → passing_grade stase → 70.
+     */
+    public function effectivePassingScore(): float
+    {
+        return (float) ($this->passing_score ?? $this->stase?->passing_grade ?? 70);
     }
 }

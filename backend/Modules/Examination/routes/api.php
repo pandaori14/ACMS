@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use Modules\Examination\Http\Controllers\CbtController;
 use Modules\Examination\Http\Controllers\ExaminationController;
 
 Route::middleware('auth:sanctum')->prefix('v1/examinations')->group(function () {
@@ -11,6 +12,12 @@ Route::middleware('auth:sanctum')->prefix('v1/examinations')->group(function () 
 
     // Nilai: otorisasi penguji dicek inline di controller (assessor ujian ybs)
     Route::post('/{id}/scores', [ExaminationController::class, 'storeScore']);
+
+    // CBT attempt mahasiswa (guard peserta terdaftar di CbtService)
+    Route::get('/{id}/attempt', [CbtController::class, 'attemptState']);
+    Route::post('/{id}/attempt/start', [CbtController::class, 'startAttempt']);
+    Route::post('/{id}/attempt/answer', [CbtController::class, 'saveAnswer']);
+    Route::post('/{id}/attempt/submit', [CbtController::class, 'submitAttempt']);
 
     // Mutasi ujian = admin ujian (Aturan A)
     Route::middleware('permission:manage-examinations')->group(function () {
@@ -25,5 +32,11 @@ Route::middleware('auth:sanctum')->prefix('v1/examinations')->group(function () 
         Route::post('/{id}/stations', [ExaminationController::class, 'addStation']);
         Route::delete('/{id}/stations/{stationId}', [ExaminationController::class, 'removeStation']);
         Route::patch('/{id}/status', [ExaminationController::class, 'changeStatus']);
+
+        // Bank soal CBT
+        Route::get('/{id}/questions', [CbtController::class, 'questions']);
+        Route::post('/{id}/questions', [CbtController::class, 'storeQuestion']);
+        Route::put('/{id}/questions/{questionId}', [CbtController::class, 'updateQuestion']);
+        Route::delete('/{id}/questions/{questionId}', [CbtController::class, 'destroyQuestion']);
     });
 });

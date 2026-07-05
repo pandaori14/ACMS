@@ -15,6 +15,13 @@ class ExamParticipant extends Model
         'student_id',
         'final_score',
         'status',
+        'started_at',
+        'submitted_at',
+    ];
+
+    protected $casts = [
+        'started_at' => 'datetime',
+        'submitted_at' => 'datetime',
     ];
 
     public function exam()
@@ -30,5 +37,10 @@ class ExamParticipant extends Model
     public function scores()
     {
         return $this->hasMany(ExamScore::class, 'exam_participant_id');
+    }
+
+    public function answers()
+    {
+        return $this->hasMany(ExamAnswer::class, 'exam_participant_id');
     }
 }

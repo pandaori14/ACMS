@@ -41,12 +41,21 @@
         <tr>
             <td><strong>Tanggal Ujian</strong></td>
             <td>:</td>
-            <td>{{ \Carbon\Carbon::parse($exam->start_time)->format('d F Y') }}</td>
+            <td>{{ \Carbon\Carbon::parse($exam->date)->format('d F Y') }}</td>
         </tr>
         <tr>
             <td><strong>Waktu Pelaksanaan</strong></td>
             <td>:</td>
-            <td>{{ \Carbon\Carbon::parse($exam->start_time)->format('H:i') }} - {{ \Carbon\Carbon::parse($exam->end_time)->format('H:i') }}</td>
+            <td>
+                @if($exam->start_time)
+                    {{ substr($exam->start_time, 0, 5) }}
+                    @if($exam->duration_minutes)
+                        ({{ $exam->duration_minutes }} menit)
+                    @endif
+                @else
+                    -
+                @endif
+            </td>
         </tr>
         <tr>
             <td><strong>Status</strong></td>
@@ -68,18 +77,17 @@
         <tbody>
             @foreach($exam->participants as $index => $participant)
                 @php
-                    $totalScore = 0;
-                    $stationCount = $exam->stations->count();
-                    $participantScores = $participant->scores;
-                    if($participantScores->count() > 0) {
-                        $totalScore = $participantScores->sum('final_score') / $stationCount;
-                    }
+                    // Nilai akhir tersimpan di exam_participants.final_score
+                    // (CBT auto-grade / OSCE). Fallback: rata-rata skor stasiun.
+                    $totalScore = $participant->final_score
+                        ?? ($participant->scores->count() > 0 ? $participant->scores->avg('score') : 0);
                 @endphp
                 <tr>
                     <td class="text-center">{{ $index + 1 }}</td>
-                    <td>{{ $participant->student->user->identity_number ?? '-' }}</td>
-                    <td>{{ $participant->student->user->name ?? '-' }}</td>
-                    <td class="text-center">{{ number_format($totalScore, 2) }}</td>
+                    {{-- ExamParticipant->student adalah USER langsung --}}
+                    <td>{{ $participant->student->identity_number ?? '-' }}</td>
+                    <td>{{ $participant->student->name ?? '-' }}</td>
+                    <td class="text-center">{{ number_format((float) $totalScore, 2) }}</td>
                 </tr>
             @endforeach
         </tbody>

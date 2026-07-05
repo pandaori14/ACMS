@@ -19,7 +19,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { User, ClipboardCheck, PlayCircle, Download, Search, Trash2, PlusCircle } from "lucide-react";
+import { User, ClipboardCheck, PlayCircle, Download, Search, Trash2, PlusCircle, Pencil, ListChecks, X } from "lucide-react";
 import { toast } from "sonner";
 import { useAuthStore } from "@/store/useAuthStore";
 
@@ -27,6 +27,20 @@ interface AssessorOption {
   id: string;
   name: string;
   email?: string;
+}
+
+interface QuestionOption {
+  id?: string;
+  option_text: string;
+  is_correct: boolean;
+}
+
+interface ExamQuestionRow {
+  id: string;
+  question_text: string;
+  points: number;
+  order: number;
+  options: { id: string; option_text: string; is_correct: boolean; order: number }[];
 }
 
 const selectClass =
@@ -57,6 +71,20 @@ export default function ExaminationDetailPage() {
   const [isStationOpen, setIsStationOpen] = useState(false);
   const [stationForm, setStationForm] = useState({ name: "", description: "", assessment_template_id: "" });
   const [templates, setTemplates] = useState<AssessmentTemplate[]>([]);
+
+  // Bank soal CBT
+  const [questions, setQuestions] = useState<ExamQuestionRow[]>([]);
+  const [questionsLocked, setQuestionsLocked] = useState(false);
+  const [totalPoints, setTotalPoints] = useState(0);
+  const [isQuestionOpen, setIsQuestionOpen] = useState(false);
+  const [editingQuestionId, setEditingQuestionId] = useState<string | null>(null);
+  const [qText, setQText] = useState("");
+  const [qPoints, setQPoints] = useState(1);
+  const [qOptions, setQOptions] = useState<QuestionOption[]>([
+    { option_text: "", is_correct: true },
+    { option_text: "", is_correct: false },
+  ]);
+  const [savingQuestion, setSavingQuestion] = useState(false);
 
   const fetchExamDetail = useCallback(async () => {
     try {
@@ -105,6 +133,74 @@ export default function ExaminationDetailPage() {
       setAssessorOptions(Array.from(unique.values()));
     } catch {
       toast.error("Gagal memuat daftar penguji.");
+    }
+  };
+
+  // ─────── Bank soal CBT ───────
+  const isCbtType = exam?.type === "CBT" || exam?.type === "WRITTEN";
+
+  const fetchQuestions = useCallback(async () => {
+    if (!canManage) return;
+    try {
+      const res = await api.get(`/api/v1/examinations/${params.id}/questions`);
+      setQuestions(res.data.data || []);
+      setQuestionsLocked(!!res.data.meta?.has_answers);
+      setTotalPoints(res.data.meta?.total_points || 0);
+    } catch {
+      // bukan CBT / tak berhak — abaikan
+    }
+  }, [params.id, canManage]);
+
+  useEffect(() => {
+    if (isCbtType) fetchQuestions();
+  }, [isCbtType, fetchQuestions]);
+
+  const openQuestionForm = (q?: ExamQuestionRow) => {
+    if (q) {
+      setEditingQuestionId(q.id);
+      setQText(q.question_text);
+      setQPoints(q.points);
+      setQOptions(q.options.map((o) => ({ option_text: o.option_text, is_correct: o.is_correct })));
+    } else {
+      setEditingQuestionId(null);
+      setQText("");
+      setQPoints(1);
+      setQOptions([
+        { option_text: "", is_correct: true },
+        { option_text: "", is_correct: false },
+      ]);
+    }
+    setIsQuestionOpen(true);
+  };
+
+  const saveQuestion = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSavingQuestion(true);
+    try {
+      const payload = { question_text: qText, points: qPoints, options: qOptions };
+      if (editingQuestionId) {
+        await api.put(`/api/v1/examinations/${params.id}/questions/${editingQuestionId}`, payload);
+        toast.success("Soal diperbarui.");
+      } else {
+        await api.post(`/api/v1/examinations/${params.id}/questions`, payload);
+        toast.success("Soal ditambahkan.");
+      }
+      setIsQuestionOpen(false);
+      fetchQuestions();
+    } catch (err) {
+      toast.error(getApiErrorMessage(err, "Gagal menyimpan soal."));
+    } finally {
+      setSavingQuestion(false);
+    }
+  };
+
+  const deleteQuestion = async (questionId: string) => {
+    try {
+      await api.delete(`/api/v1/examinations/${params.id}/questions/${questionId}`);
+      toast.success("Soal dihapus.");
+      fetchQuestions();
+    } catch (err) {
+      toast.error(getApiErrorMessage(err, "Gagal menghapus soal."));
     }
   };
 
@@ -253,9 +349,90 @@ export default function ExaminationDetailPage() {
       <Tabs defaultValue="participants" className="w-full">
         <TabsList className="grid w-full grid-cols-3 mb-6">
           <TabsTrigger value="participants">Peserta ({exam.participants?.length || 0})</TabsTrigger>
-          <TabsTrigger value="stations">Stasiun OSCE ({exam.stations?.length || 0})</TabsTrigger>
+          {isCbtType ? (
+            <TabsTrigger value="questions">Bank Soal ({questions.length})</TabsTrigger>
+          ) : (
+            <TabsTrigger value="stations">Stasiun OSCE ({exam.stations?.length || 0})</TabsTrigger>
+          )}
           <TabsTrigger value="assessors">Penguji ({exam.assessors?.length || 0})</TabsTrigger>
         </TabsList>
+
+        {isCbtType && (
+          <TabsContent value="questions">
+            <Card>
+              <CardHeader>
+                <div className="flex justify-between items-center">
+                  <div>
+                    <CardTitle>Bank Soal ({exam.type})</CardTitle>
+                    <CardDescription>
+                      {questions.length} soal — total {totalPoints} poin.
+                      {questionsLocked && " Terkunci: sudah ada peserta yang menjawab."}
+                    </CardDescription>
+                  </div>
+                  {canManage && !questionsLocked && exam.status !== "COMPLETED" && (
+                    <Button variant="outline" size="sm" onClick={() => openQuestionForm()}>
+                      <PlusCircle className="h-4 w-4 mr-1" /> Tambah Soal
+                    </Button>
+                  )}
+                </div>
+              </CardHeader>
+              <CardContent>
+                {questions.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground border border-dashed rounded-md">
+                    <ListChecks className="mx-auto h-10 w-10 text-gray-300 mb-2" />
+                    Belum ada soal. Tambahkan soal sebelum ujian dibuka (ONGOING).
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {questions.map((q, qi) => (
+                      <div key={q.id} className="border rounded-lg p-4">
+                        <div className="flex items-start justify-between gap-3">
+                          <p className="font-medium text-sm whitespace-pre-wrap">
+                            <span className="text-muted-foreground mr-2">{qi + 1}.</span>
+                            {q.question_text}
+                          </p>
+                          <div className="flex items-center gap-1 shrink-0">
+                            <Badge variant="secondary">{q.points} poin</Badge>
+                            {canManage && !questionsLocked && (
+                              <>
+                                <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => openQuestionForm(q)} aria-label="Edit soal">
+                                  <Pencil className="h-3.5 w-3.5" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-7 w-7 p-0 text-red-600 hover:text-red-700"
+                                  onClick={() => deleteQuestion(q.id)}
+                                  aria-label="Hapus soal"
+                                >
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                </Button>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                        <ul className="mt-2 space-y-1">
+                          {q.options.map((o, oi) => (
+                            <li
+                              key={o.id}
+                              className={`text-sm flex items-center gap-2 ${o.is_correct ? "text-emerald-700 dark:text-emerald-400 font-medium" : "text-muted-foreground"}`}
+                            >
+                              <span className="w-5 h-5 rounded-full border flex items-center justify-center text-[10px] font-bold shrink-0">
+                                {String.fromCharCode(65 + oi)}
+                              </span>
+                              {o.option_text}
+                              {o.is_correct && <ClipboardCheck className="w-3.5 h-3.5" />}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+        )}
 
         <TabsContent value="participants">
           <Card>
@@ -504,6 +681,99 @@ export default function ExaminationDetailPage() {
               </div>
             )}
             <Button type="submit" className="w-full">Tugaskan</Button>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog tambah/edit soal CBT */}
+      <Dialog open={isQuestionOpen} onOpenChange={setIsQuestionOpen}>
+        <DialogContent className="sm:max-w-xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{editingQuestionId ? "Edit Soal" : "Tambah Soal"}</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={saveQuestion} className="space-y-4 pt-2">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Teks Soal</label>
+              <Textarea
+                required
+                rows={3}
+                value={qText}
+                onChange={(e) => setQText(e.target.value)}
+                placeholder="Tulis pertanyaan..."
+              />
+            </div>
+            <div className="space-y-2 w-32">
+              <label className="text-sm font-medium">Poin</label>
+              <Input
+                type="number"
+                min={1}
+                max={100}
+                required
+                value={qPoints}
+                onChange={(e) => setQPoints(Number(e.target.value))}
+              />
+            </div>
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <label className="text-sm font-medium">Pilihan Jawaban (tandai yang benar)</label>
+                {qOptions.length < 6 && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setQOptions([...qOptions, { option_text: "", is_correct: false }])}
+                  >
+                    <PlusCircle className="h-4 w-4 mr-1" /> Opsi
+                  </Button>
+                )}
+              </div>
+              {qOptions.map((opt, idx) => (
+                <div key={idx} className="flex items-center gap-2">
+                  <input
+                    type="radio"
+                    name="correct-option"
+                    className="shrink-0 accent-emerald-600 w-4 h-4"
+                    checked={opt.is_correct}
+                    onChange={() =>
+                      setQOptions(qOptions.map((o, i) => ({ ...o, is_correct: i === idx })))
+                    }
+                    aria-label={`Tandai opsi ${idx + 1} benar`}
+                  />
+                  <Input
+                    required
+                    placeholder={`Opsi ${String.fromCharCode(65 + idx)}`}
+                    value={opt.option_text}
+                    onChange={(e) => {
+                      const next = [...qOptions];
+                      next[idx] = { ...next[idx], option_text: e.target.value };
+                      setQOptions(next);
+                    }}
+                  />
+                  {qOptions.length > 2 && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="text-red-600 shrink-0"
+                      onClick={() => {
+                        const next = qOptions.filter((_, i) => i !== idx);
+                        if (!next.some((o) => o.is_correct)) next[0].is_correct = true;
+                        setQOptions(next);
+                      }}
+                      aria-label="Hapus opsi"
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  )}
+                </div>
+              ))}
+              <p className="text-xs text-muted-foreground">
+                Klik radio di kiri untuk menandai jawaban benar (tepat satu).
+              </p>
+            </div>
+            <Button type="submit" className="w-full" disabled={savingQuestion}>
+              {savingQuestion ? "Menyimpan..." : "Simpan Soal"}
+            </Button>
           </form>
         </DialogContent>
       </Dialog>

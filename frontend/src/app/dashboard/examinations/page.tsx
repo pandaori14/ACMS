@@ -27,6 +27,9 @@ interface Exam {
   status: string;
   name: string;
   date: string;
+  start_time?: string | null;
+  duration_minutes?: number | null;
+  passing_score?: number | null;
   description?: string | null;
   stase_id?: string;
   stase?: { id?: string; name?: string } | null;
@@ -37,6 +40,9 @@ interface ExamForm {
   type: string;
   stase_id: string;
   date: string;
+  start_time: string;
+  duration_minutes: string;
+  passing_score: string;
   description: string;
 }
 
@@ -45,6 +51,9 @@ const EMPTY_FORM: ExamForm = {
   type: "OSCE",
   stase_id: "",
   date: "",
+  start_time: "",
+  duration_minutes: "",
+  passing_score: "",
   description: "",
 };
 
@@ -107,10 +116,25 @@ export default function ExaminationsPage() {
       type: exam.type,
       stase_id: exam.stase_id || exam.stase?.id || "",
       date: exam.date?.slice(0, 10) || "",
+      start_time: exam.start_time ? exam.start_time.slice(0, 5) : "",
+      duration_minutes: exam.duration_minutes != null ? String(exam.duration_minutes) : "",
+      passing_score: exam.passing_score != null ? String(exam.passing_score) : "",
       description: exam.description || "",
     });
     setIsFormOpen(true);
   };
+
+  // Normalisasi form → payload API (string kosong = null)
+  const toPayload = (f: ExamForm) => ({
+    name: f.name,
+    type: f.type,
+    stase_id: f.stase_id,
+    date: f.date,
+    start_time: f.start_time || null,
+    duration_minutes: f.duration_minutes ? Number(f.duration_minutes) : null,
+    passing_score: f.passing_score ? Number(f.passing_score) : null,
+    description: f.description,
+  });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -118,15 +142,23 @@ export default function ExaminationsPage() {
     try {
       if (editingId) {
         // Tipe & stase hanya boleh dikirim saat DRAFT (aturan backend)
-        const payload: Partial<ExamForm> =
+        const full = toPayload(form);
+        const payload =
           editingStatus === "DRAFT"
-            ? { ...form }
-            : { name: form.name, date: form.date, description: form.description };
+            ? full
+            : {
+                name: full.name,
+                date: full.date,
+                description: full.description,
+                start_time: full.start_time,
+                duration_minutes: full.duration_minutes,
+                passing_score: full.passing_score,
+              };
         await api.put(`/api/v1/examinations/${editingId}`, payload);
         toast.success("Ujian diperbarui.");
       } else {
         await api.post("/api/v1/examinations", {
-          ...form,
+          ...toPayload(form),
           stations:
             form.type === "OSCE"
               ? stations.filter((s) => s.trim() !== "").map((name) => ({ name }))
@@ -264,6 +296,8 @@ export default function ExaminationsPage() {
                     month: "long",
                     day: "numeric",
                   })}
+                  {exam.start_time ? ` · ${exam.start_time.slice(0, 5)}` : ""}
+                  {exam.duration_minutes ? ` · ${exam.duration_minutes} mnt` : ""}
                 </div>
 
                 <div className="flex flex-col gap-2">
@@ -287,9 +321,17 @@ export default function ExaminationsPage() {
                       Selesaikan Ujian
                     </Button>
                   )}
-                  {isStudent && !canManage && (
-                    <Button variant="outline" className="w-full" disabled={exam.status === "DRAFT"}>
-                      Lihat Detail
+                  {isStudent && !canManage && (exam.type === "CBT" || exam.type === "WRITTEN") && exam.status === "ONGOING" && (
+                    <Button
+                      className="w-full bg-blue-900 hover:bg-blue-800 text-white"
+                      onClick={() => window.location.href = `/dashboard/examinations/${exam.id}/take`}
+                    >
+                      Kerjakan Ujian
+                    </Button>
+                  )}
+                  {isStudent && !canManage && !((exam.type === "CBT" || exam.type === "WRITTEN") && exam.status === "ONGOING") && (
+                    <Button variant="outline" className="w-full" disabled>
+                      {exam.status === "DRAFT" ? "Belum Dibuka" : exam.status === "COMPLETED" ? "Ujian Selesai" : "Menunggu Dibuka"}
                     </Button>
                   )}
                 </div>
@@ -355,6 +397,43 @@ export default function ExaminationsPage() {
                 ))}
               </select>
             </div>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Jam Mulai</label>
+                <Input
+                  type="time"
+                  value={form.start_time}
+                  onChange={(e) => setForm({ ...form, start_time: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Durasi (menit)</label>
+                <Input
+                  type="number"
+                  min={5}
+                  max={600}
+                  placeholder="mis. 90"
+                  value={form.duration_minutes}
+                  onChange={(e) => setForm({ ...form, duration_minutes: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Nilai Lulus</label>
+                <Input
+                  type="number"
+                  min={0}
+                  max={100}
+                  placeholder="default stase"
+                  value={form.passing_score}
+                  onChange={(e) => setForm({ ...form, passing_score: e.target.value })}
+                />
+              </div>
+            </div>
+            {(form.type === "CBT" || form.type === "WRITTEN") && (
+              <p className="text-xs text-muted-foreground -mt-2">
+                Durasi dipakai sebagai timer ujian online. Bank soal dikelola dari halaman detail ujian.
+              </p>
+            )}
             <div className="space-y-2">
               <label className="text-sm font-medium">Deskripsi (opsional)</label>
               <Textarea

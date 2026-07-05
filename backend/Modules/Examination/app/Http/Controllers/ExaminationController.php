@@ -48,6 +48,9 @@ class ExaminationController extends Controller
             'type' => 'required|in:OSCE,CBT,WRITTEN',
             'stase_id' => 'required|uuid|exists:stases,id',
             'date' => 'required|date',
+            'start_time' => 'nullable|date_format:H:i',
+            'duration_minutes' => 'nullable|integer|min:5|max:600',
+            'passing_score' => 'nullable|numeric|min:0|max:100',
             'description' => 'nullable|string',
             'stations' => 'nullable|array',
             'stations.*.name' => 'required|string',
@@ -61,6 +64,9 @@ class ExaminationController extends Controller
                 'type' => $request->type,
                 'stase_id' => $request->stase_id,
                 'date' => $request->date,
+                'start_time' => $request->start_time,
+                'duration_minutes' => $request->duration_minutes,
+                'passing_score' => $request->passing_score,
                 'status' => 'DRAFT',
                 'description' => $request->description,
             ]);
@@ -120,6 +126,9 @@ class ExaminationController extends Controller
             'type' => 'sometimes|required|in:OSCE,CBT,WRITTEN',
             'stase_id' => 'sometimes|required|uuid|exists:stases,id',
             'date' => 'sometimes|required|date',
+            'start_time' => 'nullable|date_format:H:i',
+            'duration_minutes' => 'nullable|integer|min:5|max:600',
+            'passing_score' => 'nullable|numeric|min:0|max:100',
             'description' => 'nullable|string',
         ]);
 
@@ -127,7 +136,10 @@ class ExaminationController extends Controller
             return response()->json(['message' => 'Tipe ujian dan stase hanya dapat diubah saat status masih DRAFT.'], 422);
         }
 
-        $exam->update($request->only(['name', 'type', 'stase_id', 'date', 'description']));
+        $exam->update($request->only([
+            'name', 'type', 'stase_id', 'date', 'description',
+            'start_time', 'duration_minutes', 'passing_score',
+        ]));
 
         return response()->json(['message' => 'Ujian berhasil diperbarui.', 'data' => $exam->load('stase')]);
     }
@@ -373,7 +385,7 @@ class ExaminationController extends Controller
     public function exportPdf($id)
     {
         $exam = Exam::with([
-            'participants.student.user',
+            'participants.student', // ExamParticipant->student = User langsung
             'stations',
             'assessors.assessor',
             'participants.scores',
