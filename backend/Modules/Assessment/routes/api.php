@@ -3,6 +3,7 @@
 use Illuminate\Support\Facades\Route;
 use Modules\Assessment\Http\Controllers\AssessmentController;
 use Modules\Assessment\Http\Controllers\GradeController;
+use Modules\Assessment\Http\Controllers\YudisiumController;
 
 Route::prefix('v1/assessments')->middleware(['auth:sanctum'])->group(function () {
     Route::get('/templates', [AssessmentController::class, 'getTemplates']);
@@ -20,6 +21,13 @@ Route::prefix('v1/assessments')->middleware(['auth:sanctum'])->group(function ()
     Route::put('/{id}', [AssessmentController::class, 'update']);
     Route::delete('/{id}', [AssessmentController::class, 'destroy']);
     Route::patch('/{id}/acknowledge', [AssessmentController::class, 'acknowledge']);
+});
+
+// Dokumen resmi Yudisium (rate-limit generate di controller)
+Route::prefix('v1/yudisium')->middleware(['auth:sanctum'])->group(function () {
+    Route::post('/generate', [YudisiumController::class, 'generate']);
+    Route::get('/my-documents', [YudisiumController::class, 'myDocuments']);
+    Route::get('/documents/{id}/download', [YudisiumController::class, 'download']);
 });
 
 Route::prefix('v1/grades')->middleware(['auth:sanctum'])->group(function () {

@@ -13,6 +13,7 @@ use App\Http\Controllers\Api\SystemReferenceController;
 use App\Http\Controllers\Api\UserController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
+use Modules\Assessment\Http\Controllers\YudisiumController;
 use Modules\Auth\Http\Controllers\AuthController;
 
 Route::post('/auth/login', [AuthController::class, 'login']);
@@ -21,6 +22,9 @@ Route::get('/sso/callback', [SsoController::class, 'callback']);
 
 Route::get('/public-settings', [SettingController::class, 'publicSettings']);
 Route::get('/public-stats', [SettingController::class, 'publicStats']);
+
+// Verifikasi keaslian dokumen resmi (dipindai dari QR — TANPA login)
+Route::get('/public/verify-document/{code}', [YudisiumController::class, 'verify']);
 
 Route::get('/user', function (Request $request) {
     return $request->user();
