@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\AiAssistantController;
 use App\Http\Controllers\Api\AnalyticsController;
 use App\Http\Controllers\Api\AuditLogController;
 use App\Http\Controllers\Api\DashboardController;
+use App\Http\Controllers\Api\ExecutiveAnalyticsController;
 use App\Http\Controllers\Api\ExportController;
 use App\Http\Controllers\API\NotificationController;
 use App\Http\Controllers\Api\RolePermissionController;
@@ -59,6 +60,10 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Analytics
     Route::get('/analytics', [AnalyticsController::class, 'index']);
+
+    // Dashboard Eksekutif (4 pilar KPI) — Aturan A
+    Route::get('/v1/analytics/executive', [ExecutiveAnalyticsController::class, 'index'])
+        ->middleware('permission:view-executive-analytics');
 
     // Exports — path kanonik v1 (dipakai frontend) + alias lama
     Route::get('/v1/export/transcript/{studentId}', [ExportController::class, 'exportTranscriptPdf'])

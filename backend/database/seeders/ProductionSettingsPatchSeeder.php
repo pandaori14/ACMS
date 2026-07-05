@@ -4,6 +4,7 @@ namespace Database\Seeders;
 
 use App\Models\Setting;
 use Illuminate\Database\Seeder;
+use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
 
 /**
@@ -76,6 +77,17 @@ class ProductionSettingsPatchSeeder extends Seeder
                 if (! $adminRs->hasPermissionTo($perm)) {
                     $adminRs->givePermissionTo($perm);
                 }
+            }
+        }
+
+        // Executive Analytics: permission baru + grant ke Kaprodi & Admin Prodi
+        Permission::firstOrCreate([
+            'name' => 'view-executive-analytics', 'guard_name' => 'web',
+        ]);
+        foreach (['Kaprodi', 'Admin Prodi'] as $roleName) {
+            $role = Role::where('name', $roleName)->first();
+            if ($role && ! $role->hasPermissionTo('view-executive-analytics')) {
+                $role->givePermissionTo('view-executive-analytics');
             }
         }
 
