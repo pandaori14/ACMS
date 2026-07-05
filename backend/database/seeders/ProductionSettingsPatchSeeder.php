@@ -68,6 +68,16 @@ class ProductionSettingsPatchSeeder extends Seeder
             $kaprodi->givePermissionTo('manage-grades');
         }
 
+        // Admin RS: lihat rotasi & rekap presensi (ter-scope RS-nya di controller)
+        $adminRs = Role::where('name', 'Admin RS')->first();
+        if ($adminRs) {
+            foreach (['view-rotations', 'view-attendance-recap'] as $perm) {
+                if (! $adminRs->hasPermissionTo($perm)) {
+                    $adminRs->givePermissionTo($perm);
+                }
+            }
+        }
+
         $this->command?->info('Patch settings produksi selesai (idempotent).');
     }
 }

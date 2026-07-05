@@ -24,6 +24,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Pencil, Trash2, Plus, Users } from "lucide-react";
 import { toast } from "sonner";
 import { getApiErrorMessage } from "@/lib/api-helpers";
+import { useAuthStore } from "@/store/useAuthStore";
 
 interface Hospital {
   id: string;
@@ -58,6 +59,12 @@ interface PeriodOption {
 }
 
 export default function HospitalManagement() {
+  // Admin RS murni: tidak bisa tambah/hapus RS, hanya edit RS-nya (backend enforcer)
+  const authUser = useAuthStore((state) => state.user);
+  const isScopedAdminRS =
+    (authUser?.roles?.includes("Admin RS") ?? false) &&
+    !authUser?.roles?.some((r) => ["Super Admin", "Admin Prodi"].includes(r));
+
   const [hospitals, setHospitals] = useState<Hospital[]>([]);
   const [loading, setLoading] = useState(true);
   const [isOpen, setIsOpen] = useState(false);
@@ -214,9 +221,11 @@ export default function HospitalManagement() {
           setIsOpen(open);
           if (!open) resetForm();
         }}>
-          <DialogTrigger render={<Button className="gap-2" />}>
-            <Plus className="h-4 w-4" /> Tambah RS
-          </DialogTrigger>
+          {!isScopedAdminRS && (
+            <DialogTrigger render={<Button className="gap-2" />}>
+              <Plus className="h-4 w-4" /> Tambah RS
+            </DialogTrigger>
+          )}
           <DialogContent>
             <DialogHeader>
               <DialogTitle>{editingId ? "Edit Rumah Sakit" : "Tambah Rumah Sakit"}</DialogTitle>
@@ -376,9 +385,11 @@ export default function HospitalManagement() {
                         <Button variant="outline" size="sm" onClick={() => handleEdit(hospital)}>
                           <Pencil className="h-4 w-4" />
                         </Button>
-                        <Button variant="destructive" size="sm" onClick={() => handleDelete(hospital.id)}>
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                        {!isScopedAdminRS && (
+                          <Button variant="destructive" size="sm" onClick={() => handleDelete(hospital.id)}>
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        )}
                       </div>
                     </td>
                   </tr>

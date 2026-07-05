@@ -65,6 +65,8 @@ export function AppSidebar() {
   const canManageIncidents = userRole === "Super Admin" || (user?.permissions?.includes("manage-incidents") ?? false);
   // Dodiknis punya menu khusus: dasbor preceptor & honorarium miliknya sendiri
   const isDodiknis = user?.roles?.includes("Dodiknis") ?? false;
+  // Admin RS: roster mahasiswa yang dirotasi di RS-nya
+  const isAdminRS = user?.roles?.includes("Admin RS") ?? false;
 
   const navGroups = [
     {
@@ -81,6 +83,7 @@ export function AppSidebar() {
       items: [
         { title: "Manajemen Stase", url: "/dashboard/academic/stase", icon: GraduationCap, permissions: ["manage-stase"] },
         { title: "Rumah Sakit", url: "/dashboard/rotation/hospitals", icon: Building2, permissions: ["manage-hospitals"] },
+        ...(isAdminRS ? [{ title: "Mahasiswa di RS Saya", url: "/dashboard/hospital/students", icon: Users, permissions: ["view-rotations"] }] : []),
         { title: "Jadwal Rotasi", url: "/dashboard/rotations", icon: CalendarSync, permissions: ["view-rotations", "manage-rotations"] },
         { title: "Logbook Klinis", url: "/dashboard/clinical/logbooks", icon: ClipboardList, permissions: ["view-logbook"] },
         { title: "Verifikasi Logbook", url: "/dashboard/clinical/verification", icon: CheckCircle, permissions: ["verify-logbook"] },

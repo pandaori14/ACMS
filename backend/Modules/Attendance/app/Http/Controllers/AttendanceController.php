@@ -218,9 +218,13 @@ class AttendanceController extends Controller
             'rotationAssignment.stase:id,name',
         ])->latest('date');
 
-        // Scope: admins/oversight see everything; CIs see only students they precept.
+        // Scope: admins/oversight see everything; Admin RS sees their hospital(s);
+        // CIs (Dodiknis) see only students they precept.
         $isAdmin = $user->hasAnyRole(['Super Admin', 'Admin Prodi', 'Kaprodi']);
-        if (! $isAdmin) {
+        if (! $isAdmin && $user->hasRole('Admin RS')) {
+            $hospitalIds = $user->linkedHospitalIds();
+            $query->whereHas('rotationAssignment', fn ($q) => $q->whereIn('hospital_id', $hospitalIds));
+        } elseif (! $isAdmin) {
             $query->whereHas('rotationAssignment', fn ($q) => $q->where('preceptor_id', $user->id));
         }
 
@@ -323,10 +327,16 @@ class AttendanceController extends Controller
         $record = AttendanceRecord::with('rotationAssignment')->findOrFail($id);
         $user = $request->user();
 
-        // Dodiknis hanya boleh mengoreksi mahasiswa yang dibimbingnya
+        // Dodiknis hanya mahasiswa bimbingannya; Admin RS hanya di RS-nya
         $isAdmin = $user->hasAnyRole(['Super Admin', 'Admin Prodi', 'Kaprodi']);
-        if (! $isAdmin && $record->rotationAssignment?->preceptor_id !== $user->id) {
-            return response()->json(['message' => 'Anda hanya dapat mengoreksi kehadiran mahasiswa bimbingan Anda.'], 403);
+        if (! $isAdmin) {
+            $isMyStudent = $record->rotationAssignment?->preceptor_id === $user->id;
+            $atMyHospital = $user->hasRole('Admin RS')
+                && $user->linkedHospitalIds()->contains($record->rotationAssignment?->hospital_id);
+
+            if (! $isMyStudent && ! $atMyHospital) {
+                return response()->json(['message' => 'Anda hanya dapat mengoreksi kehadiran mahasiswa bimbingan Anda / di RS Anda.'], 403);
+            }
         }
 
         $record->update([

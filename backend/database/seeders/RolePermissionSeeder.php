@@ -98,10 +98,12 @@ class RolePermissionSeeder extends Seeder
             'view-dashboard', 'manage-finance', 'report-incidents', 'submit-consultation',
         ]);
 
-        // Admin RS
+        // Admin RS — view-rotations & view-attendance-recap agar bisa melihat
+        // mahasiswa yang dirotasi & presensinya (di-scope ke RS-nya di controller)
         $adminRs = Role::firstOrCreate(['name' => 'Admin RS', 'guard_name' => 'web']);
         $adminRs->syncPermissions([
             'view-dashboard', 'manage-hospitals', 'report-incidents', 'submit-consultation',
+            'view-rotations', 'view-attendance-recap',
         ]);
 
         // Dosen

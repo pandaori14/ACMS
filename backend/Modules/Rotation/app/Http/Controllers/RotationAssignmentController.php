@@ -30,6 +30,9 @@ class RotationAssignmentController extends Controller
             // Dodiknis only sees assignments for hospitals they are linked to
             $hospitalIds = DB::table('hospital_user')->where('user_id', $user->id)->pluck('hospital_id');
             $query->whereIn('hospital_id', $hospitalIds);
+        } elseif ($user && $user->hasRole('Admin RS') && ! $user->hasAnyRole(['Super Admin', 'Admin Prodi', 'Kaprodi'])) {
+            // Admin RS hanya melihat penempatan di rumah sakitnya sendiri
+            $query->whereIn('hospital_id', $user->linkedHospitalIds());
         } elseif ($user && $user->hasRole('Mahasiswa')) {
             // Student only sees their own assignments
             $student = DB::table('students')->where('user_id', $user->id)->first();

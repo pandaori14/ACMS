@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Collection;
 use Laravel\Sanctum\HasApiTokens;
 use Modules\Academic\Models\Program;
 use Modules\Academic\Models\Student;
@@ -50,6 +51,22 @@ class User extends Authenticatable
     public function hospitals()
     {
         return $this->belongsToMany(Hospital::class);
+    }
+
+    /**
+     * ID rumah sakit yang tertaut ke user (Dodiknis/Admin RS):
+     * pivot hospital_user; fallback kolom legacy users.hospital_id.
+     * Dipakai untuk scoping baris lintas modul.
+     */
+    public function linkedHospitalIds(): Collection
+    {
+        $ids = $this->hospitals()->pluck('hospitals.id');
+
+        if ($ids->isEmpty() && $this->hospital_id) {
+            $ids = collect([$this->hospital_id]);
+        }
+
+        return $ids;
     }
 
     /**
