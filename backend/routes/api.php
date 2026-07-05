@@ -74,6 +74,11 @@ Route::middleware('auth:sanctum')->group(function () {
         ->middleware('permission:manage-finance');
 
     // Core
+    Route::middleware('permission:manage-users')->group(function () {
+        Route::get('users/import-template', [UserController::class, 'importTemplate']);
+        Route::post('users/import', [UserController::class, 'import']);
+        Route::get('users-roles', [UserController::class, 'roles']);
+    });
     Route::apiResource('users', UserController::class)->middleware('permission:manage-users');
 
     // Referensi aktif per kategori (read-only, semua user login) — untuk dropdown form

@@ -7,10 +7,14 @@ use App\Http\Requests\UserRequest;
 use App\Http\Resources\UserResource;
 use App\Models\User;
 use App\Services\NotificationService;
+use App\Services\UserImportService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Support\Facades\Hash;
+use Maatwebsite\Excel\Facades\Excel;
+use Modules\Academic\Imports\StudentRowsImport;
+use Spatie\Permission\Models\Role;
 
 class UserController extends Controller
 {
@@ -121,6 +125,59 @@ class UserController extends Controller
 
         return response()->json([
             'message' => 'Pengguna berhasil dihapus.',
+        ]);
+    }
+
+    /**
+     * Import massal pengguna dari Excel/CSV (heading: nama, email,
+     * password?, nim?) — semua baris diberi satu role terpilih.
+     */
+    public function import(Request $request, UserImportService $service): JsonResponse
+    {
+        $validated = $request->validate([
+            'file' => 'required|file|mimes:xlsx,xls,csv,txt|max:5120',
+            'role' => 'required|string|exists:roles,name',
+        ]);
+
+        // Jangan izinkan pembuatan Super Admin massal
+        if ($validated['role'] === 'Super Admin') {
+            return response()->json(['message' => 'Role Super Admin tidak dapat dibuat lewat import.'], 422);
+        }
+
+        // Reuse pembaca baris generik milik import mahasiswa
+        $import = new StudentRowsImport;
+        Excel::import($import, $validated['file']);
+
+        $result = $service->importRows($import->rows->all(), $validated['role']);
+
+        return response()->json([
+            'message' => "Import selesai: {$result['created']} pengguna dibuat, ".count($result['skipped']).' baris dilewati.',
+            'data' => $result,
+        ]);
+    }
+
+    /**
+     * Template import (CSV, dibuka langsung oleh Excel).
+     */
+    public function importTemplate()
+    {
+        $csv = "nama,email,password,nim\n".
+            "dr. Contoh Dodiknis,dodiknis@rs.example,,197001012000\n".
+            "Staf Keuangan,keuangan@ums.example,RahasiaKuat123,\n";
+
+        return response($csv, 200, [
+            'Content-Type' => 'text/csv',
+            'Content-Disposition' => 'attachment; filename="template-import-pengguna.csv"',
+        ]);
+    }
+
+    /**
+     * Daftar role yang tersedia (untuk dropdown import/form).
+     */
+    public function roles(): JsonResponse
+    {
+        return response()->json([
+            'data' => Role::orderBy('name')->pluck('name'),
         ]);
     }
 }

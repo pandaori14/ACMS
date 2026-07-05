@@ -7,7 +7,8 @@ import { ApiError } from "@/lib/api-helpers";
 import { toast } from "sonner";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Users, Plus, Edit, Trash2, Loader2, Search } from "lucide-react";
+import { Users, Plus, Edit, Trash2, Loader2, Search, Upload, GraduationCap } from "lucide-react";
+import { useRef } from "react";
 
 interface UserForm {
   name: string;
@@ -197,6 +198,74 @@ export function UsersClient() {
     });
   };
 
+  // ─────── Toggle status cepat (aktif ↔ nonaktif) ───────
+  const [toggling, setToggling] = useState<User | null>(null);
+
+  const handleToggleStatus = async () => {
+    if (!toggling) return;
+    const nextStatus = toggling.status === "active" ? "inactive" : "active";
+    try {
+      await api.put(`/api/users/${toggling.id}`, {
+        name: toggling.name,
+        email: toggling.email,
+        identity_number: toggling.identity_number,
+        status: nextStatus,
+        roles: toggling.roles,
+      });
+      toast.success(nextStatus === "inactive" ? "Pengguna dinonaktifkan — tidak bisa login." : "Pengguna diaktifkan kembali.");
+      refetchUsers();
+    } catch {
+      toast.error("Gagal mengubah status pengguna.");
+    } finally {
+      setToggling(null);
+    }
+  };
+
+  // ─────── Import massal ───────
+  const [isImportOpen, setIsImportOpen] = useState(false);
+  const [importRole, setImportRole] = useState("");
+  const [importFile, setImportFile] = useState<File | null>(null);
+  const [isImporting, setIsImporting] = useState(false);
+  const [importResult, setImportResult] = useState<{ created: number; skipped: { row: number; reason: string }[] } | null>(null);
+  const importFileRef = useRef<HTMLInputElement>(null);
+
+  const handleImport = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!importFile) return;
+    setIsImporting(true);
+    setImportResult(null);
+    try {
+      const fd = new FormData();
+      fd.append("file", importFile);
+      fd.append("role", importRole);
+      const res = await api.post("/api/users/import", fd, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+      setImportResult(res.data.data);
+      toast.success(res.data.message);
+      refetchUsers();
+    } catch (err) {
+      const e2 = err as ApiError;
+      toast.error(e2.response?.data?.message || "Import gagal diproses.");
+    } finally {
+      setIsImporting(false);
+    }
+  };
+
+  const downloadImportTemplate = async () => {
+    try {
+      const res = await api.get("/api/users/import-template", { responseType: "blob" });
+      const url = URL.createObjectURL(res.data);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "template-import-pengguna.csv";
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      toast.error("Gagal mengunduh template.");
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -209,13 +278,22 @@ export function UsersClient() {
           />
         </div>
         
-        <button
-          onClick={handleOpenNew}
-          className="inline-flex items-center gap-2 bg-primary text-white px-4 py-2 rounded-md hover:bg-primary/90 text-sm font-medium transition-colors"
-        >
-          <Plus className="w-4 h-4" />
-          Tambah Pengguna
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={() => { setImportRole(""); setImportFile(null); setImportResult(null); setIsImportOpen(true); }}
+            className="inline-flex items-center gap-2 border px-4 py-2 rounded-md hover:bg-slate-50 dark:hover:bg-slate-800 text-sm font-medium transition-colors"
+          >
+            <Upload className="w-4 h-4" />
+            Import Excel
+          </button>
+          <button
+            onClick={handleOpenNew}
+            className="inline-flex items-center gap-2 bg-primary text-white px-4 py-2 rounded-md hover:bg-primary/90 text-sm font-medium transition-colors"
+          >
+            <Plus className="w-4 h-4" />
+            Tambah Pengguna
+          </button>
+        </div>
       </div>
 
       <Card className="clean-card">
@@ -267,9 +345,13 @@ export function UsersClient() {
                         </div>
                       </td>
                       <td className="py-3 px-4">
-                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${user.status === 'active' ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-700'}`}>
+                        <button
+                          onClick={() => setToggling(user)}
+                          title="Klik untuk ubah status"
+                          className={`px-2 py-1 rounded-full text-xs font-medium transition-colors ${user.status === 'active' ? 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}
+                        >
                           {user.status === 'active' ? 'Aktif' : 'Nonaktif'}
-                        </span>
+                        </button>
                       </td>
                       <td className="py-3 px-4 text-right">
                         <div className="flex justify-end gap-2">
@@ -317,6 +399,18 @@ export function UsersClient() {
                 <label className="text-sm font-medium">No. Identitas (NIM/NIP)</label>
                 <input type="text" className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary/50 text-sm" value={form.identity_number} onChange={e => setForm({...form, identity_number: e.target.value})} />
               </div>
+            </div>
+
+            <div className="space-y-2 w-48">
+              <label className="text-sm font-medium">Status Akun</label>
+              <select
+                className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary/50 text-sm"
+                value={form.status}
+                onChange={e => setForm({...form, status: e.target.value})}
+              >
+                <option value="active">Aktif</option>
+                <option value="inactive">Nonaktif (tidak bisa login)</option>
+              </select>
             </div>
 
             <div className="space-y-2">
@@ -381,6 +475,107 @@ export function UsersClient() {
                 Simpan Pengguna
               </button>
             </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Konfirmasi toggle status */}
+      <Dialog open={!!toggling} onOpenChange={(o) => !o && setToggling(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              {toggling?.status === "active" ? "Nonaktifkan Pengguna?" : "Aktifkan Pengguna?"}
+            </DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-slate-600 dark:text-slate-300">
+            <span className="font-semibold">{toggling?.name}</span>{" "}
+            {toggling?.status === "active"
+              ? "tidak akan bisa login sampai diaktifkan kembali. Data & riwayatnya tetap utuh."
+              : "akan bisa login kembali dengan akun yang sama."}
+          </p>
+          <div className="flex justify-end gap-2 pt-2">
+            <button onClick={() => setToggling(null)} className="px-4 py-2 text-sm font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-md">
+              Batal
+            </button>
+            <button
+              onClick={handleToggleStatus}
+              className={`px-4 py-2 text-sm font-medium text-white rounded-md ${toggling?.status === "active" ? "bg-red-600 hover:bg-red-700" : "bg-emerald-600 hover:bg-emerald-700"}`}
+            >
+              {toggling?.status === "active" ? "Nonaktifkan" : "Aktifkan"}
+            </button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog import massal */}
+      <Dialog open={isImportOpen} onOpenChange={setIsImportOpen}>
+        <DialogContent className="max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Import Pengguna dari Excel/CSV</DialogTitle>
+            <DialogDescription>
+              Semua baris akan diberi role yang dipilih. Kolom wajib: <b>nama, email</b>
+              {" "}(kolom <b>password</b> & <b>nim</b> opsional — password kosong dibuat otomatis
+              dan dikirim via email).{" "}
+              <button type="button" onClick={downloadImportTemplate} className="underline font-medium text-blue-700">
+                Unduh template
+              </button>
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleImport} className="space-y-4 pt-2">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Role untuk semua baris</label>
+              <select
+                required
+                className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary/50 text-sm"
+                value={importRole}
+                onChange={(e) => setImportRole(e.target.value)}
+              >
+                <option value="">-- Pilih Role --</option>
+                {roles.filter((r) => r.name !== "Super Admin" && r.name !== "Mahasiswa").map((r) => (
+                  <option key={r.id} value={r.name}>{r.name}</option>
+                ))}
+              </select>
+              <p className="text-xs text-slate-500 flex items-center gap-1">
+                <GraduationCap className="w-3.5 h-3.5" />
+                Untuk mahasiswa, gunakan menu Mahasiswa → Import Excel (membuat profil akademik sekaligus).
+              </p>
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">File (.xlsx / .csv, maks 5MB)</label>
+              <input
+                ref={importFileRef}
+                type="file"
+                required
+                accept=".xlsx,.xls,.csv"
+                className="w-full text-sm border rounded-md px-3 py-2"
+                onChange={(e) => setImportFile(e.target.files?.[0] || null)}
+              />
+            </div>
+
+            {importResult && (
+              <div className="rounded-md border p-3 text-sm space-y-2">
+                <p className="font-medium text-emerald-700">✓ {importResult.created} pengguna dibuat</p>
+                {importResult.skipped.length > 0 && (
+                  <div>
+                    <p className="font-medium text-amber-700 mb-1">{importResult.skipped.length} baris dilewati:</p>
+                    <ul className="list-disc pl-5 text-slate-600 max-h-36 overflow-y-auto">
+                      {importResult.skipped.map((s, i) => (
+                        <li key={i}>Baris {s.row}: {s.reason}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            )}
+
+            <button
+              type="submit"
+              disabled={isImporting || !importFile || !importRole}
+              className="w-full px-4 py-2 text-sm font-medium text-white bg-primary hover:bg-primary/90 rounded-md disabled:opacity-50 inline-flex items-center justify-center gap-2"
+            >
+              {isImporting && <Loader2 className="w-4 h-4 animate-spin" />}
+              {isImporting ? "Memproses import..." : "Mulai Import"}
+            </button>
           </form>
         </DialogContent>
       </Dialog>
