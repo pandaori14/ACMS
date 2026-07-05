@@ -3,6 +3,7 @@ import { AppSidebar } from "@/components/layout/AppSidebar";
 import { BottomNav } from "@/components/layout/BottomNav";
 import { NotificationBell } from "@/components/NotificationBell";
 import { UserMenu } from "@/components/layout/UserMenu";
+import { TwoFactorBanner } from "@/components/layout/TwoFactorBanner";
 
 export default function DashboardLayout({
   children,
@@ -30,6 +31,8 @@ export default function DashboardLayout({
              <UserMenu />
           </div>
         </div>
+
+        <TwoFactorBanner />
 
         <div className="p-4 md:p-8">
           {children}

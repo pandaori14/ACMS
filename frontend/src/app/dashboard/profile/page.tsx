@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { UserCircle, LockKeyhole } from "lucide-react";
+import { UserCircle, LockKeyhole, ShieldCheck, Copy } from "lucide-react";
 
 export default function ProfilePage() {
   const user = useAuthStore((state) => state.user);
@@ -24,6 +24,67 @@ export default function ProfilePage() {
     password_confirmation: "",
   });
   const [savingPassword, setSavingPassword] = useState(false);
+
+  // ─────── 2FA TOTP ───────
+  const [twoFaEnabled, setTwoFaEnabled] = useState<boolean>(!!user?.two_factor_enabled);
+  const [setupData, setSetupData] = useState<{ qr_svg: string; secret: string; recovery_codes: string[] } | null>(null);
+  const [confirmCode, setConfirmCode] = useState("");
+  const [disablePassword, setDisablePassword] = useState("");
+  const [twoFaBusy, setTwoFaBusy] = useState(false);
+  const [showRecovery, setShowRecovery] = useState(false);
+
+  const startTwoFa = async () => {
+    setTwoFaBusy(true);
+    try {
+      const res = await api.post("/api/auth/two-factor/enable");
+      setSetupData(res.data.data);
+      setConfirmCode("");
+    } catch (err) {
+      toast.error(getApiErrorMessage(err, "Gagal memulai aktivasi 2FA."));
+    } finally {
+      setTwoFaBusy(false);
+    }
+  };
+
+  const confirmTwoFa = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setTwoFaBusy(true);
+    try {
+      const res = await api.post("/api/auth/two-factor/confirm", { code: confirmCode });
+      toast.success(res.data.message);
+      setTwoFaEnabled(true);
+      setShowRecovery(true); // recovery codes masih di setupData — tampilkan sekali
+      if (user) setUser({ ...user, two_factor_enabled: true, must_enable_2fa: false });
+    } catch (err) {
+      toast.error(getApiErrorMessage(err, "Kode salah — coba lagi."));
+    } finally {
+      setTwoFaBusy(false);
+    }
+  };
+
+  const disableTwoFa = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setTwoFaBusy(true);
+    try {
+      await api.delete("/api/auth/two-factor", { data: { current_password: disablePassword } });
+      toast.success("2FA dinonaktifkan.");
+      setTwoFaEnabled(false);
+      setSetupData(null);
+      setShowRecovery(false);
+      setDisablePassword("");
+      if (user) setUser({ ...user, two_factor_enabled: false });
+    } catch (err) {
+      toast.error(getApiErrorMessage(err, "Gagal menonaktifkan 2FA."));
+    } finally {
+      setTwoFaBusy(false);
+    }
+  };
+
+  const copyRecovery = () => {
+    if (!setupData) return;
+    navigator.clipboard.writeText(setupData.recovery_codes.join("\n"));
+    toast.success("Recovery codes disalin.");
+  };
 
   useEffect(() => {
     setName(user?.name || "");
@@ -149,6 +210,113 @@ export default function ProfilePage() {
               {savingPassword ? "Menyimpan..." : "Ganti Password"}
             </Button>
           </form>
+        </CardContent>
+      </Card>
+
+      {/* Kartu 2FA */}
+      <Card className="clean-card">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-lg flex items-center gap-2">
+            <ShieldCheck className="w-5 h-5" /> Autentikasi Dua Faktor (2FA)
+          </CardTitle>
+          <CardDescription>
+            Lapisan keamanan ekstra: login membutuhkan kode 6 digit dari aplikasi authenticator
+            (Google Authenticator, Microsoft Authenticator, Aegis, dll).
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {twoFaEnabled ? (
+            <>
+              <div className="flex items-center gap-2">
+                <Badge className="bg-emerald-100 text-emerald-700">AKTIF</Badge>
+                <span className="text-sm text-muted-foreground">
+                  Akun Anda dilindungi 2FA.
+                </span>
+              </div>
+
+              {showRecovery && setupData && (
+                <div className="rounded-md border border-amber-300 bg-amber-50 dark:bg-amber-950/30 p-4 space-y-2">
+                  <p className="text-sm font-semibold text-amber-800 dark:text-amber-200">
+                    SIMPAN recovery codes ini — hanya ditampilkan SEKALI:
+                  </p>
+                  <div className="grid grid-cols-2 gap-1 font-mono text-sm">
+                    {setupData.recovery_codes.map((c) => (
+                      <span key={c}>{c}</span>
+                    ))}
+                  </div>
+                  <Button type="button" variant="outline" size="sm" onClick={copyRecovery}>
+                    <Copy className="w-4 h-4 mr-1" /> Salin Semua
+                  </Button>
+                  <p className="text-xs text-amber-700 dark:text-amber-300">
+                    Gunakan salah satu kode ini (sekali pakai) bila kehilangan akses ke authenticator.
+                  </p>
+                </div>
+              )}
+
+              <form onSubmit={disableTwoFa} className="flex flex-col sm:flex-row gap-2 sm:items-end">
+                <div className="space-y-1 flex-1 max-w-xs">
+                  <label className="text-sm font-medium">Nonaktifkan — masukkan password</label>
+                  <Input
+                    type="password"
+                    required
+                    value={disablePassword}
+                    onChange={(e) => setDisablePassword(e.target.value)}
+                  />
+                </div>
+                <Button type="submit" variant="outline" className="text-red-600" disabled={twoFaBusy}>
+                  Nonaktifkan 2FA
+                </Button>
+              </form>
+            </>
+          ) : setupData ? (
+            <div className="space-y-4">
+              <div className="flex flex-col sm:flex-row gap-4 items-start">
+                <img
+                  src={setupData.qr_svg}
+                  alt="QR 2FA"
+                  className="w-44 h-44 border rounded-md bg-white p-1 shrink-0"
+                />
+                <div className="space-y-2 text-sm">
+                  <p className="font-medium">1. Pindai QR dengan aplikasi authenticator</p>
+                  <p className="text-muted-foreground">
+                    Atau masukkan manual: <code className="font-mono text-xs bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded">{setupData.secret}</code>
+                  </p>
+                  <form onSubmit={confirmTwoFa} className="space-y-2 pt-2">
+                    <p className="font-medium">2. Masukkan kode 6 digit untuk konfirmasi</p>
+                    <div className="flex gap-2">
+                      <Input
+                        required
+                        inputMode="numeric"
+                        pattern="[0-9]{6}"
+                        maxLength={6}
+                        placeholder="123456"
+                        className="w-32 font-mono text-center tracking-widest"
+                        value={confirmCode}
+                        onChange={(e) => setConfirmCode(e.target.value.replace(/\D/g, ""))}
+                      />
+                      <Button type="submit" disabled={twoFaBusy || confirmCode.length !== 6}>
+                        {twoFaBusy ? "Memeriksa..." : "Aktifkan"}
+                      </Button>
+                    </div>
+                  </form>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex items-center gap-2">
+                <Badge variant="secondary">Nonaktif</Badge>
+                {user?.must_enable_2fa && (
+                  <span className="text-sm text-amber-600 font-medium">
+                    Kebijakan sistem meminta peran Anda mengaktifkan 2FA.
+                  </span>
+                )}
+              </div>
+              <Button onClick={startTwoFa} disabled={twoFaBusy} className="bg-blue-900 hover:bg-blue-800 text-white">
+                {twoFaBusy ? "Menyiapkan..." : "Aktifkan 2FA"}
+              </Button>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

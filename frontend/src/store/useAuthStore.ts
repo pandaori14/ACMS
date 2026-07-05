@@ -7,6 +7,8 @@ export interface User {
   email: string;
   roles: string[];
   permissions?: string[];
+  two_factor_enabled?: boolean;
+  must_enable_2fa?: boolean;
 }
 
 interface AuthState {

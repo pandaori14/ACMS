@@ -3,16 +3,19 @@
 namespace Modules\Auth\Http\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Models\Setting;
 use App\Models\User;
 use App\Services\NotificationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
+use PragmaRX\Google2FA\Google2FA;
 
 class AuthController extends Controller
 {
@@ -45,20 +48,27 @@ class AuthController extends Controller
 
         if (Auth::attempt($credentials)) {
             RateLimiter::clear($throttleKey);
-            $request->session()->regenerate();
 
             /** @var User $user */
             $user = Auth::user();
 
+            // Gerbang 2FA: kredensial valid TAPI login ditunda sampai kode benar
+            if ($user->two_factor_confirmed_at) {
+                Auth::logout();
+                $request->session()->put('two_factor_user_id', $user->id);
+                $request->session()->regenerate();
+
+                return response()->json([
+                    'two_factor_required' => true,
+                    'message' => 'Masukkan kode dari aplikasi authenticator Anda.',
+                ]);
+            }
+
+            $request->session()->regenerate();
+
             return response()->json([
                 'message' => 'Login successful',
-                'user' => [
-                    'id' => $user->id,
-                    'name' => $user->name,
-                    'email' => $user->email,
-                    'roles' => $user->getRoleNames(),
-                    'permissions' => $user->getAllPermissions()->pluck('name'),
-                ],
+                'user' => $this->userPayload($user),
             ]);
         }
 
@@ -93,13 +103,91 @@ class AuthController extends Controller
         $user = $request->user();
 
         return response()->json([
-            'user' => [
-                'id' => $user->id,
-                'name' => $user->name,
-                'email' => $user->email,
-                'roles' => $user->getRoleNames(),
-                'permissions' => $user->getAllPermissions()->pluck('name'),
-            ],
+            'user' => $this->userPayload($user),
+        ]);
+    }
+
+    /**
+     * Payload user seragam untuk login/me (+status 2FA & kewajiban lunak).
+     */
+    private function userPayload(User $user): array
+    {
+        // enforce_2fa MODE LUNAK: peran admin diminta (bukan diblokir)
+        // mengaktifkan 2FA — frontend menampilkan banner peringatan.
+        $enforce = Setting::getValue('enforce_2fa');
+        $enforceOn = in_array($enforce, ['true', '1', 1, true], true);
+        $isPrivileged = $user->hasAnyRole(['Super Admin', 'Admin Prodi', 'Kaprodi', 'Keuangan']);
+
+        return [
+            'id' => $user->id,
+            'name' => $user->name,
+            'email' => $user->email,
+            'roles' => $user->getRoleNames(),
+            'permissions' => $user->getAllPermissions()->pluck('name'),
+            'two_factor_enabled' => (bool) $user->two_factor_confirmed_at,
+            'must_enable_2fa' => $enforceOn && $isPrivileged && ! $user->two_factor_confirmed_at,
+        ];
+    }
+
+    /**
+     * Langkah 2 login: verifikasi kode TOTP atau recovery code (sekali pakai).
+     */
+    public function twoFactorChallenge(Request $request): JsonResponse
+    {
+        $request->validate([
+            'code' => 'nullable|digits:6',
+            'recovery_code' => 'nullable|string|max:20',
+        ]);
+
+        // Rate-limit: 5 percobaan/menit per session+IP
+        $throttleKey = 'twofactor|'.$request->session()->getId().'|'.$request->ip();
+        if (RateLimiter::tooManyAttempts($throttleKey, 5)) {
+            return response()->json(['message' => 'Terlalu banyak percobaan. Tunggu sebentar.'], 429);
+        }
+        RateLimiter::hit($throttleKey, 60);
+
+        $userId = $request->session()->get('two_factor_user_id');
+        $user = $userId ? User::find($userId) : null;
+
+        if (! $user || ! $user->two_factor_confirmed_at) {
+            return response()->json(['message' => 'Sesi login tidak valid. Silakan login ulang.'], 422);
+        }
+
+        $verified = false;
+
+        if ($request->filled('code')) {
+            $secret = Crypt::decryptString($user->two_factor_secret);
+            $verified = app(Google2FA::class)
+                ->verifyKey($secret, $request->input('code'), 1);
+        } elseif ($request->filled('recovery_code')) {
+            $codes = json_decode(
+                Crypt::decryptString($user->two_factor_recovery_codes ?? ''),
+                true
+            ) ?: [];
+            $input = strtoupper(trim($request->input('recovery_code')));
+
+            if (in_array($input, $codes, true)) {
+                $verified = true;
+                // Sekali pakai — buang dari daftar
+                $remaining = array_values(array_diff($codes, [$input]));
+                $user->forceFill([
+                    'two_factor_recovery_codes' => Crypt::encryptString(json_encode($remaining)),
+                ])->save();
+            }
+        }
+
+        if (! $verified) {
+            return response()->json(['message' => 'Kode tidak valid.'], 422);
+        }
+
+        RateLimiter::clear($throttleKey);
+        $request->session()->forget('two_factor_user_id');
+        Auth::login($user);
+        $request->session()->regenerate();
+
+        return response()->json([
+            'message' => 'Login successful',
+            'user' => $this->userPayload($user),
         ]);
     }
 

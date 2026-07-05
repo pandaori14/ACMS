@@ -81,8 +81,8 @@ const ALL_CATEGORIES: Category[] = SECTIONS.flatMap((s) => s.items);
 
 // Settings that exist in the DB but whose feature is not yet enforced by the backend.
 // Shown with a "Belum aktif" badge so the Super Admin is not misled.
+// enforce_2fa kini AKTIF (mode lunak): peran admin tanpa 2FA diberi banner wajib-aktifkan.
 const INACTIVE_KEYS = [
-  "enforce_2fa",
   "enable_email_broadcasts",
   "allow_student_appeals",
   "evaluation_required_for_transcript",

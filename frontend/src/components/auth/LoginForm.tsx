@@ -25,6 +25,32 @@ export function LoginForm() {
   const router = useRouter();
   const setUser = useAuthStore((state) => state.setUser);
 
+  // Langkah 2FA (setelah kredensial benar)
+  const [twoFactorStep, setTwoFactorStep] = useState(false);
+  const [twoFactorCode, setTwoFactorCode] = useState("");
+  const [useRecovery, setUseRecovery] = useState(false);
+
+  const submitTwoFactor = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+    setError(null);
+    try {
+      const payload = useRecovery
+        ? { recovery_code: twoFactorCode }
+        : { code: twoFactorCode };
+      const res = await api.post("/api/auth/two-factor-challenge", payload);
+      if (res.data.user) {
+        setUser(res.data.user);
+        router.push("/dashboard");
+      }
+    } catch (err) {
+      const e2 = err as ApiError;
+      setError(e2.response?.data?.message || "Kode tidak valid.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   // Fetch if SSO is enabled. WAJIB useEffect (bukan useState initializer) agar
   // tidak ter-eksekusi saat prerender/SSR build — kalau tidak, axios menembak
   // backend saat `next build` dan gagal (ECONNREFUSED) ketika backend belum hidup.
@@ -53,7 +79,14 @@ export function LoginForm() {
       
       // Then perform the login request
       const response = await api.post("/api/auth/login", data);
-      
+
+      // Akun ber-2FA: lanjut ke langkah kode authenticator
+      if (response.data.two_factor_required) {
+        setTwoFactorStep(true);
+        setTwoFactorCode("");
+        return;
+      }
+
       // Store user info in Zustand
       if (response.data.user) {
         setUser(response.data.user);
@@ -68,6 +101,58 @@ export function LoginForm() {
       setIsLoading(false);
     }
   };
+
+  // ─────── Tampilan langkah 2FA ───────
+  if (twoFactorStep) {
+    return (
+      <form onSubmit={submitTwoFactor} className="space-y-5">
+        {error && (
+          <div className="login-error-alert" role="alert">
+            <span>{error}</span>
+          </div>
+        )}
+        <div className="text-center space-y-1">
+          <p className="font-semibold text-gray-900 dark:text-white">Verifikasi Dua Langkah</p>
+          <p className="text-sm text-gray-500">
+            {useRecovery
+              ? "Masukkan salah satu recovery code Anda (sekali pakai)."
+              : "Masukkan kode 6 digit dari aplikasi authenticator Anda."}
+          </p>
+        </div>
+        <input
+          autoFocus
+          required
+          inputMode={useRecovery ? "text" : "numeric"}
+          maxLength={useRecovery ? 20 : 6}
+          placeholder={useRecovery ? "XXXXX-XXXXX" : "123456"}
+          className="login-input w-full text-center font-mono text-lg tracking-widest"
+          value={twoFactorCode}
+          onChange={(e) =>
+            setTwoFactorCode(useRecovery ? e.target.value.toUpperCase() : e.target.value.replace(/\D/g, ""))
+          }
+        />
+        <button type="submit" disabled={isLoading} className="login-submit-btn">
+          {isLoading ? "Memverifikasi..." : "Verifikasi & Masuk"}
+        </button>
+        <div className="flex justify-between text-xs">
+          <button
+            type="button"
+            className="text-blue-700 hover:underline"
+            onClick={() => { setUseRecovery(!useRecovery); setTwoFactorCode(""); setError(null); }}
+          >
+            {useRecovery ? "Pakai kode authenticator" : "Pakai recovery code"}
+          </button>
+          <button
+            type="button"
+            className="text-gray-500 hover:underline"
+            onClick={() => { setTwoFactorStep(false); setTwoFactorCode(""); setError(null); }}
+          >
+            Kembali ke login
+          </button>
+        </div>
+      </form>
+    );
+  }
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
