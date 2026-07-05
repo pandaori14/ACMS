@@ -1,0 +1,33 @@
+{
+  "name": "ACMS — Academic Clinical Management System FK UMS",
+  "short_name": "ACMS",
+  "description": "Sistem manajemen akademik & klinis Fakultas Kedokteran UMS — logbook, presensi, rotasi, ujian, dan nilai koass.",
+  "id": "/acms/dashboard",
+  "start_url": "/acms/dashboard",
+  "scope": "/acms/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "theme_color": "#1E3A8A",
+  "background_color": "#ffffff",
+  "lang": "id",
+  "icons": [
+    {
+      "src": "/acms/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/acms/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/acms/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}
