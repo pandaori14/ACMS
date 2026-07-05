@@ -30,11 +30,13 @@ class IncidentReport extends Model
         'severity',
         'resolution_notes',
         'attachment_path',
+        'anonymized_at',
     ];
 
     protected $casts = [
         'incident_date' => 'date',
         'is_anonymous' => 'boolean',
+        'anonymized_at' => 'datetime',
     ];
 
     public function reporter(): BelongsTo

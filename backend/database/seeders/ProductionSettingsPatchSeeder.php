@@ -20,6 +20,7 @@ class ProductionSettingsPatchSeeder extends Seeder
     {
         // 1. Template email baru (firstOrCreate = tidak menimpa yang sudah ada)
         $templates = [
+            ['key' => 'incident_retention_months', 'group' => 'incident', 'value' => '24', 'type' => 'string', 'description' => 'Masa retensi identitas pelapor insiden (bulan). Laporan selesai yang lebih tua dianonimkan permanen oleh sistem tiap bulan.'],
             ['key' => 'email_template_honorarium_paid', 'group' => 'smtp', 'value' => 'Halo {name},\n\nHonorarium Anda untuk periode {period} sebesar {amount} telah dibayarkan. Terima kasih atas dedikasi Anda.', 'type' => 'text', 'description' => 'Template Email Honorarium Dibayar'],
             ['key' => 'email_template_rotation_assigned', 'group' => 'smtp', 'value' => 'Halo {name},\n\nAnda ditempatkan pada stase {stase} di {hospital} untuk periode {period}. Silakan cek jadwal rotasi Anda di sistem ACMS.', 'type' => 'text', 'description' => 'Template Email Penempatan Rotasi'],
             ['key' => 'email_template_grade_published', 'group' => 'smtp', 'value' => 'Halo {name},\n\nNilai stase {stase} Anda telah terbit: {grade} ({score}). Silakan cek transkrip Anda di sistem ACMS.', 'type' => 'text', 'description' => 'Template Email Nilai Terbit'],

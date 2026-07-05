@@ -16,6 +16,7 @@ function SsoCallbackContent() {
 
   useEffect(() => {
     const code = searchParams.get("code");
+    const state = searchParams.get("state") || "";
     const provider = searchParams.get("provider") || "google";
 
     if (!code) {
@@ -25,7 +26,11 @@ function SsoCallbackContent() {
 
     const processSso = async () => {
       try {
-        const res = await api.get(`/api/v1/sso/callback?provider=${provider}&code=${code}`);
+        // Path benar /api/sso/callback (dulu /api/v1/... yang tidak terdaftar → 404)
+        // + teruskan state untuk verifikasi anti-CSRF di backend.
+        const res = await api.get(
+          `/api/sso/callback?provider=${provider}&code=${encodeURIComponent(code)}&state=${encodeURIComponent(state)}`
+        );
         
         if (res.data.user) {
           setUser(res.data.user);

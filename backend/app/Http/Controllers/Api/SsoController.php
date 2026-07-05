@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Setting;
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 use Laravel\Socialite\Facades\Socialite;
@@ -42,9 +43,19 @@ class SsoController extends Controller
 
         $provider = $request->query('provider', 'google');
 
-        // Return the URL so the frontend can redirect the user
-        // Using stateless() because API is stateless and doesn't use session cookies for state
-        $url = Socialite::driver($provider)->stateless()->redirect()->getTargetUrl();
+        // Anti-CSRF OAuth: state acak diikat ke SESSION pemanggil (XHR SPA
+        // same-origin membawa cookie session di redirect maupun callback).
+        if (! $request->hasSession()) {
+            return response()->json(['message' => 'Sesi tidak tersedia. Muat ulang halaman login lalu coba lagi.'], 400);
+        }
+        $state = Str::random(40);
+        $request->session()->put('sso_state', $state);
+
+        $url = Socialite::driver($provider)
+            ->stateless()
+            ->with(['state' => $state])
+            ->redirect()
+            ->getTargetUrl();
 
         return response()->json(['url' => $url]);
     }
@@ -58,9 +69,19 @@ class SsoController extends Controller
 
         $provider = $request->query('provider', 'google');
 
+        // Verifikasi state (CSRF OAuth): harus sama dengan yang disimpan
+        // di session saat redirect. pull() = sekali pakai.
+        $expectedState = $request->hasSession() ? $request->session()->pull('sso_state') : null;
+        $returnedState = (string) $request->query('state', '');
+        if (! $expectedState || ! hash_equals($expectedState, $returnedState)) {
+            return response()->json([
+                'message' => 'Sesi SSO tidak valid atau kedaluwarsa. Silakan ulangi login.',
+            ], 403);
+        }
+
         try {
-            // Because frontend handles the redirect back, we get the code and hit this API endpoint
-            // We use stateless() to ignore session state verification
+            // Frontend meneruskan code+state ke endpoint ini; pertukaran code
+            // tetap stateless (state sudah kita verifikasi manual di atas).
             $socialUser = Socialite::driver($provider)->stateless()->user();
 
             $this->validateDomain($socialUser->getEmail());
@@ -90,18 +111,19 @@ class SsoController extends Controller
                 }
             }
 
-            // Generate token
-            $token = $user->createToken('auth_token')->plainTextToken;
+            // Login berbasis SESSION — konsisten dgn login password (SPA
+            // axios hanya membawa cookie; Bearer token lama tak pernah dipakai).
+            Auth::login($user);
+            $request->session()->regenerate();
 
             return response()->json([
                 'message' => 'Login successful',
-                'access_token' => $token,
-                'token_type' => 'Bearer',
                 'user' => [
                     'id' => $user->id,
                     'name' => $user->name,
                     'email' => $user->email,
-                    'roles' => $user->roles->pluck('name'),
+                    'roles' => $user->getRoleNames(),
+                    'permissions' => $user->getAllPermissions()->pluck('name'),
                 ],
             ]);
 

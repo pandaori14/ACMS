@@ -215,6 +215,9 @@ class SettingSeeder extends Seeder
             ['key' => 'email_template_grade_published', 'group' => 'smtp', 'value' => 'Halo {name},\n\nNilai stase {stase} Anda telah terbit: {grade} ({score}). Silakan cek transkrip Anda di sistem ACMS.', 'type' => 'text', 'description' => 'Template Email Nilai Terbit'],
             ['key' => 'email_template_logbook_verified', 'group' => 'smtp', 'value' => 'Halo {name},\n\nLogbook Anda pada stase {stase} tanggal {date} telah diverifikasi ({status}).', 'type' => 'text', 'description' => 'Template Email Logbook Diverifikasi'],
 
+            // Retensi PII insiden (dipakai command incidents:prune-pii, terjadwal bulanan)
+            ['key' => 'incident_retention_months', 'group' => 'incident', 'value' => '24', 'type' => 'string', 'description' => 'Masa retensi identitas pelapor insiden (bulan). Laporan selesai yang lebih tua dianonimkan permanen oleh sistem tiap bulan.'],
+
             // OAuth (SSO)
             ['key' => 'enable_google_sso', 'group' => 'oauth', 'value' => 'true', 'type' => 'boolean', 'description' => 'Aktifkan Login dengan Google (SSO)'],
             ['key' => 'sso_allowed_domains', 'group' => 'oauth', 'value' => '', 'type' => 'string', 'description' => 'Domain yang Diizinkan (opsional, pisahkan dengan koma)'],
