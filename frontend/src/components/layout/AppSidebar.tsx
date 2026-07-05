@@ -85,6 +85,7 @@ export function AppSidebar() {
         { title: "Logbook Klinis", url: "/dashboard/clinical/logbooks", icon: ClipboardList, permissions: ["view-logbook"] },
         { title: "Verifikasi Logbook", url: "/dashboard/clinical/verification", icon: CheckCircle, permissions: ["verify-logbook"] },
         { title: "Presensi", url: "/dashboard/clinical/attendance", icon: MapPin, permissions: ["view-logbook"] },
+        { title: "Progres Kompetensi", url: "/dashboard/clinical/competency-progress", icon: CheckCircle, permissions: ["view-logbook", "verify-logbook", "manage-academic-master"] },
         { title: "Rekap Presensi", url: "/dashboard/clinical/attendance/recap", icon: MapPin, permissions: ["view-attendance-recap"] },
       ]
     },

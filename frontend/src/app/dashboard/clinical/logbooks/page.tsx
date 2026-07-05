@@ -132,6 +132,7 @@ export default function LogbooksPage() {
   // Form reference data
   const [assignments, setAssignments] = useState<RotationAssignment[]>([]);
   const [procedures, setProcedures] = useState<Procedure[]>([]);
+  const [competencies, setCompetencies] = useState<{ id: string; name: string; level?: string | null; stase_id?: string }[]>([]);
   const [diagnoses, setDiagnoses] = useState<Diagnosis[]>([]);
   const [diagnosisSearch, setDiagnosisSearch] = useState("");
   const [searchingDiagnosis, setSearchingDiagnosis] = useState(false);
@@ -151,6 +152,7 @@ export default function LogbooksPage() {
     medical_record_no: "",
     diagnosis_id: "",
     procedure_id: "",
+    competency_id: "",
     competency_level: "" as "" | "1" | "2" | "3" | "4",
   });
   const [attachment, setAttachment] = useState<File | null>(null);
@@ -193,12 +195,14 @@ export default function LogbooksPage() {
   // ─────────── Fetch reference data ───────────
   const fetchReferenceData = useCallback(async () => {
     try {
-      const [assignRes, procRes] = await Promise.all([
+      const [assignRes, procRes, compRes] = await Promise.all([
         api.get("/api/v1/rotation/assignments"),
         api.get("/api/v1/clinical/procedures"),
+        api.get("/api/v1/academic/competencies", { params: { per_page: 200 } }),
       ]);
       setAssignments(assignRes.data.data);
       setProcedures(procRes.data.data);
+      setCompetencies(compRes.data.data || []);
     } catch (err) {
       console.error("Failed to load reference data", err);
     }
@@ -249,6 +253,7 @@ export default function LogbooksPage() {
       medical_record_no: "",
       diagnosis_id: "",
       procedure_id: "",
+      competency_id: "",
       competency_level: "",
     });
     setAttachment(null);
@@ -302,6 +307,7 @@ export default function LogbooksPage() {
       if (formData.medical_record_no) fd.append("medical_record_no", formData.medical_record_no);
       if (formData.diagnosis_id) fd.append("diagnosis_id", formData.diagnosis_id);
       if (formData.procedure_id) fd.append("procedure_id", formData.procedure_id);
+      if (formData.competency_id) fd.append("competency_id", formData.competency_id);
       if (formData.competency_level) fd.append("competency_level", formData.competency_level);
       if (attachment) fd.append("attachment", attachment);
 
@@ -598,6 +604,34 @@ export default function LogbooksPage() {
                       </SelectContent>
                     </Select>
                   </div>
+                </div>
+
+                {/* Row 6b: Target Kompetensi (opsional — dihitung ke progres) */}
+                <div className="space-y-2">
+                  <Label>Target Kompetensi (opsional)</Label>
+                  <Select
+                    value={formData.competency_id}
+                    onValueChange={(val) => setFormData({ ...formData, competency_id: val ?? "" })}
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Kaitkan dengan target kompetensi stase..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {competencies
+                        .filter((c) => {
+                          const selected = assignments.find((a) => a.id === formData.rotation_assignment_id);
+                          return !selected || !c.stase_id || c.stase_id === selected.stase?.id;
+                        })
+                        .map((c) => (
+                          <SelectItem key={c.id} value={c.id}>
+                            {c.name}{c.level ? ` (SKDI ${c.level})` : ""}
+                          </SelectItem>
+                        ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">
+                    Entri terverifikasi dengan kompetensi terkait akan dihitung ke progres kompetensi Anda.
+                  </p>
                 </div>
 
                 {/* Row 7: File Upload */}

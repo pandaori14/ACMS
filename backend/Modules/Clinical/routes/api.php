@@ -2,6 +2,7 @@
 
 use Illuminate\Support\Facades\Route;
 use Modules\Clinical\Http\Controllers\CatalogController;
+use Modules\Clinical\Http\Controllers\CompetencyProgressController;
 use Modules\Clinical\Http\Controllers\LogbookController;
 use Modules\Clinical\Http\Controllers\PreceptorController;
 
@@ -23,4 +24,7 @@ Route::middleware('auth:sanctum')->prefix('v1/clinical')->group(function () {
 
     // Preceptor Dashboard
     Route::get('/preceptor/dashboard-stats', [PreceptorController::class, 'dashboardStats']);
+
+    // Progres kompetensi (target vs capaian; scoping per-peran di controller)
+    Route::get('/competency-progress', [CompetencyProgressController::class, 'index']);
 });

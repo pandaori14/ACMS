@@ -15,6 +15,7 @@ class Competency extends Model
         'type',
         'category',
         'level',
+        'min_cases',
         'stase_id',
         'description',
     ];

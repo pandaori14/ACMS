@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Modules\Academic\Models\Competency;
 use Modules\Academic\Models\Student;
 use Modules\Rotation\Models\RotationAssignment;
 
@@ -31,6 +32,7 @@ class LogbookEntry extends Model
         'medical_record_no',
         'diagnosis_id',
         'procedure_id',
+        'competency_id',
         'competency_level',
         'preceptor_feedback',
         'status',
@@ -70,5 +72,10 @@ class LogbookEntry extends Model
     public function procedure(): BelongsTo
     {
         return $this->belongsTo(Procedure::class);
+    }
+
+    public function competency(): BelongsTo
+    {
+        return $this->belongsTo(Competency::class);
     }
 }

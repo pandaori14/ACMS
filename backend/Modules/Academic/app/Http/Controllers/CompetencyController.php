@@ -46,6 +46,7 @@ class CompetencyController extends Controller
             'type' => 'required|in:disease,skill,other',
             'category' => 'nullable|string|max:255',
             'level' => 'nullable|string|max:50',
+            'min_cases' => 'nullable|integer|min:1|max:1000',
             'stase_id' => 'nullable|exists:stases,id',
             'description' => 'nullable|string',
         ]);
@@ -72,6 +73,7 @@ class CompetencyController extends Controller
             'type' => 'required|in:disease,skill,other',
             'category' => 'nullable|string|max:255',
             'level' => 'nullable|string|max:50',
+            'min_cases' => 'nullable|integer|min:1|max:1000',
             'stase_id' => 'nullable|exists:stases,id',
             'description' => 'nullable|string',
         ]);

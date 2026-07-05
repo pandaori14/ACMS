@@ -15,6 +15,14 @@ interface Competency {
   category: string | null;
   level: string | null;
   description: string | null;
+  stase_id?: string | null;
+  min_cases?: number;
+  stase?: { id: string; name?: string } | null;
+}
+
+interface StaseOption {
+  id: string;
+  name?: string;
 }
 
 export function CompetenciesClient() {
@@ -29,12 +37,18 @@ export function CompetenciesClient() {
     category: "",
     level: "",
     description: "",
+    stase_id: "",
+    min_cases: 1,
   });
-  
+
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [stases, setStases] = useState<StaseOption[]>([]);
 
   useEffect(() => {
     fetchCompetencies();
+    api.get("/api/v1/academic/stase")
+      .then((res) => setStases(res.data.data || []))
+      .catch(() => setStases([]));
   }, []);
 
   const fetchCompetencies = async () => {
@@ -56,13 +70,15 @@ export function CompetenciesClient() {
       category: "",
       level: "",
       description: "",
+      stase_id: "",
+      min_cases: 1,
     });
     setOpen(true);
   };
 
   const handleOpenEdit = (comp: Competency) => {
     setEditingId(comp.id);
-    setForm(comp);
+    setForm({ ...comp, stase_id: comp.stase_id || "", min_cases: comp.min_cases ?? 1 });
     setOpen(true);
   };
 
@@ -145,6 +161,8 @@ export function CompetenciesClient() {
                     <th className="py-3 px-4">Tipe</th>
                     <th className="py-3 px-4">Kategori / Sistem</th>
                     <th className="py-3 px-4">Tingkat Kemampuan</th>
+                    <th className="py-3 px-4">Stase</th>
+                    <th className="py-3 px-4">Target</th>
                     <th className="py-3 px-4 text-right">Aksi</th>
                   </tr>
                 </thead>
@@ -165,6 +183,8 @@ export function CompetenciesClient() {
                           </span>
                         ) : '-'}
                       </td>
+                      <td className="py-3 px-4 text-xs">{comp.stase?.name || '-'}</td>
+                      <td className="py-3 px-4 text-xs font-medium">{comp.min_cases ?? 1} kasus</td>
                       <td className="py-3 px-4 text-right">
                         <div className="flex justify-end gap-2">
                           <button onClick={() => handleOpenEdit(comp)} className="p-1.5 text-slate-400 hover:text-blue-600 rounded-md hover:bg-blue-50 transition-colors">
@@ -242,6 +262,33 @@ export function CompetenciesClient() {
                   <option value="3B">Level 3B</option>
                   <option value="4A">Level 4A</option>
                 </select>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Stase (untuk target progres)</label>
+                <select
+                  className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary/50 text-sm"
+                  value={form.stase_id || ""}
+                  onChange={e => setForm({...form, stase_id: e.target.value})}
+                >
+                  <option value="">-- Tanpa stase (umum) --</option>
+                  {stases.map((s) => (
+                    <option key={s.id} value={s.id}>{s.name}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Target Minimal Kasus</label>
+                <input
+                  type="number"
+                  min={1}
+                  max={1000}
+                  className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary/50 text-sm"
+                  value={form.min_cases ?? 1}
+                  onChange={e => setForm({...form, min_cases: Number(e.target.value)})}
+                />
+                <p className="text-xs text-slate-500">Dihitung dari logbook terverifikasi mahasiswa.</p>
               </div>
             </div>
             <DialogFooter className="pt-4">
