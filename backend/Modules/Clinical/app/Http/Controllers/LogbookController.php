@@ -364,11 +364,77 @@ class LogbookController extends Controller
      */
     public function verify(Request $request, string $id): JsonResponse
     {
-        $user = $request->user();
-        $entry = LogbookEntry::findOrFail($id);
+        $validated = $request->validate([
+            'preceptor_feedback' => 'nullable|string|max:1000',
+        ]);
 
+        $entry = LogbookEntry::findOrFail($id);
+        $reason = $this->verifyOne($entry, $request->user(), $validated['preceptor_feedback'] ?? null);
+
+        if ($reason !== null) {
+            $status = str_contains($reason, 'Submitted') ? 422 : 403;
+
+            return response()->json(['message' => $reason], $status);
+        }
+
+        return response()->json([
+            'message' => 'Logbook berhasil diverifikasi.',
+            'data' => $entry->fresh()->load(['student.user', 'preceptor']),
+        ]);
+    }
+
+    /**
+     * Verifikasi MASSAL — banyak entri sekaligus (Dodiknis).
+     * Entri yang gagal guard dilaporkan per-item, tidak menggagalkan batch.
+     */
+    public function batchVerify(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'ids' => 'required|array|min:1|max:100',
+            'ids.*' => 'uuid',
+            'preceptor_feedback' => 'nullable|string|max:1000',
+        ]);
+
+        $user = $request->user();
         if (! $user->hasRole(['Super Admin', 'Dodiknis'])) {
-            return response()->json(['message' => 'Unauthorized. Only Preceptors can verify logbooks.'], 403);
+            return response()->json(['message' => 'Hanya preceptor yang dapat memverifikasi logbook.'], 403);
+        }
+
+        $verified = 0;
+        $skipped = [];
+
+        $entries = LogbookEntry::with('student.user')
+            ->whereIn('id', array_unique($validated['ids']))
+            ->get();
+
+        foreach ($entries as $entry) {
+            $reason = $this->verifyOne($entry, $user, $validated['preceptor_feedback'] ?? null);
+            if ($reason !== null) {
+                $skipped[] = [
+                    'id' => $entry->id,
+                    'student' => $entry->student?->user?->name,
+                    'reason' => $reason,
+                ];
+
+                continue;
+            }
+            $verified++;
+        }
+
+        return response()->json([
+            'message' => "Verifikasi selesai: {$verified} logbook diverifikasi, ".count($skipped).' dilewati.',
+            'data' => ['verified' => $verified, 'skipped' => $skipped],
+        ]);
+    }
+
+    /**
+     * Verifikasi SATU entri: guard peran + RS + status, update, dan
+     * notifikasi. Return alasan gagal (string) atau null bila sukses.
+     */
+    private function verifyOne(LogbookEntry $entry, User $user, ?string $feedback): ?string
+    {
+        if (! $user->hasRole(['Super Admin', 'Dodiknis'])) {
+            return 'Hanya preceptor yang dapat memverifikasi logbook.';
         }
 
         // Row-Level check for Dodiknis
@@ -376,24 +442,18 @@ class LogbookController extends Controller
             $hospitalIds = DB::table('hospital_user')->where('user_id', $user->id)->pluck('hospital_id');
             $assignment = DB::table('rotation_assignments')->where('id', $entry->rotation_assignment_id)->first();
             if (! $assignment || ! $hospitalIds->contains($assignment->hospital_id)) {
-                return response()->json(['message' => 'Unauthorized. Student is not assigned to your hospital.'], 403);
+                return 'Mahasiswa tidak dirotasi di rumah sakit Anda.';
             }
         }
 
         if ($entry->status !== 'submitted') {
-            return response()->json([
-                'message' => 'Hanya logbook berstatus Submitted yang bisa diverifikasi.',
-            ], 422);
+            return 'Hanya logbook berstatus Submitted yang bisa diverifikasi.';
         }
-
-        $validated = $request->validate([
-            'preceptor_feedback' => 'nullable|string|max:1000',
-        ]);
 
         $entry->update([
             'status' => 'verified',
-            'preceptor_feedback' => $validated['preceptor_feedback'] ?? null,
-            'preceptor_id' => $request->user()->id,
+            'preceptor_feedback' => $feedback,
+            'preceptor_id' => $user->id,
             'verified_at' => now(),
         ]);
 
@@ -416,10 +476,7 @@ class LogbookController extends Controller
             );
         }
 
-        return response()->json([
-            'message' => 'Logbook berhasil diverifikasi.',
-            'data' => $entry->fresh()->load(['student.user', 'preceptor']),
-        ]);
+        return null;
     }
 
     /**

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import api from "@/lib/api";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -196,6 +197,42 @@ export default function LogbookVerificationPage() {
   const [rejectLoading, setRejectLoading] = useState(false);
   const [rejectError, setRejectError] = useState("");
 
+  // Verifikasi massal (tab Menunggu)
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [batchDialogOpen, setBatchDialogOpen] = useState(false);
+  const [batchFeedback, setBatchFeedback] = useState("");
+  const [batchLoading, setBatchLoading] = useState(false);
+
+  const toggleSelect = (id: string) => {
+    setSelectedIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+  };
+
+  const handleBatchVerify = async () => {
+    if (selectedIds.length === 0) return;
+    setBatchLoading(true);
+    try {
+      const res = await api.post("/api/v1/clinical/logbooks/batch-verify", {
+        ids: selectedIds,
+        preceptor_feedback: batchFeedback || undefined,
+      });
+      const { verified, skipped } = res.data.data;
+      if (skipped.length > 0) {
+        toast.warning(`${verified} diverifikasi, ${skipped.length} dilewati (${skipped[0].reason})`);
+      } else {
+        toast.success(`${verified} logbook berhasil diverifikasi.`);
+      }
+      setBatchDialogOpen(false);
+      setSelectedIds([]);
+      setBatchFeedback("");
+      fetchEntries(activeTab);
+      fetchStats();
+    } catch {
+      toast.error("Gagal memverifikasi massal.");
+    } finally {
+      setBatchLoading(false);
+    }
+  };
+
   // ---------------------------------------------------------------------------
   // Data fetching
   // ---------------------------------------------------------------------------
@@ -237,6 +274,7 @@ export default function LogbookVerificationPage() {
   useEffect(() => {
     fetchEntries(activeTab);
     fetchStats();
+    setSelectedIds([]); // reset pilihan saat ganti tab
   }, [activeTab, fetchEntries, fetchStats]);
 
   // ---------------------------------------------------------------------------
@@ -423,18 +461,104 @@ export default function LogbookVerificationPage() {
             </div>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-            {filteredEntries.map((entry) => (
-              <EntryCard
-                key={entry.id}
-                entry={entry}
-                activeTab={activeTab}
-                onVerify={() => openVerifyDialog(entry)}
-                onReject={() => openRejectDialog(entry)}
-              />
-            ))}
+          <>
+            {activeTab === "pending" && filteredEntries.length > 1 && (
+              <label className="flex items-center gap-2 text-sm cursor-pointer w-fit">
+                <input
+                  type="checkbox"
+                  className="w-4 h-4 accent-blue-900"
+                  checked={selectedIds.length === filteredEntries.length}
+                  onChange={(e) =>
+                    setSelectedIds(e.target.checked ? filteredEntries.map((x) => x.id) : [])
+                  }
+                />
+                Pilih semua ({filteredEntries.length}) untuk verifikasi massal
+              </label>
+            )}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              {filteredEntries.map((entry) => (
+                <div key={entry.id} className="relative">
+                  {activeTab === "pending" && (
+                    <label
+                      className="absolute -top-2 -left-2 z-10 bg-white dark:bg-slate-900 border rounded-md p-1.5 shadow-sm cursor-pointer"
+                      title="Pilih untuk verifikasi massal"
+                    >
+                      <input
+                        type="checkbox"
+                        className="w-4 h-4 accent-blue-900 block"
+                        checked={selectedIds.includes(entry.id)}
+                        onChange={() => toggleSelect(entry.id)}
+                      />
+                    </label>
+                  )}
+                  <EntryCard
+                    entry={entry}
+                    activeTab={activeTab}
+                    onVerify={() => openVerifyDialog(entry)}
+                    onReject={() => openRejectDialog(entry)}
+                  />
+                </div>
+              ))}
+            </div>
+          </>
+        )}
+
+        {/* ---- Bulk bar verifikasi massal ---- */}
+        {selectedIds.length > 0 && activeTab === "pending" && (
+          <div className="fixed bottom-20 md:bottom-6 left-1/2 -translate-x-1/2 z-40 bg-blue-900 text-white rounded-full shadow-lg px-5 py-2.5 flex items-center gap-3">
+            <span className="text-sm font-medium">{selectedIds.length} dipilih</span>
+            <Button
+              size="sm"
+              className="bg-white text-blue-900 hover:bg-blue-50 rounded-full h-8"
+              onClick={() => setBatchDialogOpen(true)}
+            >
+              <ShieldCheck className="size-4 mr-1" /> Verifikasi Massal
+            </Button>
+            <button
+              className="text-blue-200 hover:text-white text-sm"
+              onClick={() => setSelectedIds([])}
+            >
+              Batal
+            </button>
           </div>
         )}
+
+        {/* ---- Dialog verifikasi massal ---- */}
+        <Dialog open={batchDialogOpen} onOpenChange={setBatchDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <ShieldCheck className="size-5 text-emerald-600" />
+                Verifikasi {selectedIds.length} Logbook Sekaligus
+              </DialogTitle>
+              <DialogDescription>
+                Semua logbook terpilih akan diverifikasi atas nama Anda. Entri di luar
+                cakupan RS Anda otomatis dilewati dan dilaporkan.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">
+                Umpan Balik Massal <span className="text-muted-foreground font-normal">(opsional, berlaku ke semua)</span>
+              </label>
+              <textarea
+                className="flex w-full rounded-lg border border-input bg-transparent px-3 py-2 text-sm outline-none placeholder:text-muted-foreground min-h-[80px] resize-y"
+                placeholder="Contoh: Kegiatan sesuai dan terdokumentasi baik."
+                value={batchFeedback}
+                onChange={(e) => setBatchFeedback(e.target.value)}
+              />
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setBatchDialogOpen(false)}>Batal</Button>
+              <Button
+                className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                disabled={batchLoading}
+                onClick={handleBatchVerify}
+              >
+                {batchLoading ? "Memproses..." : `Verifikasi ${selectedIds.length} Logbook`}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
         {/* ---- Verify Dialog ---- */}
         <Dialog open={verifyDialogOpen} onOpenChange={setVerifyDialogOpen}>
