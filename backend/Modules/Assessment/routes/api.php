@@ -31,7 +31,13 @@ Route::prefix('v1/yudisium')->middleware(['auth:sanctum'])->group(function () {
 });
 
 Route::prefix('v1/grades')->middleware(['auth:sanctum'])->group(function () {
-    Route::get('/export', [GradeController::class, 'export']);
+    // Ekspor nilai HARUS ber-permission (dulu terbuka utk semua user login
+    // → mahasiswa bisa unduh CSV nilai seluruh angkatan — celah keamanan)
+    Route::middleware('permission:manage-grades')->group(function () {
+        Route::get('/export', [GradeController::class, 'export']);
+        Route::get('/export-cohort', [GradeController::class, 'exportCohort']);
+    });
+
     Route::get('/transcript/{student_id}', [GradeController::class, 'getTranscript']);
     Route::get('/', [GradeController::class, 'index']);
     Route::post('/calculate/{assignment_id}', [GradeController::class, 'calculate']);

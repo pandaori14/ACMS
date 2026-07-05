@@ -17,5 +17,6 @@ Route::middleware(['auth:sanctum', 'permission:view-attendance-recap'])
     ->prefix('v1/clinical')
     ->group(function () {
         Route::get('attendance/recap', [AttendanceController::class, 'recap']);
+        Route::get('attendance/recap/export', [AttendanceController::class, 'recapExport']);
         Route::put('attendance/{id}/correct', [AttendanceController::class, 'correct']);
     });

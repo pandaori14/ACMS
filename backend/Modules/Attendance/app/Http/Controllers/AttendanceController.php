@@ -2,10 +2,12 @@
 
 namespace Modules\Attendance\Http\Controllers;
 
+use App\Exports\AttendanceRecapExport;
 use App\Http\Controllers\Controller;
 use App\Models\Setting;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Maatwebsite\Excel\Facades\Excel;
 use Modules\Attendance\Models\AttendanceRecord;
 use Modules\Attendance\Services\AttendanceService;
 use Modules\Rotation\Models\RotationAssignment;
@@ -208,7 +210,10 @@ class AttendanceController extends Controller
      * Attendance recap for Clinical Instructors / Admins.
      * Route is protected by permission:view-attendance-recap.
      */
-    public function recap(Request $request)
+    /**
+     * Query rekap ter-scope peran — dipakai recap (JSON) & ekspor Excel.
+     */
+    private function recapQuery(Request $request)
     {
         $user = $request->user();
 
@@ -238,6 +243,13 @@ class AttendanceController extends Controller
             $query->where('rotation_assignment_id', $request->input('rotation_assignment_id'));
         }
 
+        return $query;
+    }
+
+    public function recap(Request $request)
+    {
+        $query = $this->recapQuery($request);
+
         $perPage = (int) Setting::getValue('items_per_page', 20);
         $paginator = $query->paginate($perPage > 0 ? $perPage : 20);
 
@@ -250,6 +262,19 @@ class AttendanceController extends Controller
                 'total' => $paginator->total(),
             ],
         ]);
+    }
+
+    /**
+     * Ekspor rekap presensi ke Excel — scoping & filter sama persis dgn recap.
+     */
+    public function recapExport(Request $request)
+    {
+        $records = $this->recapQuery($request)->limit(5000)->get();
+
+        return Excel::download(
+            new AttendanceRecapExport($records),
+            'Rekap_Presensi_'.now()->format('Ymd_His').'.xlsx'
+        );
     }
 
     /**

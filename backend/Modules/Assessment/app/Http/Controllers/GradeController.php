@@ -2,10 +2,13 @@
 
 namespace Modules\Assessment\Http\Controllers;
 
+use App\Exports\CohortGradesExport;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Services\NotificationService;
 use Illuminate\Http\Request;
+use Maatwebsite\Excel\Facades\Excel;
+use Modules\Academic\Models\Cohort;
 use Modules\Academic\Models\Student;
 use Modules\Assessment\Models\StaseGrade;
 use Modules\Assessment\Services\GradeCalculationService;
@@ -136,6 +139,30 @@ class GradeController extends Controller
             'message' => 'Grade published successfully',
             'data' => $grade,
         ]);
+    }
+
+    /**
+     * Rekap nilai satu angkatan (Excel, format panjang) — Pusat Laporan.
+     */
+    public function exportCohort(Request $request)
+    {
+        $validated = $request->validate([
+            'cohort_id' => 'required|uuid|exists:cohorts,id',
+        ]);
+
+        $cohort = Cohort::findOrFail($validated['cohort_id']);
+
+        // stase_grades.student_id = users.id; profil angkatan via students
+        $userIds = Student::where('cohort_id', $cohort->id)->pluck('user_id');
+
+        $grades = StaseGrade::with(['student:id,name,identity_number', 'rotationAssignment.stase:id,name', 'rotationAssignment.hospital:id,name'])
+            ->whereIn('student_id', $userIds)
+            ->orderBy('student_id')
+            ->get();
+
+        $name = str_replace(' ', '_', $cohort->name ?? 'angkatan');
+
+        return Excel::download(new CohortGradesExport($grades), "Rekap_Nilai_{$name}.xlsx");
     }
 
     /**

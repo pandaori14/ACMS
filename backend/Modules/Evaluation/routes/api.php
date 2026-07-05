@@ -11,6 +11,7 @@ Route::middleware('auth:sanctum')->prefix('v1/clinical')->group(function () {
     // Laporan agregat ANONIM (Aturan A: hanya pemegang view-analytics)
     Route::middleware('permission:view-analytics')->group(function () {
         Route::get('evaluations/report', [EvaluationController::class, 'report']);
+        Route::get('evaluations/report/export', [EvaluationController::class, 'reportExport']);
     });
 
     // Bank pertanyaan evaluasi (data master)

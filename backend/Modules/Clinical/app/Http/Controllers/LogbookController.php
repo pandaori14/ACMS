@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Setting;
 use App\Models\User;
 use App\Services\NotificationService;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -107,6 +108,65 @@ class LogbookController extends Controller
                 'total' => $entries->total(),
             ],
         ]);
+    }
+
+    /**
+     * Ekspor PDF rekap seluruh logbook satu mahasiswa ("buku logbook").
+     * Scoping: Mahasiswa dipaksa miliknya; Dodiknis hanya mahasiswa RS-nya;
+     * admin bebas via ?student_id (users.id atau students.id).
+     */
+    public function export(Request $request)
+    {
+        $user = $request->user();
+
+        if ($user->hasRole('Mahasiswa')) {
+            $profile = Student::with('user:id,name,identity_number')->where('user_id', $user->id)->first();
+            if (! $profile) {
+                return response()->json(['message' => 'Profil mahasiswa tidak ditemukan.'], 404);
+            }
+        } else {
+            $param = $request->input('student_id');
+            if (! $param) {
+                return response()->json(['message' => 'Parameter student_id wajib untuk peran non-mahasiswa.'], 422);
+            }
+            $profile = Student::with('user:id,name,identity_number')
+                ->where('id', $param)->orWhere('user_id', $param)->first();
+            if (! $profile) {
+                return response()->json(['message' => 'Mahasiswa tidak ditemukan.'], 404);
+            }
+
+            if ($user->hasRole('Dodiknis') && ! $user->hasAnyRole(['Super Admin', 'Admin Prodi', 'Kaprodi'])) {
+                $hospitalIds = DB::table('hospital_user')->where('user_id', $user->id)->pluck('hospital_id');
+                $atMyHospital = DB::table('rotation_assignments')
+                    ->where('student_id', $profile->id)
+                    ->whereIn('hospital_id', $hospitalIds)
+                    ->exists();
+                if (! $atMyHospital) {
+                    return response()->json(['message' => 'Mahasiswa ini tidak dirotasi di rumah sakit Anda.'], 403);
+                }
+            }
+        }
+
+        $entries = LogbookEntry::with([
+            'rotationAssignment.stase:id,name',
+            'rotationAssignment.hospital:id,name',
+            'diagnosis:id,name',
+            'procedure:id,name',
+            'preceptor:id,name',
+        ])
+            ->where('student_id', $profile->id)
+            ->orderBy('activity_date')
+            ->get();
+
+        $pdf = Pdf::loadView('clinical::pdf.logbook-recap', [
+            'student' => $profile,
+            'entries' => $entries,
+            'generatedAt' => now(),
+        ]);
+
+        $name = str_replace(' ', '_', $profile->user?->name ?? 'mahasiswa');
+
+        return $pdf->download("Rekap_Logbook_{$name}.pdf");
     }
 
     /**

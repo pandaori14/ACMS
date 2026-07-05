@@ -10,6 +10,9 @@ Route::middleware(['auth:sanctum'])->prefix('v1/incidents')->name('api.v1.incide
     Route::get('/', [IncidentReportController::class, 'index'])->name('index');
     Route::get('/form-options', [IncidentReportController::class, 'formOptions'])->name('formOptions');
     Route::get('/statistics', [IncidentReportController::class, 'statistics'])->name('statistics');
+    // Ekspor PDF hanya utk pengelola (statistik JSON pelapor tetap ter-scope)
+    Route::middleware('permission:manage-incidents')
+        ->get('/statistics/export', [IncidentReportController::class, 'statisticsExport'])->name('statistics.export');
     Route::post('/report', [IncidentReportController::class, 'store'])->name('store');
 
     // Konfigurasi form insiden (CONFIGURE) — didaftarkan sebelum /{id} agar tidak tertangkap wildcard

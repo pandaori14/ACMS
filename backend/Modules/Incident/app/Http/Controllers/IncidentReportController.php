@@ -5,6 +5,7 @@ namespace Modules\Incident\Http\Controllers;
 use App\Http\Controllers\Controller;
 use App\Models\Setting;
 use App\Models\SystemReference;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Modules\Incident\Http\Requests\StoreIncidentNoteRequest;
@@ -120,6 +121,21 @@ class IncidentReportController extends Controller
         $stats = $this->incidentService->statistics($request->user());
 
         return response()->json(['data' => $stats]);
+    }
+
+    /**
+     * Ekspor PDF statistik insiden — data & scoping sama dgn statistics().
+     */
+    public function statisticsExport(Request $request)
+    {
+        $stats = $this->incidentService->statistics($request->user());
+
+        $pdf = Pdf::loadView('incident::pdf.statistics', [
+            'stats' => $stats,
+            'generatedAt' => now(),
+        ]);
+
+        return $pdf->download('Statistik_Insiden_'.now()->format('Ymd').'.pdf');
     }
 
     public function downloadAttachment(string $id, Request $request)

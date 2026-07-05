@@ -10,6 +10,8 @@ Route::middleware('auth:sanctum')->prefix('v1/clinical')->group(function () {
     // Logbook CRUD
     Route::get('/logbooks', [LogbookController::class, 'index']);
     Route::post('/logbooks', [LogbookController::class, 'store']);
+    // Ekspor rekap PDF — HARUS sebelum wildcard {id}
+    Route::get('/logbooks/export', [LogbookController::class, 'export']);
     Route::get('/logbooks/{id}', [LogbookController::class, 'show']);
     Route::post('/logbooks/{id}', [LogbookController::class, 'update']); // POST for multipart/form-data
     Route::delete('/logbooks/{id}', [LogbookController::class, 'destroy']);

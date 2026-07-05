@@ -77,6 +77,7 @@ export function AppSidebar() {
         { title: "Notifikasi", url: "/dashboard/notifications", icon: Bell, permissions: ["view-dashboard"] },
         { title: "Analytics & Reports", url: "/dashboard/analytics", icon: BarChart2, permissions: ["view-analytics"] },
         { title: "Dashboard Eksekutif", url: "/dashboard/analytics/executive", icon: BarChart2, permissions: ["view-executive-analytics"] },
+        { title: "Pusat Laporan", url: "/dashboard/reports", icon: FileText, permissions: ["view-attendance-recap", "manage-grades", "view-analytics", "manage-incidents", "manage-finance", "view-logbook"] },
       ]
     },
     {

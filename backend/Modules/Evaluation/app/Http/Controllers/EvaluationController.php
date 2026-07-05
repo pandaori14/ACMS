@@ -4,6 +4,7 @@ namespace Modules\Evaluation\Http\Controllers;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
@@ -99,6 +100,38 @@ class EvaluationController extends Controller
      */
     public function report(Request $request)
     {
+        [$report, $minResponses] = $this->buildReport($request);
+
+        return response()->json([
+            'data' => $report,
+            'meta' => [
+                'min_responses' => $minResponses,
+                'note' => 'Target dengan responden kurang dari ambang disembunyikan demi anonimitas.',
+            ],
+        ]);
+    }
+
+    /**
+     * Ekspor PDF laporan agregat anonim — data & param sama dgn report().
+     */
+    public function reportExport(Request $request)
+    {
+        [$report, $minResponses] = $this->buildReport($request);
+
+        $pdf = Pdf::loadView('evaluation::pdf.report', [
+            'report' => $report,
+            'minResponses' => $minResponses,
+            'generatedAt' => now(),
+        ]);
+
+        return $pdf->download('Laporan_Evaluasi_'.now()->format('Ymd').'.pdf');
+    }
+
+    /**
+     * @return array{0: Collection, 1: int}
+     */
+    private function buildReport(Request $request): array
+    {
         $minResponses = max(1, min(10, (int) $request->get('min_responses', 3)));
 
         $rows = EvaluationSubmission::with('question')
@@ -143,13 +176,7 @@ class EvaluationController extends Controller
             ->sortBy('target_name')
             ->values();
 
-        return response()->json([
-            'data' => $report,
-            'meta' => [
-                'min_responses' => $minResponses,
-                'note' => 'Target dengan responden kurang dari ambang disembunyikan demi anonimitas.',
-            ],
-        ]);
+        return [$report, $minResponses];
     }
 
     // ---------- Bank pertanyaan (manage-academic-master) ----------
