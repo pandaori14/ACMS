@@ -211,6 +211,7 @@ class LogbookController extends Controller
         // Set timestamps based on status
         if (($validated['status'] ?? 'draft') === 'submitted') {
             $validated['submitted_at'] = now();
+            $validated = array_merge($validated, $this->lateFields($validated['activity_date']));
         }
 
         $student = Student::where('user_id', $request->user()->id)->first();
@@ -238,6 +239,25 @@ class LogbookController extends Controller
                 'procedure',
             ]),
         ], 201);
+    }
+
+    /**
+     * Flag keterlambatan submit: selisih hari kegiatan → submit melebihi
+     * ambang Settings `logbook_late_days` (compliance, tidak memblokir —
+     * blokir keras tetap di `logbook_cutoff_days`).
+     *
+     * @return array{is_late: bool, late_days: int|null}
+     */
+    private function lateFields(string $activityDate): array
+    {
+        $threshold = (int) Setting::getValue('logbook_late_days', 3);
+        $diff = (int) Carbon::parse($activityDate)->startOfDay()->diffInDays(now()->startOfDay(), false);
+        $isLate = $diff > $threshold;
+
+        return [
+            'is_late' => $isLate,
+            'late_days' => $isLate ? $diff - $threshold : null,
+        ];
     }
 
     /**
@@ -335,6 +355,10 @@ class LogbookController extends Controller
         // Set submitted_at if status changed to submitted
         if (($validated['status'] ?? null) === 'submitted' && ! $entry->submitted_at) {
             $validated['submitted_at'] = now();
+            $validated = array_merge(
+                $validated,
+                $this->lateFields($validated['activity_date'] ?? $entry->activity_date->toDateString())
+            );
         }
 
         $entry->update($validated);

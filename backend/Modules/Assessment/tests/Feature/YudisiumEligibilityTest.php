@@ -124,7 +124,7 @@ class YudisiumEligibilityTest extends TestCase
 
         $res->assertOk()->assertJsonPath('data.eligible', false);
         $requirements = collect($res->json('data.requirements'));
-        $this->assertSame(5, $requirements->count());
+        $this->assertSame(6, $requirements->count());
         // Nilai stase wajib belum ada → gagal
         $this->assertFalse($requirements->firstWhere('key', 'stase_lulus')['passed']);
     }

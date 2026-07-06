@@ -36,6 +36,8 @@ class LogbookEntry extends Model
         'competency_level',
         'preceptor_feedback',
         'status',
+        'is_late',
+        'late_days',
         'attachment_path',
         'submitted_at',
         'verified_at',
@@ -45,6 +47,7 @@ class LogbookEntry extends Model
         'activity_date' => 'date',
         'submitted_at' => 'datetime',
         'verified_at' => 'datetime',
+        'is_late' => 'boolean',
     ];
 
     // --- Relationships ---

@@ -26,6 +26,7 @@ class StaseGrade extends Model
         'final_score',
         'letter_grade',
         'status',
+        'published_at',
     ];
 
     protected $casts = [
@@ -34,6 +35,7 @@ class StaseGrade extends Model
         'dops_score' => 'decimal:2',
         'cbd_score' => 'decimal:2',
         'final_score' => 'decimal:2',
+        'published_at' => 'datetime',
     ];
 
     public function rotationAssignment()

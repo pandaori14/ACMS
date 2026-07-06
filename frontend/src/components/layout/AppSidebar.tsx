@@ -92,6 +92,7 @@ export function AppSidebar() {
         { title: "Verifikasi Logbook", url: "/dashboard/clinical/verification", icon: CheckCircle, permissions: ["verify-logbook"] },
         { title: "Presensi", url: "/dashboard/clinical/attendance", icon: MapPin, permissions: ["view-logbook"] },
         { title: "Progres Kompetensi", url: "/dashboard/clinical/competency-progress", icon: CheckCircle, permissions: ["view-logbook", "verify-logbook", "manage-academic-master"] },
+        { title: "Skill Checklist", url: "/dashboard/clinical/skills", icon: ClipboardList, permissions: ["view-logbook", "create-assessments", "manage-academic-master"] },
         { title: "Rekap Presensi", url: "/dashboard/clinical/attendance/recap", icon: MapPin, permissions: ["view-attendance-recap"] },
       ]
     },
@@ -102,6 +103,7 @@ export function AppSidebar() {
         { title: "Isi Penilaian", url: "/dashboard/assessments/create", icon: FileText, permissions: ["create-assessments"] },
         { title: "Riwayat Penilaian", url: "/dashboard/assessments", icon: BookOpen, permissions: ["view-assessments"] },
         { title: "Rekapitulasi Nilai", url: "/dashboard/grades", icon: FileText, permissions: ["manage-grades"] },
+        { title: "Banding Nilai", url: "/dashboard/grades/appeals", icon: ShieldAlert, permissions: ["manage-grades"] },
         { title: "Transkrip (Yudisium)", url: "/dashboard/transcripts", icon: BookOpen, permissions: ["view-transcripts"] },
         { title: "Kelayakan Yudisium", url: "/dashboard/transcripts/eligibility", icon: CheckCircle, permissions: ["manage-grades"] },
         { title: "Transkrip Klinis", url: "/dashboard/my-grades", icon: BookOpen, permissions: ["view-transcripts"] },

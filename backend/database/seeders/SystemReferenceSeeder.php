@@ -119,5 +119,26 @@ class SystemReferenceSeeder extends Seeder
                 ]
             );
         }
+
+        // Level observasi skill checklist (Not Observed → Above Expected)
+        $skillLevels = [
+            ['name' => 'Belum Diobservasi', 'value' => 'not_observed'],
+            ['name' => 'Di Bawah Harapan', 'value' => 'below_expected'],
+            ['name' => 'Sesuai Harapan', 'value' => 'at_expected'],
+            ['name' => 'Melampaui Harapan', 'value' => 'above_expected'],
+        ];
+
+        foreach ($skillLevels as $level) {
+            SystemReference::updateOrCreate(
+                [
+                    'category' => 'skill_levels',
+                    'value' => $level['value'],
+                ],
+                [
+                    'name' => $level['name'],
+                    'is_active' => true,
+                ]
+            );
+        }
     }
 }

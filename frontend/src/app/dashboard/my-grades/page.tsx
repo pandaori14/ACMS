@@ -2,14 +2,28 @@
 
 import { useEffect, useState } from "react";
 import api from "@/lib/api";
+import { getApiErrorMessage } from "@/lib/api-helpers";
 import { StaseGrade } from "@/lib/types";
-import { BookOpen, GraduationCap } from "lucide-react";
+import { BookOpen, GraduationCap, Scale } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 export default function StudentGradesPage() {
   const [grades, setGrades] = useState<StaseGrade[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Banding nilai
+  const [appealTarget, setAppealTarget] = useState<StaseGrade | null>(null);
+  const [appealReason, setAppealReason] = useState("");
+  const [isAppealing, setIsAppealing] = useState(false);
 
   useEffect(() => {
     const fetchGrades = async () => {
@@ -24,6 +38,24 @@ export default function StudentGradesPage() {
     };
     fetchGrades();
   }, []);
+
+  const submitAppeal = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!appealTarget) return;
+    setIsAppealing(true);
+    try {
+      const res = await api.post(`/api/v1/grades/${appealTarget.id}/appeal`, {
+        reason: appealReason,
+      });
+      toast.success(res.data.message);
+      setAppealTarget(null);
+      setAppealReason("");
+    } catch (err) {
+      toast.error(getApiErrorMessage(err, "Gagal mengajukan banding."));
+    } finally {
+      setIsAppealing(false);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -103,11 +135,62 @@ export default function StudentGradesPage() {
                     <span className="text-3xl font-black text-blue-700">{grade.letter_grade}</span>
                   </div>
                 </div>
+
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="mt-3 w-full text-slate-500 hover:text-slate-700"
+                  onClick={() => {
+                    setAppealTarget(grade);
+                    setAppealReason("");
+                  }}
+                >
+                  <Scale className="w-4 h-4 mr-1" /> Ajukan Keberatan Nilai
+                </Button>
               </CardContent>
             </Card>
           ))
         )}
       </div>
+
+      {/* Dialog banding nilai */}
+      <Dialog open={!!appealTarget} onOpenChange={(open) => !open && setAppealTarget(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              Banding Nilai — {appealTarget?.rotation_assignment?.stase?.name}
+            </DialogTitle>
+          </DialogHeader>
+          <form onSubmit={submitAppeal} className="space-y-4 pt-2">
+            <p className="text-sm text-slate-600 dark:text-slate-300">
+              Banding hanya dapat diajukan <span className="font-medium">satu kali per nilai</span>{" "}
+              dan dalam jendela waktu yang ditetapkan prodi sejak nilai terbit. Jelaskan dasar
+              keberatan Anda sekonkret mungkin (komponen yang belum dihitung, tanggal penilaian, dsb.).
+            </p>
+            <textarea
+              className="flex min-h-[100px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+              required
+              minLength={20}
+              maxLength={2000}
+              value={appealReason}
+              onChange={(e) => setAppealReason(e.target.value)}
+              placeholder="Contoh: Penilaian DOPS tanggal 20 Juni oleh dr. X belum termasuk dalam perhitungan..."
+            />
+            <div className="flex justify-end gap-2">
+              <Button type="button" variant="outline" onClick={() => setAppealTarget(null)}>
+                Batal
+              </Button>
+              <Button
+                type="submit"
+                disabled={isAppealing || appealReason.trim().length < 20}
+                className="bg-blue-900 hover:bg-blue-800 text-white"
+              >
+                {isAppealing ? "Mengirim..." : "Kirim Banding"}
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

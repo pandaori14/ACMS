@@ -25,9 +25,23 @@ class RotationAssignment extends Model
         'hospital_id',
         'preceptor_id',
         'status',
+        'attempt_number',
         'final_score',
         'final_grade',
     ];
+
+    protected static function booted(): void
+    {
+        // Tracking remedial: attempt_number otomatis = jumlah penempatan
+        // sebelumnya (mahasiswa × stase) + 1, di SEMUA jalur pembuatan.
+        static::creating(function (self $assignment) {
+            if (! $assignment->attempt_number || $assignment->attempt_number === 1) {
+                $assignment->attempt_number = static::where('student_id', $assignment->student_id)
+                    ->where('stase_id', $assignment->stase_id)
+                    ->count() + 1;
+            }
+        });
+    }
 
     public function rotationPeriod(): BelongsTo
     {

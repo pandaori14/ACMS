@@ -86,6 +86,8 @@ interface LogbookEntry {
   patient_initials: string;
   competency_level: number;
   status: string;
+  is_late?: boolean;
+  late_days?: number | null;
   attachment_path: string | null;
 }
 
@@ -765,6 +767,12 @@ function EntryCard({
             <CalendarDays className="size-3.5" />
             {formatDate(entry.activity_date)}
           </span>
+          {entry.is_late && (
+            <span className="inline-flex items-center gap-1 rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700 dark:bg-red-950 dark:text-red-300">
+              <Clock className="size-3" />
+              Telat submit {entry.late_days ?? "?"} hari
+            </span>
+          )}
           <span
             className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium"
             style={{

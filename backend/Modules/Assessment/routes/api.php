@@ -2,6 +2,7 @@
 
 use Illuminate\Support\Facades\Route;
 use Modules\Assessment\Http\Controllers\AssessmentController;
+use Modules\Assessment\Http\Controllers\GradeAppealController;
 use Modules\Assessment\Http\Controllers\GradeController;
 use Modules\Assessment\Http\Controllers\YudisiumController;
 
@@ -46,9 +47,17 @@ Route::prefix('v1/grades')->middleware(['auth:sanctum'])->group(function () {
         Route::get('/export-cohort', [GradeController::class, 'exportCohort']);
     });
 
+    // Banding nilai: daftar & keputusan oleh pengelola nilai
+    Route::middleware('permission:manage-grades')->group(function () {
+        Route::get('/appeals', [GradeAppealController::class, 'index']);
+        Route::patch('/appeals/{id}/decide', [GradeAppealController::class, 'decide']);
+    });
+
     Route::get('/transcript/{student_id}', [GradeController::class, 'getTranscript']);
     Route::get('/', [GradeController::class, 'index']);
     Route::post('/calculate/{assignment_id}', [GradeController::class, 'calculate']);
     Route::patch('/{id}/approve', [GradeController::class, 'approve']);
     Route::patch('/{id}/publish', [GradeController::class, 'publish']);
+    // Pengajuan banding oleh mahasiswa (guard kepemilikan+jendela di controller)
+    Route::post('/{id}/appeal', [GradeAppealController::class, 'store']);
 });

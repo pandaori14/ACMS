@@ -7,7 +7,7 @@ import { Stase, Program } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
-import { GraduationCap, Pencil, Plus, Trash2 } from "lucide-react";
+import { ClipboardCheck, GraduationCap, Pencil, Plus, Trash2 } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -43,6 +43,13 @@ const EMPTY_FORM: StaseForm = {
   passing_grade: 60,
   prerequisite_stase_ids: [],
 };
+
+interface SkillItem {
+  id: string;
+  name: string;
+  description?: string | null;
+  is_active: boolean;
+}
 
 export default function StaseManagement() {
   const [stases, setStases] = useState<Stase[]>([]);
@@ -107,6 +114,53 @@ export default function StaseManagement() {
       .map((id) => stases.find((s) => s.id === id)?.name)
       .filter(Boolean)
       .join(", ");
+
+  // ---- Skill checklist per stase ----
+  const [skillStase, setSkillStase] = useState<Stase | null>(null);
+  const [skillItems, setSkillItems] = useState<SkillItem[]>([]);
+  const [newSkillName, setNewSkillName] = useState("");
+  const [isSkillLoading, setIsSkillLoading] = useState(false);
+
+  const openSkills = async (stase: Stase) => {
+    setSkillStase(stase);
+    setNewSkillName("");
+    setIsSkillLoading(true);
+    try {
+      const res = await api.get("/api/v1/clinical/skills/items", {
+        params: { stase_id: stase.id },
+      });
+      setSkillItems(res.data.data || []);
+    } catch (err) {
+      toast.error(getApiErrorMessage(err, "Gagal memuat skill checklist."));
+    } finally {
+      setIsSkillLoading(false);
+    }
+  };
+
+  const addSkill = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!skillStase || !newSkillName.trim()) return;
+    try {
+      const res = await api.post("/api/v1/clinical/skills/items", {
+        stase_id: skillStase.id,
+        name: newSkillName.trim(),
+      });
+      setSkillItems((prev) => [...prev, res.data.data]);
+      setNewSkillName("");
+    } catch (err) {
+      toast.error(getApiErrorMessage(err, "Gagal menambah item skill."));
+    }
+  };
+
+  const removeSkill = async (item: SkillItem) => {
+    try {
+      const res = await api.delete(`/api/v1/clinical/skills/items/${item.id}`);
+      toast.success(res.data.message);
+      setSkillItems((prev) => prev.filter((i) => i.id !== item.id));
+    } catch (err) {
+      toast.error(getApiErrorMessage(err, "Gagal menghapus item skill."));
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -199,6 +253,9 @@ export default function StaseManagement() {
                     {staseNames(stase.prerequisite_stase_ids) || <span className="text-slate-400">—</span>}
                   </TableCell>
                   <TableCell className="text-right whitespace-nowrap">
+                    <Button variant="ghost" size="sm" onClick={() => openSkills(stase)} aria-label="Skill Checklist" title="Kelola skill checklist">
+                      <ClipboardCheck className="w-4 h-4" />
+                    </Button>
                     <Button variant="ghost" size="sm" onClick={() => openEdit(stase)} aria-label="Edit">
                       <Pencil className="w-4 h-4" />
                     </Button>
@@ -284,6 +341,54 @@ export default function StaseManagement() {
               </div>
             </div>
             <Button type="submit" className="w-full">Simpan</Button>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Kelola skill checklist per stase */}
+      <Dialog open={!!skillStase} onOpenChange={(open) => !open && setSkillStase(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Skill Checklist — {skillStase?.name}</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            Keterampilan yang wajib diobservasi pembimbing selama stase ini. Item yang sudah
+            memiliki observasi akan dinonaktifkan (bukan dihapus) demi menjaga riwayat.
+          </p>
+          {isSkillLoading ? (
+            <p className="text-sm text-slate-500 py-4 text-center">Memuat...</p>
+          ) : (
+            <ul className="max-h-56 overflow-y-auto divide-y divide-slate-100 dark:divide-slate-800 rounded-md border">
+              {skillItems.length === 0 ? (
+                <li className="px-3 py-4 text-sm text-slate-400 text-center">Belum ada item skill.</li>
+              ) : (
+                skillItems.map((item) => (
+                  <li key={item.id} className="flex items-center justify-between px-3 py-2 text-sm">
+                    <span className={item.is_active ? "" : "line-through text-slate-400"}>{item.name}</span>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-red-600 hover:text-red-700"
+                      onClick={() => removeSkill(item)}
+                      aria-label="Hapus item"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </li>
+                ))
+              )}
+            </ul>
+          )}
+          <form onSubmit={addSkill} className="flex gap-2">
+            <Input
+              placeholder="Nama keterampilan, mis. Pungsi vena"
+              value={newSkillName}
+              onChange={(e) => setNewSkillName(e.target.value)}
+              maxLength={255}
+            />
+            <Button type="submit" disabled={!newSkillName.trim()}>
+              <Plus className="w-4 h-4 mr-1" /> Tambah
+            </Button>
           </form>
         </DialogContent>
       </Dialog>

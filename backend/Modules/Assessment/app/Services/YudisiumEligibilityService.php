@@ -11,6 +11,8 @@ use Modules\Assessment\Models\ClinicalAssessment;
 use Modules\Assessment\Models\StaseGrade;
 use Modules\Attendance\Models\AttendanceRecord;
 use Modules\Clinical\Models\LogbookEntry;
+use Modules\Clinical\Models\SkillChecklistItem;
+use Modules\Clinical\Models\StudentSkillRecord;
 use Modules\Rotation\Models\RotationAssignment;
 
 /**
@@ -37,6 +39,7 @@ class YudisiumEligibilityService
             $this->checkStaseGrades($user, $programId),
             $this->checkLogbook($profile?->id),
             $this->checkCompetencies($profile?->id),
+            $this->checkSkills($profile?->id),
             $this->checkAssessments($user),
             $this->checkAttendance($profile?->id),
         ];
@@ -142,6 +145,45 @@ class YudisiumEligibilityService
             $unmet->isEmpty()
                 ? "Seluruh {$targets->count()} target kompetensi terpenuhi."
                 : 'Belum terpenuhi: '.$unmet->pluck('name')->take(5)->implode(', ').($unmet->count() > 5 ? ' (+'.($unmet->count() - 5).' lagi)' : '').'.'
+        );
+    }
+
+    /**
+     * Syarat 3b: seluruh skill checklist stase yang dijalani terobservasi
+     * dengan level minimal "Sesuai Harapan" (at_expected/above_expected).
+     */
+    private function checkSkills(?string $profileId): array
+    {
+        if (! $profileId) {
+            return $this->requirement('skill_tuntas', 'Skill checklist stase tuntas', false, 'Profil mahasiswa tidak ditemukan.');
+        }
+
+        $staseIds = RotationAssignment::where('student_id', $profileId)
+            ->pluck('stase_id')->unique();
+
+        $items = SkillChecklistItem::whereIn('stase_id', $staseIds)
+            ->where('is_active', true)
+            ->get(['id', 'name']);
+
+        if ($items->isEmpty()) {
+            return $this->requirement('skill_tuntas', 'Skill checklist stase tuntas', true, 'Stase yang dijalani tidak memiliki skill checklist.');
+        }
+
+        $passedLevels = ['at_expected', 'above_expected'];
+        $records = StudentSkillRecord::where('student_id', $profileId)
+            ->whereIn('skill_checklist_item_id', $items->pluck('id'))
+            ->whereIn('level', $passedLevels)
+            ->pluck('skill_checklist_item_id');
+
+        $unmet = $items->reject(fn ($i) => $records->contains($i->id));
+
+        return $this->requirement(
+            'skill_tuntas',
+            'Skill checklist stase tuntas',
+            $unmet->isEmpty(),
+            $unmet->isEmpty()
+                ? "Seluruh {$items->count()} skill terobservasi minimal Sesuai Harapan."
+                : 'Belum tuntas: '.$unmet->pluck('name')->take(5)->implode(', ').($unmet->count() > 5 ? ' (+'.($unmet->count() - 5).' lagi)' : '').'.'
         );
     }
 

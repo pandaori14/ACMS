@@ -2,12 +2,14 @@
 
 namespace Modules\Rotation\Services;
 
+use App\Models\Setting;
 use App\Services\NotificationService;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Modules\Academic\Models\AcademicEvent;
 use Modules\Academic\Models\Stase;
 use Modules\Academic\Models\Student;
+use Modules\Assessment\Models\StaseGrade;
 use Modules\Rotation\Models\Hospital;
 use Modules\Rotation\Models\HospitalCapacity;
 use Modules\Rotation\Models\RotationAssignment;
@@ -52,7 +54,44 @@ class RotationSchedulerService
             return $reason;
         }
 
+        if ($reason = $this->remedialGuard($data['student_id'], $data['stase_id'])) {
+            return $reason;
+        }
+
         return $this->capacityFull($data['hospital_id'], $data['stase_id'], $data['rotation_period_id']);
+    }
+
+    /**
+     * Guard remedial: mengulang stase hanya boleh bila BELUM lulus, dan
+     * total percobaan tidak melampaui 1 + Settings `max_remedial_attempts`
+     * (lewat batas → butuh keputusan akademik manual, bukan penempatan biasa).
+     */
+    private function remedialGuard(string $studentId, string $staseId): ?string
+    {
+        $priorAssignments = RotationAssignment::where('student_id', $studentId)
+            ->where('stase_id', $staseId)
+            ->get(['id']);
+
+        if ($priorAssignments->isEmpty()) {
+            return null;
+        }
+
+        // Sudah lulus (nilai published ≥ passing grade stase) → tak perlu mengulang
+        $passingGrade = (float) Stase::whereKey($staseId)->value('passing_grade');
+        $bestScore = StaseGrade::whereIn('rotation_assignment_id', $priorAssignments->pluck('id'))
+            ->where('status', 'published')
+            ->max('final_score');
+
+        if ($bestScore !== null && (float) $bestScore >= $passingGrade) {
+            return 'Mahasiswa sudah LULUS stase ini — penempatan ulang tidak diperlukan.';
+        }
+
+        $maxAttempts = 1 + (int) Setting::getValue('max_remedial_attempts', 2);
+        if ($priorAssignments->count() >= $maxAttempts) {
+            return "Batas maksimal {$maxAttempts} percobaan stase tercapai — perlu keputusan review akademik.";
+        }
+
+        return null;
     }
 
     /**

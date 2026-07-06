@@ -115,7 +115,7 @@ class GradeController extends Controller
             return response()->json(['message' => 'Grade must be approved before publishing'], 400);
         }
 
-        $grade->update(['status' => 'published']);
+        $grade->update(['status' => 'published', 'published_at' => now()]);
 
         // Aturan C: nilai terbit → notifikasi mahasiswa via SMTP matrix
         // (context grade_value memungkinkan aturan kondisional, mis. nilai E).

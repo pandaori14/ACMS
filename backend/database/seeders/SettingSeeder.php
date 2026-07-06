@@ -57,6 +57,10 @@ class SettingSeeder extends Seeder
             ['key' => 'yudisium_min_minicex', 'group' => 'assessment', 'value' => '1', 'type' => 'integer', 'description' => 'Minimum Mini-CEX acknowledged untuk kelayakan yudisium'],
             ['key' => 'yudisium_min_dops', 'group' => 'assessment', 'value' => '1', 'type' => 'integer', 'description' => 'Minimum DOPS acknowledged untuk kelayakan yudisium'],
             ['key' => 'yudisium_min_cbd', 'group' => 'assessment', 'value' => '1', 'type' => 'integer', 'description' => 'Minimum CBD acknowledged untuk kelayakan yudisium'],
+
+            // Banding nilai & remedial
+            ['key' => 'appeal_window_days', 'group' => 'assessment', 'value' => '14', 'type' => 'integer', 'description' => 'Jendela banding nilai (hari sejak nilai terbit)'],
+            ['key' => 'max_remedial_attempts', 'group' => 'academic', 'value' => '2', 'type' => 'integer', 'description' => 'Maksimal remedial (mengulang stase) sebelum butuh review akademik'],
             ['key' => 'grade_band_a', 'group' => 'assessment', 'value' => '85', 'type' => 'integer', 'description' => 'Ambang Nilai Huruf A (skor >=)'],
             ['key' => 'grade_band_ab', 'group' => 'assessment', 'value' => '80', 'type' => 'integer', 'description' => 'Ambang Nilai Huruf AB (skor >=)'],
             ['key' => 'grade_band_b', 'group' => 'assessment', 'value' => '75', 'type' => 'integer', 'description' => 'Ambang Nilai Huruf B (skor >=)'],
@@ -66,6 +70,7 @@ class SettingSeeder extends Seeder
 
             // Clinical
             ['key' => 'logbook_cutoff_days', 'group' => 'clinical', 'value' => '7', 'type' => 'integer', 'description' => 'Batas waktu pengisian logbook (hari) setelah stase'],
+            ['key' => 'logbook_late_days', 'group' => 'clinical', 'value' => '3', 'type' => 'integer', 'description' => 'Ambang hari kegiatan→submit sebelum logbook ditandai TERLAMBAT (compliance, tidak memblokir)'],
             ['key' => 'auto_verify_logbook_days', 'group' => 'clinical', 'value' => '14', 'type' => 'integer', 'description' => 'Otomatis verifikasi logbook jika dibiarkan dosen (hari)'],
 
             // Attendance (Presensi)
@@ -178,6 +183,8 @@ class SettingSeeder extends Seeder
                     'honorarium_paid' => ['enabled' => true, 'cc_emails' => '', 'notify_roles' => [], 'conditional_rules' => []],
                     'grade_published' => ['enabled' => false, 'cc_emails' => '', 'notify_roles' => [], 'conditional_rules' => []],
                     'student_status_changed' => ['enabled' => true, 'cc_emails' => '', 'notify_roles' => [], 'conditional_rules' => []],
+                    'appeal_submitted' => ['enabled' => true, 'cc_emails' => '', 'notify_roles' => ['Kaprodi', 'Admin Prodi'], 'conditional_rules' => []],
+                    'appeal_decided' => ['enabled' => true, 'cc_emails' => '', 'notify_roles' => [], 'conditional_rules' => []],
                     'finance_billing' => ['enabled' => false, 'cc_emails' => '', 'notify_roles' => [], 'conditional_rules' => []],
                     'consultation_submitted' => [
                         'enabled' => true,
@@ -221,6 +228,8 @@ class SettingSeeder extends Seeder
             ['key' => 'email_template_grade_published', 'group' => 'smtp', 'value' => 'Halo {name},\n\nNilai stase {stase} Anda telah terbit: {grade} ({score}). Silakan cek transkrip Anda di sistem ACMS.', 'type' => 'text', 'description' => 'Template Email Nilai Terbit'],
             ['key' => 'email_template_logbook_verified', 'group' => 'smtp', 'value' => 'Halo {name},\n\nLogbook Anda pada stase {stase} tanggal {date} telah diverifikasi ({status}).', 'type' => 'text', 'description' => 'Template Email Logbook Diverifikasi'],
             ['key' => 'email_template_student_status_changed', 'group' => 'smtp', 'value' => 'Halo {name},\n\nStatus akademik Anda di sistem ACMS telah diubah menjadi: {status}.\nAlasan: {reason}\n\nHubungi admin program studi bila ada pertanyaan.', 'type' => 'text', 'description' => 'Template Email Perubahan Status Mahasiswa'],
+            ['key' => 'email_template_appeal_submitted', 'group' => 'smtp', 'value' => 'Banding nilai diajukan oleh {name} untuk stase {stase}.\n\nAlasan: {reason}\n\nSilakan tinjau di menu Banding Nilai sistem ACMS.', 'type' => 'text', 'description' => 'Template Email Banding Nilai Diajukan'],
+            ['key' => 'email_template_appeal_decided', 'group' => 'smtp', 'value' => 'Halo {name},\n\nBanding nilai stase {stase} Anda telah diputuskan: {decision}.\nCatatan peninjau: {note}', 'type' => 'text', 'description' => 'Template Email Hasil Banding Nilai'],
 
             // Retensi PII insiden (dipakai command incidents:prune-pii, terjadwal bulanan)
             ['key' => 'incident_retention_months', 'group' => 'incident', 'value' => '24', 'type' => 'string', 'description' => 'Masa retensi identitas pelapor insiden (bulan). Laporan selesai yang lebih tua dianonimkan permanen oleh sistem tiap bulan.'],

@@ -33,6 +33,13 @@ class ProductionSettingsPatchSeeder extends Seeder
             ['key' => 'yudisium_min_dops', 'group' => 'assessment', 'value' => '1', 'type' => 'integer', 'description' => 'Minimum DOPS acknowledged untuk kelayakan yudisium'],
             ['key' => 'yudisium_min_cbd', 'group' => 'assessment', 'value' => '1', 'type' => 'integer', 'description' => 'Minimum CBD acknowledged untuk kelayakan yudisium'],
 
+            // Banding nilai, remedial, flag telat logbook
+            ['key' => 'appeal_window_days', 'group' => 'assessment', 'value' => '14', 'type' => 'integer', 'description' => 'Jendela banding nilai (hari sejak nilai terbit)'],
+            ['key' => 'max_remedial_attempts', 'group' => 'academic', 'value' => '2', 'type' => 'integer', 'description' => 'Maksimal remedial (mengulang stase) sebelum butuh review akademik'],
+            ['key' => 'logbook_late_days', 'group' => 'clinical', 'value' => '3', 'type' => 'integer', 'description' => 'Ambang hari kegiatan→submit sebelum logbook ditandai TERLAMBAT (compliance, tidak memblokir)'],
+            ['key' => 'email_template_appeal_submitted', 'group' => 'smtp', 'value' => 'Banding nilai diajukan oleh {name} untuk stase {stase}.\n\nAlasan: {reason}\n\nSilakan tinjau di menu Banding Nilai sistem ACMS.', 'type' => 'text', 'description' => 'Template Email Banding Nilai Diajukan'],
+            ['key' => 'email_template_appeal_decided', 'group' => 'smtp', 'value' => 'Halo {name},\n\nBanding nilai stase {stase} Anda telah diputuskan: {decision}.\nCatatan peninjau: {note}', 'type' => 'text', 'description' => 'Template Email Hasil Banding Nilai'],
+
             // Pusat Bantuan (markdown per peran — dirender di /dashboard/help)
             ['key' => 'help_center_umum', 'group' => 'help', 'value' => "## Selamat datang di ACMS\n\nACMS adalah sistem manajemen pendidikan klinik FK UMS. Beberapa hal umum:\n\n- **Profil & Password**: klik avatar di pojok kanan atas → *Profil Saya* untuk mengganti password dan mengaktifkan **2FA**.\n- **Lupa password**: gunakan tautan *Lupa password?* di halaman login.\n- **Notifikasi**: ikon lonceng menampilkan pemberitahuan penting (nilai terbit, logbook diverifikasi, penempatan rotasi).\n- **Install di HP**: buka ACMS di browser HP → menu browser → *Tambahkan ke layar utama*.", 'type' => 'text', 'description' => 'Konten bantuan UMUM (markdown) — tampil untuk semua peran'],
             ['key' => 'help_center_mahasiswa', 'group' => 'help', 'value' => "## Panduan Mahasiswa (Koass)\n\n1. **Presensi** — menu *Presensi*: check-in saat tiba di RS (GPS aktif), check-out saat pulang. Ajukan izin/sakit dari tombol di halaman yang sama.\n2. **Logbook** — isi kegiatan harian di *Logbook Klinis*, pilih *Target Kompetensi* agar dihitung ke progres, lalu **Submit** agar diverifikasi pembimbing.\n3. **Jadwal Rotasi** — lihat stase & RS penempatan Anda di *Jadwal Rotasi*.\n4. **Ujian CBT** — saat ujian dibuka, tombol **Kerjakan Ujian** muncul di menu *Ujian*. Perhatikan timer; jawaban tersimpan otomatis.\n5. **Nilai & Transkrip** — nilai terbit di *Transkrip Klinis*; dokumen resmi ber-QR di *Dokumen Resmi*.\n6. **Lapor Insiden** — gunakan *Lapor Insiden* (bisa anonim) untuk kejadian keselamatan.", 'type' => 'text', 'description' => 'Konten bantuan MAHASISWA (markdown)'],
@@ -56,6 +63,8 @@ class ProductionSettingsPatchSeeder extends Seeder
                 'grade_published' => ['enabled' => false, 'cc_emails' => '', 'notify_roles' => [], 'conditional_rules' => []],
                 'logbook_verified' => ['enabled' => false, 'cc_emails' => '', 'notify_roles' => [], 'conditional_rules' => []],
                 'student_status_changed' => ['enabled' => true, 'cc_emails' => '', 'notify_roles' => [], 'conditional_rules' => []],
+                'appeal_submitted' => ['enabled' => true, 'cc_emails' => '', 'notify_roles' => ['Kaprodi', 'Admin Prodi'], 'conditional_rules' => []],
+                'appeal_decided' => ['enabled' => true, 'cc_emails' => '', 'notify_roles' => [], 'conditional_rules' => []],
             ];
 
             $changed = false;
