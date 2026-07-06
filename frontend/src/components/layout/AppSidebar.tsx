@@ -103,6 +103,7 @@ export function AppSidebar() {
         { title: "Riwayat Penilaian", url: "/dashboard/assessments", icon: BookOpen, permissions: ["view-assessments"] },
         { title: "Rekapitulasi Nilai", url: "/dashboard/grades", icon: FileText, permissions: ["manage-grades"] },
         { title: "Transkrip (Yudisium)", url: "/dashboard/transcripts", icon: BookOpen, permissions: ["view-transcripts"] },
+        { title: "Kelayakan Yudisium", url: "/dashboard/transcripts/eligibility", icon: CheckCircle, permissions: ["manage-grades"] },
         { title: "Transkrip Klinis", url: "/dashboard/my-grades", icon: BookOpen, permissions: ["view-transcripts"] },
         { title: "Dokumen Resmi", url: "/dashboard/documents", icon: FileText, permissions: ["view-transcripts"] },
         { title: "Laporan Evaluasi", url: "/dashboard/clinical/evaluations/report", icon: BarChart2, permissions: ["view-analytics"] },

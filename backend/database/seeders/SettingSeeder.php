@@ -52,6 +52,11 @@ class SettingSeeder extends Seeder
             ['key' => 'grade_weight_minicex', 'group' => 'assessment', 'value' => '30', 'type' => 'integer', 'description' => 'Bobot Mini-CEX (%)'],
             ['key' => 'grade_weight_dops', 'group' => 'assessment', 'value' => '30', 'type' => 'integer', 'description' => 'Bobot DOPS (%)'],
             ['key' => 'grade_weight_cbd', 'group' => 'assessment', 'value' => '30', 'type' => 'integer', 'description' => 'Bobot CBD (%)'],
+
+            // Ambang kelayakan yudisium (dipakai YudisiumEligibilityService)
+            ['key' => 'yudisium_min_minicex', 'group' => 'assessment', 'value' => '1', 'type' => 'integer', 'description' => 'Minimum Mini-CEX acknowledged untuk kelayakan yudisium'],
+            ['key' => 'yudisium_min_dops', 'group' => 'assessment', 'value' => '1', 'type' => 'integer', 'description' => 'Minimum DOPS acknowledged untuk kelayakan yudisium'],
+            ['key' => 'yudisium_min_cbd', 'group' => 'assessment', 'value' => '1', 'type' => 'integer', 'description' => 'Minimum CBD acknowledged untuk kelayakan yudisium'],
             ['key' => 'grade_band_a', 'group' => 'assessment', 'value' => '85', 'type' => 'integer', 'description' => 'Ambang Nilai Huruf A (skor >=)'],
             ['key' => 'grade_band_ab', 'group' => 'assessment', 'value' => '80', 'type' => 'integer', 'description' => 'Ambang Nilai Huruf AB (skor >=)'],
             ['key' => 'grade_band_b', 'group' => 'assessment', 'value' => '75', 'type' => 'integer', 'description' => 'Ambang Nilai Huruf B (skor >=)'],

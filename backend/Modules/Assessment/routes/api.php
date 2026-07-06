@@ -26,8 +26,16 @@ Route::prefix('v1/assessments')->middleware(['auth:sanctum'])->group(function ()
 // Dokumen resmi Yudisium (rate-limit generate di controller)
 Route::prefix('v1/yudisium')->middleware(['auth:sanctum'])->group(function () {
     Route::post('/generate', [YudisiumController::class, 'generate']);
+    Route::post('/generate-logbook-book', [YudisiumController::class, 'generateLogbookBook']);
+    Route::post('/generate-letter', [YudisiumController::class, 'generateLetter']);
+    Route::get('/eligibility', [YudisiumController::class, 'eligibility']);
     Route::get('/my-documents', [YudisiumController::class, 'myDocuments']);
     Route::get('/documents/{id}/download', [YudisiumController::class, 'download']);
+
+    // Panel sidang yudisium: kelayakan massal per angkatan
+    Route::middleware('permission:manage-grades')->group(function () {
+        Route::get('/eligibility-batch', [YudisiumController::class, 'eligibilityBatch']);
+    });
 });
 
 Route::prefix('v1/grades')->middleware(['auth:sanctum'])->group(function () {
