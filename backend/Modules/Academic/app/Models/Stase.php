@@ -18,12 +18,14 @@ class Stase extends Model
         'duration_weeks',
         'passing_grade',
         'is_mandatory',
+        'prerequisite_stase_ids',
         'color_code',
     ];
 
     protected $casts = [
         'is_mandatory' => 'boolean',
         'passing_grade' => 'decimal:2',
+        'prerequisite_stase_ids' => 'array',
     ];
 
     public function program(): BelongsTo

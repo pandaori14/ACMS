@@ -98,5 +98,26 @@ class SystemReferenceSeeder extends Seeder
                 ]
             );
         }
+
+        // Tipe event Kalender Akademik (hari libur, blackout, ujian, kegiatan)
+        $academicEventTypes = [
+            ['name' => 'Hari Libur', 'value' => 'holiday'],
+            ['name' => 'Periode Blackout', 'value' => 'blackout'],
+            ['name' => 'Periode Ujian', 'value' => 'exam_period'],
+            ['name' => 'Kegiatan Akademik', 'value' => 'academic_activity'],
+        ];
+
+        foreach ($academicEventTypes as $type) {
+            SystemReference::updateOrCreate(
+                [
+                    'category' => 'academic_event_types',
+                    'value' => $type['value'],
+                ],
+                [
+                    'name' => $type['name'],
+                    'is_active' => true,
+                ]
+            );
+        }
     }
 }

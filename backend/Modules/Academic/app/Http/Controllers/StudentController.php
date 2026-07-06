@@ -3,6 +3,8 @@
 namespace Modules\Academic\Http\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Services\AuditService;
+use App\Services\NotificationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Maatwebsite\Excel\Facades\Excel;
@@ -104,6 +106,58 @@ class StudentController extends Controller
 
         return response()->json([
             'message' => 'Mahasiswa berhasil dihapus dan akunnya dinonaktifkan.',
+        ]);
+    }
+
+    /**
+     * Transisi status siklus mahasiswa (aktif → cuti → lulus/DO) dengan alasan
+     * wajib + jejak audit + notifikasi. Mahasiswa non-aktif otomatis ditolak
+     * saat penempatan rotasi (guard di RotationSchedulerService).
+     */
+    public function updateStatus(Request $request, string $id): JsonResponse
+    {
+        $student = Student::with('user')->findOrFail($id);
+
+        $validated = $request->validate([
+            'status' => 'required|exists:system_references,value,category,student_statuses',
+            'reason' => 'required|string|min:5|max:1000',
+        ]);
+
+        if ($validated['status'] === $student->status) {
+            return response()->json(['message' => 'Status mahasiswa sudah bernilai tersebut.'], 422);
+        }
+
+        $oldStatus = $student->status;
+        $student->update(['status' => $validated['status']]);
+
+        AuditService::log(
+            'student.status_changed',
+            $student,
+            ['status' => $oldStatus],
+            ['status' => $validated['status']],
+            ['reason' => $validated['reason']]
+        );
+
+        // Aturan C: kabari mahasiswa — siapa saja yang ikut menerima diatur
+        // Super Admin lewat SMTP matrix (student_status_changed).
+        if ($student->user?->email) {
+            NotificationService::sendDynamicEmail(
+                $student->user->email,
+                'Perubahan Status Akademik Anda',
+                'email_template_student_status_changed',
+                'student_status_changed',
+                [
+                    'name' => $student->user->name,
+                    'status' => $validated['status'],
+                    'reason' => $validated['reason'],
+                ],
+                ['status' => $validated['status']]
+            );
+        }
+
+        return response()->json([
+            'message' => 'Status mahasiswa berhasil diubah.',
+            'data' => $student->fresh(['user', 'cohort', 'program']),
         ]);
     }
 

@@ -32,6 +32,7 @@ interface StaseForm {
   name: string;
   duration_weeks: number;
   passing_grade: number;
+  prerequisite_stase_ids: string[];
 }
 
 const EMPTY_FORM: StaseForm = {
@@ -40,6 +41,7 @@ const EMPTY_FORM: StaseForm = {
   name: "",
   duration_weeks: 4,
   passing_grade: 60,
+  prerequisite_stase_ids: [],
 };
 
 export default function StaseManagement() {
@@ -86,9 +88,25 @@ export default function StaseManagement() {
       name: stase.name || "",
       duration_weeks: stase.duration_weeks || 4,
       passing_grade: Number(stase.passing_grade) || 60,
+      prerequisite_stase_ids: stase.prerequisite_stase_ids || [],
     });
     setIsOpen(true);
   };
+
+  const togglePrerequisite = (id: string) => {
+    setFormData((prev) => ({
+      ...prev,
+      prerequisite_stase_ids: prev.prerequisite_stase_ids.includes(id)
+        ? prev.prerequisite_stase_ids.filter((x) => x !== id)
+        : [...prev.prerequisite_stase_ids, id],
+    }));
+  };
+
+  const staseNames = (ids?: string[] | null) =>
+    (ids || [])
+      .map((id) => stases.find((s) => s.id === id)?.name)
+      .filter(Boolean)
+      .join(", ");
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -143,17 +161,18 @@ export default function StaseManagement() {
               <TableHead>Program</TableHead>
               <TableHead>Durasi</TableHead>
               <TableHead>Nilai Lulus</TableHead>
+              <TableHead>Prasyarat</TableHead>
               <TableHead className="text-right">Aksi</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {isLoading ? (
               <TableRow>
-                <TableCell colSpan={6} className="text-center text-slate-500 py-10">Memuat data...</TableCell>
+                <TableCell colSpan={7} className="text-center text-slate-500 py-10">Memuat data...</TableCell>
               </TableRow>
             ) : stases.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6} className="py-12">
+                <TableCell colSpan={7} className="py-12">
                   <div className="flex flex-col items-center gap-3 text-center">
                     <GraduationCap className="w-10 h-10 text-slate-300" />
                     <div>
@@ -176,6 +195,9 @@ export default function StaseManagement() {
                   <TableCell className="whitespace-nowrap">{stase.program?.name}</TableCell>
                   <TableCell className="whitespace-nowrap">{stase.duration_weeks} Minggu</TableCell>
                   <TableCell className="whitespace-nowrap">{stase.passing_grade}</TableCell>
+                  <TableCell className="max-w-[220px] truncate text-sm text-slate-600 dark:text-slate-300" title={staseNames(stase.prerequisite_stase_ids)}>
+                    {staseNames(stase.prerequisite_stase_ids) || <span className="text-slate-400">—</span>}
+                  </TableCell>
                   <TableCell className="text-right whitespace-nowrap">
                     <Button variant="ghost" size="sm" onClick={() => openEdit(stase)} aria-label="Edit">
                       <Pencil className="w-4 h-4" />
@@ -234,6 +256,31 @@ export default function StaseManagement() {
               <div className="space-y-2">
                 <label className="text-sm font-medium">Nilai Lulus</label>
                 <Input type="number" step="0.01" required min={0} max={100} value={formData.passing_grade} onChange={(e) => setFormData({...formData, passing_grade: Number(e.target.value)})} />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Stase Prasyarat</label>
+              <p className="text-xs text-muted-foreground">
+                Mahasiswa hanya bisa ditempatkan ke stase ini setelah menyelesaikan seluruh prasyarat.
+              </p>
+              <div className="max-h-40 overflow-y-auto rounded-md border p-2 space-y-1">
+                {stases.filter((s) => s.id !== editingId).length === 0 ? (
+                  <p className="text-sm text-slate-400 px-1">Belum ada stase lain.</p>
+                ) : (
+                  stases
+                    .filter((s) => s.id !== editingId)
+                    .map((s) => (
+                      <label key={s.id} className="flex items-center gap-2 text-sm px-1 py-0.5 rounded hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          className="h-4 w-4 rounded border-gray-300"
+                          checked={formData.prerequisite_stase_ids.includes(s.id)}
+                          onChange={() => togglePrerequisite(s.id)}
+                        />
+                        {s.name} <span className="text-slate-400">({s.code})</span>
+                      </label>
+                    ))
+                )}
               </div>
             </div>
             <Button type="submit" className="w-full">Simpan</Button>

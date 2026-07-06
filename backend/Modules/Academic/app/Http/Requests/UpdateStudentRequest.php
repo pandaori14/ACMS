@@ -28,7 +28,8 @@ class UpdateStudentRequest extends FormRequest
             'password' => 'nullable|string|min:8|max:100',
             'program_id' => 'sometimes|required|uuid|exists:programs,id',
             'cohort_id' => 'sometimes|required|uuid|exists:cohorts,id',
-            'status' => 'sometimes|required|exists:system_references,value,category,student_statuses',
+            // 'status' sengaja TIDAK diterima di sini — transisi status wajib
+            // lewat POST students/{id}/status (alasan + audit + notifikasi).
             'enrollment_date' => 'sometimes|required|date',
         ];
     }

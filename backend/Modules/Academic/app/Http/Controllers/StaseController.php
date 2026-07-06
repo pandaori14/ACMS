@@ -36,10 +36,13 @@ class StaseController extends Controller
             'duration_weeks' => 'required|integer|min:1',
             'passing_grade' => 'required|numeric|min:0|max:100',
             'is_mandatory' => 'boolean',
+            'prerequisite_stase_ids' => 'nullable|array|max:10',
+            'prerequisite_stase_ids.*' => 'uuid|exists:stases,id',
             'color_code' => 'nullable|string|max:7',
         ]);
 
         $stase = Stase::create($validated);
+        $this->clearListCache($stase);
 
         return response()->json([
             'message' => 'Stase created successfully',
@@ -65,10 +68,20 @@ class StaseController extends Controller
             'duration_weeks' => 'sometimes|required|integer|min:1',
             'passing_grade' => 'sometimes|required|numeric|min:0|max:100',
             'is_mandatory' => 'boolean',
+            'prerequisite_stase_ids' => 'nullable|array|max:10',
+            'prerequisite_stase_ids.*' => 'uuid|exists:stases,id',
             'color_code' => 'nullable|string|max:7',
         ]);
 
+        // Stase tidak boleh menjadi prasyarat dirinya sendiri
+        if (in_array($stase->id, $validated['prerequisite_stase_ids'] ?? [], true)) {
+            return response()->json([
+                'message' => 'Stase tidak boleh menjadi prasyarat dirinya sendiri.',
+            ], 422);
+        }
+
         $stase->update($validated);
+        $this->clearListCache($stase);
 
         return response()->json([
             'message' => 'Stase updated successfully',
@@ -80,9 +93,23 @@ class StaseController extends Controller
     {
         $stase = Stase::findOrFail($id);
         $stase->delete();
+        $this->clearListCache($stase);
 
         return response()->json([
             'message' => 'Stase deleted successfully',
         ]);
+    }
+
+    /**
+     * Bersihkan cache daftar stase (index di-cache 24 jam) agar mutasi
+     * langsung terlihat di dropdown/board lintas modul.
+     */
+    private function clearListCache(Stase $stase): void
+    {
+        Cache::forget('stases_list_all');
+        Cache::forget("stases_list_{$stase->program_id}");
+        if ($stase->wasChanged('program_id')) {
+            Cache::forget('stases_list_'.$stase->getOriginal('program_id'));
+        }
     }
 }

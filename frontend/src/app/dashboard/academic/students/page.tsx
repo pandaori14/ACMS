@@ -105,6 +105,12 @@ export default function StudentManagement() {
   // Dialog hapus
   const [deleting, setDeleting] = useState<Student | null>(null);
 
+  // Dialog ubah status (transisi ber-alasan → audit + notifikasi)
+  const [statusTarget, setStatusTarget] = useState<Student | null>(null);
+  const [statusValue, setStatusValue] = useState("");
+  const [statusReason, setStatusReason] = useState("");
+  const [isChangingStatus, setIsChangingStatus] = useState(false);
+
   // Dialog import
   const [isImportOpen, setIsImportOpen] = useState(false);
   const [importProgram, setImportProgram] = useState("");
@@ -211,6 +217,25 @@ export default function StudentManagement() {
       toast.error(getApiErrorMessage(err, "Gagal menyimpan data mahasiswa."));
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const handleChangeStatus = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!statusTarget) return;
+    setIsChangingStatus(true);
+    try {
+      await api.post(`/api/v1/academic/students/${statusTarget.id}/status`, {
+        status: statusValue,
+        reason: statusReason,
+      });
+      toast.success("Status mahasiswa berhasil diubah.");
+      setStatusTarget(null);
+      fetchStudents();
+    } catch (err) {
+      toast.error(getApiErrorMessage(err, "Gagal mengubah status mahasiswa."));
+    } finally {
+      setIsChangingStatus(false);
     }
   };
 
@@ -410,9 +435,20 @@ export default function StudentManagement() {
                   <TableCell className="whitespace-nowrap">{s.program?.name || "-"}</TableCell>
                   <TableCell className="whitespace-nowrap">{s.cohort?.name || "-"}</TableCell>
                   <TableCell>
-                    <Badge className={STATUS_BADGE[s.status || ""] || "bg-slate-100 text-slate-600"}>
-                      {statusLabel(s.status)}
-                    </Badge>
+                    <button
+                      type="button"
+                      title="Ubah status (wajib alasan)"
+                      onClick={() => {
+                        setStatusTarget(s);
+                        setStatusValue(s.status || "active");
+                        setStatusReason("");
+                      }}
+                      className="cursor-pointer"
+                    >
+                      <Badge className={STATUS_BADGE[s.status || ""] || "bg-slate-100 text-slate-600"}>
+                        {statusLabel(s.status)}
+                      </Badge>
+                    </button>
                   </TableCell>
                   <TableCell className="text-right whitespace-nowrap">
                     <Button variant="ghost" size="sm" onClick={() => openEdit(s)} aria-label="Edit">
@@ -523,19 +559,28 @@ export default function StudentManagement() {
               </div>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Status</label>
-                <select
-                  className={selectClass}
-                  required
-                  value={form.status}
-                  onChange={(e) => setForm({ ...form, status: e.target.value })}
-                >
-                  {statuses.map((s) => (
-                    <option key={s.id} value={s.value}>{s.name}</option>
-                  ))}
-                </select>
-              </div>
+              {!editingId ? (
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Status Awal</label>
+                  <select
+                    className={selectClass}
+                    required
+                    value={form.status}
+                    onChange={(e) => setForm({ ...form, status: e.target.value })}
+                  >
+                    {statuses.map((s) => (
+                      <option key={s.id} value={s.value}>{s.name}</option>
+                    ))}
+                  </select>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Status</label>
+                  <p className="text-sm text-muted-foreground border rounded-md px-3 py-2.5">
+                    Ubah lewat klik badge status di tabel (wajib alasan &amp; tercatat audit).
+                  </p>
+                </div>
+              )}
               <div className="space-y-2">
                 <label className="text-sm font-medium">Tanggal Masuk</label>
                 <Input
@@ -549,6 +594,55 @@ export default function StudentManagement() {
             <Button type="submit" className="w-full" disabled={isSaving}>
               {isSaving ? "Menyimpan..." : "Simpan"}
             </Button>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog ubah status (transisi siklus akademik) */}
+      <Dialog open={!!statusTarget} onOpenChange={(open) => !open && setStatusTarget(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Ubah Status Mahasiswa</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleChangeStatus} className="space-y-4 pt-2">
+            <p className="text-sm text-slate-600 dark:text-slate-300">
+              <span className="font-semibold">{statusTarget?.user?.name}</span> — status saat ini:{" "}
+              <span className="font-medium">{statusLabel(statusTarget?.status)}</span>.
+              Mahasiswa non-aktif otomatis ditolak saat penempatan rotasi.
+            </p>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Status Baru</label>
+              <select
+                className={selectClass}
+                required
+                value={statusValue}
+                onChange={(e) => setStatusValue(e.target.value)}
+              >
+                {statuses.map((st) => (
+                  <option key={st.id} value={st.value}>{st.name}</option>
+                ))}
+              </select>
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Alasan (wajib, tercatat di audit)</label>
+              <textarea
+                className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                required
+                minLength={5}
+                maxLength={1000}
+                value={statusReason}
+                onChange={(e) => setStatusReason(e.target.value)}
+                placeholder="Contoh: Cuti melahirkan satu semester sesuai SK Dekan No. ..."
+              />
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button type="button" variant="outline" onClick={() => setStatusTarget(null)}>
+                Batal
+              </Button>
+              <Button type="submit" disabled={isChangingStatus} className="bg-blue-900 hover:bg-blue-800 text-white">
+                {isChangingStatus ? "Menyimpan..." : "Ubah Status"}
+              </Button>
+            </div>
           </form>
         </DialogContent>
       </Dialog>

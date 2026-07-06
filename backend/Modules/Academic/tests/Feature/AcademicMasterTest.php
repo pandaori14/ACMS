@@ -185,8 +185,19 @@ class AcademicMasterTest extends TestCase
     {
         $student = $this->makeStudent();
 
+        // Status TIDAK bisa diubah via update umum — wajib endpoint /status
+        // ber-alasan (audit + notifikasi). Update umum untuk data profil.
         $this->actingAs($this->admin)
-            ->putJson("/api/v1/academic/students/{$student->id}", ['status' => 'graduated'])
+            ->putJson("/api/v1/academic/students/{$student->id}", [
+                'status' => 'graduated', 'enrollment_date' => '2026-02-01',
+            ])
+            ->assertOk()
+            ->assertJsonPath('data.status', 'active');
+
+        $this->actingAs($this->admin)
+            ->postJson("/api/v1/academic/students/{$student->id}/status", [
+                'status' => 'graduated', 'reason' => 'Lulus yudisium periode Juli.',
+            ])
             ->assertOk()
             ->assertJsonPath('data.status', 'graduated');
 

@@ -5,6 +5,7 @@ namespace Modules\Rotation\Services;
 use App\Services\NotificationService;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Modules\Academic\Models\AcademicEvent;
 use Modules\Academic\Models\Stase;
 use Modules\Academic\Models\Student;
 use Modules\Rotation\Models\Hospital;
@@ -24,11 +25,21 @@ use Modules\Rotation\Models\RotationPeriod;
 class RotationSchedulerService
 {
     /**
-     * Cek konflik penempatan tunggal: dobel di periode yang sama, atau kuota penuh.
+     * Cek konflik penempatan tunggal: status mahasiswa non-aktif, periode
+     * kena blackout kalender akademik, dobel di periode yang sama, prasyarat
+     * stase belum selesai, atau kuota penuh.
      * Mengembalikan pesan alasan, atau null bila aman.
      */
     public function assignmentConflict(array $data): ?string
     {
+        if ($reason = $this->studentInactive($data['student_id'])) {
+            return $reason;
+        }
+
+        if ($reason = $this->periodBlackout($data['rotation_period_id'])) {
+            return $reason;
+        }
+
         $exists = RotationAssignment::where('rotation_period_id', $data['rotation_period_id'])
             ->where('student_id', $data['student_id'])
             ->exists();
@@ -37,7 +48,76 @@ class RotationSchedulerService
             return 'Mahasiswa sudah memiliki penempatan pada periode ini.';
         }
 
+        if ($reason = $this->prerequisitesUnmet($data['student_id'], $data['stase_id'])) {
+            return $reason;
+        }
+
         return $this->capacityFull($data['hospital_id'], $data['stase_id'], $data['rotation_period_id']);
+    }
+
+    /**
+     * Guard siklus mahasiswa: hanya status `active` yang boleh ditempatkan
+     * (cuti/lulus/DO ditolak — selaras kandidat auto-scheduler).
+     */
+    private function studentInactive(string $studentId): ?string
+    {
+        $status = Student::whereKey($studentId)->value('status');
+
+        if ($status !== null && $status !== 'active') {
+            return "Mahasiswa berstatus '{$status}' — hanya mahasiswa aktif yang dapat ditempatkan.";
+        }
+
+        return null;
+    }
+
+    /**
+     * Guard kalender akademik: periode rotasi yang tumpang tindih event
+     * blackout (blocks_rotation=true) tidak boleh menerima penempatan.
+     */
+    private function periodBlackout(string $periodId): ?string
+    {
+        // Tanpa memo instance: controller/service Laravel bisa hidup lintas
+        // request (route caching, Octane) — memo akan basi.
+        $period = RotationPeriod::find($periodId);
+        if (! $period) {
+            return null;
+        }
+
+        $event = AcademicEvent::where('blocks_rotation', true)
+            ->where('start_date', '<=', $period->end_date)
+            ->where('end_date', '>=', $period->start_date)
+            ->first();
+
+        return $event
+            ? "Periode rotasi tumpang tindih blackout kalender akademik: {$event->title} ({$event->start_date->format('d/m/Y')}–{$event->end_date->format('d/m/Y')})."
+            : null;
+    }
+
+    /**
+     * Guard prasyarat stase: seluruh stase prasyarat harus sudah SELESAI
+     * (assignment status `completed`) sebelum mahasiswa boleh masuk stase ini.
+     */
+    private function prerequisitesUnmet(string $studentId, string $staseId): ?string
+    {
+        $prereqIds = Stase::whereKey($staseId)->value('prerequisite_stase_ids') ?? [];
+        if (empty($prereqIds)) {
+            return null;
+        }
+
+        $completed = RotationAssignment::where('student_id', $studentId)
+            ->whereIn('stase_id', $prereqIds)
+            ->where('status', 'completed')
+            ->pluck('stase_id')
+            ->all();
+
+        $missing = array_diff($prereqIds, $completed);
+        if (empty($missing)) {
+            return null;
+        }
+
+        $names = Stase::whereIn('id', $missing)->pluck('name')->implode(', ');
+
+        return "Prasyarat stase belum selesai: {$names}.";
     }
 
     /**
@@ -115,6 +195,15 @@ class RotationSchedulerService
     {
         $period = RotationPeriod::findOrFail($periodId);
 
+        // Blackout kalender akademik → tidak ada yang bisa dijadwalkan
+        if ($reason = $this->periodBlackout($periodId)) {
+            return [
+                'placements' => [],
+                'unplaced' => [],
+                'summary' => ['candidates' => 0, 'placed' => 0, 'blocked_reason' => $reason],
+            ];
+        }
+
         // Kandidat: mahasiswa aktif program terkait yang BELUM ditempatkan pada periode ini
         $alreadyAssigned = RotationAssignment::where('rotation_period_id', $periodId)
             ->pluck('student_id');
@@ -164,9 +253,13 @@ class RotationSchedulerService
         // Beban stase (untuk pemerataan round-robin antar mahasiswa)
         $staseLoad = $stases->mapWithKeys(fn ($s) => [$s->id => 0])->all();
 
-        // Riwayat stase per mahasiswa (lintas periode) — jangan diulang
-        $history = RotationAssignment::whereIn('student_id', $students->pluck('id'))
-            ->get(['student_id', 'stase_id'])
+        // Riwayat stase per mahasiswa (lintas periode) — jangan diulang;
+        // subset ber-status completed dipakai untuk cek prasyarat.
+        $historyRows = RotationAssignment::whereIn('student_id', $students->pluck('id'))
+            ->get(['student_id', 'stase_id', 'status']);
+        $history = $historyRows->groupBy('student_id')
+            ->map(fn ($rows) => $rows->pluck('stase_id')->all());
+        $completedHistory = $historyRows->where('status', 'completed')
             ->groupBy('student_id')
             ->map(fn ($rows) => $rows->pluck('stase_id')->all());
 
@@ -175,10 +268,14 @@ class RotationSchedulerService
 
         foreach ($students as $student) {
             $done = collect($history->get($student->id, []));
+            $completed = collect($completedHistory->get($student->id, []));
 
-            // Kandidat stase: belum pernah dijalani, urut beban paling ringan
+            // Kandidat stase: belum pernah dijalani, prasyaratnya sudah selesai,
+            // urut beban paling ringan
             $candidateStases = $stases
                 ->reject(fn ($s) => $done->contains($s->id))
+                ->reject(fn ($s) => collect($s->prerequisite_stase_ids ?? [])
+                    ->diff($completed)->isNotEmpty())
                 ->sortBy(fn ($s) => $staseLoad[$s->id])
                 ->values();
 
@@ -186,7 +283,7 @@ class RotationSchedulerService
                 $unplaced[] = [
                     'student_id' => $student->id,
                     'name' => $student->user?->name,
-                    'reason' => 'Semua stase program sudah pernah dijalani.',
+                    'reason' => 'Tidak ada stase tersedia: sudah dijalani semua atau prasyaratnya belum selesai.',
                 ];
 
                 continue;

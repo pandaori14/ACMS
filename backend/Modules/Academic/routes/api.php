@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use Modules\Academic\Http\Controllers\AcademicCalendarController;
 use Modules\Academic\Http\Controllers\CohortController;
 use Modules\Academic\Http\Controllers\CompetencyController;
 use Modules\Academic\Http\Controllers\FacultyController;
@@ -31,9 +32,13 @@ $registerAcademicRoutes = function () {
     Route::get('competencies', [CompetencyController::class, 'index']);
     Route::get('competencies/{competency}', [CompetencyController::class, 'show']);
     Route::get('students', [StudentController::class, 'index']);
+    Route::get('calendar', [AcademicCalendarController::class, 'index']);
 
     // --- Mutasi data master (admin akademik) ---
     Route::middleware('permission:manage-academic-master')->group(function () {
+        Route::post('calendar', [AcademicCalendarController::class, 'store']);
+        Route::put('calendar/{id}', [AcademicCalendarController::class, 'update']);
+        Route::delete('calendar/{id}', [AcademicCalendarController::class, 'destroy']);
         Route::post('/faculties', [FacultyController::class, 'store']);
         Route::put('/faculties/{id}', [FacultyController::class, 'update']);
         Route::delete('/faculties/{id}', [FacultyController::class, 'destroy']);
@@ -56,6 +61,7 @@ $registerAcademicRoutes = function () {
         Route::post('students/import', [StudentController::class, 'import']);
         Route::get('students/{id}', [StudentController::class, 'show']);
         Route::put('students/{id}', [StudentController::class, 'update']);
+        Route::post('students/{id}/status', [StudentController::class, 'updateStatus']);
         Route::delete('students/{id}', [StudentController::class, 'destroy']);
     });
 

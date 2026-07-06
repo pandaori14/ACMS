@@ -172,6 +172,7 @@ class SettingSeeder extends Seeder
                     'rotation_assigned' => ['enabled' => true, 'cc_emails' => '', 'notify_roles' => [], 'conditional_rules' => []],
                     'honorarium_paid' => ['enabled' => true, 'cc_emails' => '', 'notify_roles' => [], 'conditional_rules' => []],
                     'grade_published' => ['enabled' => false, 'cc_emails' => '', 'notify_roles' => [], 'conditional_rules' => []],
+                    'student_status_changed' => ['enabled' => true, 'cc_emails' => '', 'notify_roles' => [], 'conditional_rules' => []],
                     'finance_billing' => ['enabled' => false, 'cc_emails' => '', 'notify_roles' => [], 'conditional_rules' => []],
                     'consultation_submitted' => [
                         'enabled' => true,
@@ -214,6 +215,7 @@ class SettingSeeder extends Seeder
             ['key' => 'email_template_rotation_assigned', 'group' => 'smtp', 'value' => 'Halo {name},\n\nAnda ditempatkan pada stase {stase} di {hospital} untuk periode {period}. Silakan cek jadwal rotasi Anda di sistem ACMS.', 'type' => 'text', 'description' => 'Template Email Penempatan Rotasi'],
             ['key' => 'email_template_grade_published', 'group' => 'smtp', 'value' => 'Halo {name},\n\nNilai stase {stase} Anda telah terbit: {grade} ({score}). Silakan cek transkrip Anda di sistem ACMS.', 'type' => 'text', 'description' => 'Template Email Nilai Terbit'],
             ['key' => 'email_template_logbook_verified', 'group' => 'smtp', 'value' => 'Halo {name},\n\nLogbook Anda pada stase {stase} tanggal {date} telah diverifikasi ({status}).', 'type' => 'text', 'description' => 'Template Email Logbook Diverifikasi'],
+            ['key' => 'email_template_student_status_changed', 'group' => 'smtp', 'value' => 'Halo {name},\n\nStatus akademik Anda di sistem ACMS telah diubah menjadi: {status}.\nAlasan: {reason}\n\nHubungi admin program studi bila ada pertanyaan.', 'type' => 'text', 'description' => 'Template Email Perubahan Status Mahasiswa'],
 
             // Retensi PII insiden (dipakai command incidents:prune-pii, terjadwal bulanan)
             ['key' => 'incident_retention_months', 'group' => 'incident', 'value' => '24', 'type' => 'string', 'description' => 'Masa retensi identitas pelapor insiden (bulan). Laporan selesai yang lebih tua dianonimkan permanen oleh sistem tiap bulan.'],

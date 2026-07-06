@@ -31,6 +31,7 @@ export interface Stase {
   credits?: number;
   passing_grade?: number;
   is_mandatory?: boolean;
+  prerequisite_stase_ids?: string[] | null;
   color_code?: string | null;
   status?: string;
   program?: Program;
