@@ -75,6 +75,7 @@ export function AppSidebar() {
         { title: "Dashboard", url: "/dashboard", icon: Home, permissions: ["view-dashboard"] },
         ...(isDodiknis ? [{ title: "Dasbor Preceptor", url: "/dashboard/preceptor", icon: ClipboardList, permissions: ["view-dashboard"] }] : []),
         { title: "Notifikasi", url: "/dashboard/notifications", icon: Bell, permissions: ["view-dashboard"] },
+        { title: "Broadcast", url: "/dashboard/broadcasts", icon: MessageSquareDot, permissions: ["send-broadcasts"] },
         { title: "Analytics & Reports", url: "/dashboard/analytics", icon: BarChart2, permissions: ["view-analytics"] },
         { title: "Dashboard Eksekutif", url: "/dashboard/analytics/executive", icon: BarChart2, permissions: ["view-executive-analytics"] },
         { title: "Pusat Laporan", url: "/dashboard/reports", icon: FileText, permissions: ["view-attendance-recap", "manage-grades", "view-analytics", "manage-incidents", "manage-finance", "view-logbook"] },

@@ -3,10 +3,12 @@
 use App\Http\Controllers\Api\AiAssistantController;
 use App\Http\Controllers\Api\AnalyticsController;
 use App\Http\Controllers\Api\AuditLogController;
+use App\Http\Controllers\Api\BroadcastController;
 use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\ExecutiveAnalyticsController;
 use App\Http\Controllers\Api\ExportController;
 use App\Http\Controllers\API\NotificationController;
+use App\Http\Controllers\Api\NotificationPreferenceController;
 use App\Http\Controllers\Api\RolePermissionController;
 use App\Http\Controllers\Api\SettingController;
 use App\Http\Controllers\Api\SsoController;
@@ -35,6 +37,18 @@ Route::middleware('auth:sanctum')->prefix('v1/notifications')->group(function ()
     Route::get('/', [NotificationController::class, 'index']);
     Route::post('/mark-all-read', [NotificationController::class, 'markAllAsRead']);
     Route::post('/{id}/read', [NotificationController::class, 'markAsRead']);
+});
+
+// Preferensi notifikasi email per user (event kritis tidak bisa dimatikan)
+Route::middleware('auth:sanctum')->prefix('v1/notification-preferences')->group(function () {
+    Route::get('/', [NotificationPreferenceController::class, 'index']);
+    Route::put('/', [NotificationPreferenceController::class, 'update']);
+});
+
+// Broadcast pesan massal (Aturan A: permission send-broadcasts)
+Route::middleware(['auth:sanctum', 'permission:send-broadcasts'])->prefix('v1/broadcasts')->group(function () {
+    Route::get('/', [BroadcastController::class, 'index']);
+    Route::post('/', [BroadcastController::class, 'store']);
 });
 
 // AI Assistant — HANYA Super Admin (LLM OpenAI-compatible + tool-calling ber-whitelist)

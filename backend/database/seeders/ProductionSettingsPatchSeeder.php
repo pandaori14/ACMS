@@ -108,14 +108,15 @@ class ProductionSettingsPatchSeeder extends Seeder
             }
         }
 
-        // Executive Analytics: permission baru + grant ke Kaprodi & Admin Prodi
-        Permission::firstOrCreate([
-            'name' => 'view-executive-analytics', 'guard_name' => 'web',
-        ]);
-        foreach (['Kaprodi', 'Admin Prodi'] as $roleName) {
-            $role = Role::where('name', $roleName)->first();
-            if ($role && ! $role->hasPermissionTo('view-executive-analytics')) {
-                $role->givePermissionTo('view-executive-analytics');
+        // Executive Analytics + Broadcast: permission baru + grant additive
+        // ke Kaprodi & Admin Prodi (JANGAN syncPermissions di produksi)
+        foreach (['view-executive-analytics', 'send-broadcasts'] as $permName) {
+            Permission::firstOrCreate(['name' => $permName, 'guard_name' => 'web']);
+            foreach (['Kaprodi', 'Admin Prodi'] as $roleName) {
+                $role = Role::where('name', $roleName)->first();
+                if ($role && ! $role->hasPermissionTo($permName)) {
+                    $role->givePermissionTo($permName);
+                }
             }
         }
 

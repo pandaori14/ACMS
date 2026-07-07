@@ -5,11 +5,36 @@ namespace App\Services;
 use App\Mail\SystemNotificationMail;
 use App\Models\Setting;
 use App\Models\User;
+use App\Models\UserNotificationPreference;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 
 class NotificationService
 {
+    /** Event yang TIDAK bisa dimatikan user (keamanan akun). */
+    public const CRITICAL_EVENTS = ['reset_password', 'new_account'];
+
+    /**
+     * Cek opt-out email penerima utama untuk satu event matrix.
+     * Baris preferensi tidak ada = email aktif (default).
+     */
+    private static function recipientOptedOut(?string $email, string $matrixKey): bool
+    {
+        if (! $email || in_array($matrixKey, self::CRITICAL_EVENTS, true)) {
+            return false;
+        }
+
+        $userId = User::where('email', $email)->value('id');
+        if (! $userId) {
+            return false; // email eksternal (cc manual) — kirim saja
+        }
+
+        return UserNotificationPreference::where('user_id', $userId)
+            ->where('event_type', $matrixKey)
+            ->where('email_enabled', false)
+            ->exists();
+    }
+
     /**
      * Parse the SMTP Notification Matrix and check if a specific key is enabled.
      */
@@ -119,6 +144,14 @@ class NotificationService
         if ($toEmail) {
             $ccEmails = array_diff($ccEmails, [$toEmail]);
             $bccEmails = array_diff($bccEmails, [$toEmail]);
+        }
+
+        // Preferensi user: penerima utama yang opt-out event ini dilepas —
+        // cc/bcc (dikonfigurasi admin via matrix) tetap menerima lewat
+        // mekanisme fallback di bawah.
+        if (self::recipientOptedOut($toEmail, $matrixKey)) {
+            Log::info("Notification: {$toEmail} opted out of {$matrixKey} — primary dilepas.");
+            $toEmail = null;
         }
 
         try {

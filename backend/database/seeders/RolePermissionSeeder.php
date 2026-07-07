@@ -47,6 +47,7 @@ class RolePermissionSeeder extends Seeder
             'configure-incident-form',
             'view-anonymous-identity',
             'view-executive-analytics',
+            'send-broadcasts',
         ];
 
         // Create permissions
@@ -68,7 +69,7 @@ class RolePermissionSeeder extends Seeder
             'view-assessments', 'manage-grades', 'view-transcripts', 'report-incidents',
             'manage-finance', 'manage-users', 'manage-academic-master', 'view-attendance-recap',
             'manage-consultations', 'submit-consultation', 'configure-incident-form',
-            'view-executive-analytics',
+            'view-executive-analytics', 'send-broadcasts',
         ]);
 
         // Kaprodi — manage-grades WAJIB: Kaprodi satu-satunya peran (selain
@@ -77,7 +78,7 @@ class RolePermissionSeeder extends Seeder
         $kaprodi->syncPermissions([
             'view-dashboard', 'view-analytics', 'view-transcripts', 'report-incidents', 'manage-incidents',
             'view-audit-logs', 'view-attendance-recap', 'manage-consultations', 'submit-consultation',
-            'view-anonymous-identity', 'manage-grades', 'view-executive-analytics',
+            'view-anonymous-identity', 'manage-grades', 'view-executive-analytics', 'send-broadcasts',
         ]);
 
         // Dodiknis

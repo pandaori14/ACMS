@@ -84,8 +84,8 @@ const ALL_CATEGORIES: Category[] = SECTIONS.flatMap((s) => s.items);
 // Shown with a "Belum aktif" badge so the Super Admin is not misled.
 // enforce_2fa kini AKTIF (mode lunak): peran admin tanpa 2FA diberi banner wajib-aktifkan.
 // allow_student_appeals kini AKTIF: menggate pengajuan banding nilai mahasiswa.
+// enable_email_broadcasts kini AKTIF: menggate channel email pada fitur Broadcast.
 const INACTIVE_KEYS = [
-  "enable_email_broadcasts",
   "evaluation_required_for_transcript",
   "billing_cycle",
 ];

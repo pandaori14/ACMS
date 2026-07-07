@@ -9,7 +9,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { UserCircle, LockKeyhole, ShieldCheck, Copy } from "lucide-react";
+import { UserCircle, LockKeyhole, ShieldCheck, Copy, BellRing } from "lucide-react";
+
+interface NotificationPref {
+  event_type: string;
+  label: string;
+  email_enabled: boolean;
+}
 
 export default function ProfilePage() {
   const user = useAuthStore((state) => state.user);
@@ -24,6 +30,37 @@ export default function ProfilePage() {
     password_confirmation: "",
   });
   const [savingPassword, setSavingPassword] = useState(false);
+
+  // ─────── Preferensi notifikasi email ───────
+  const [prefs, setPrefs] = useState<NotificationPref[]>([]);
+  const [savingPrefs, setSavingPrefs] = useState(false);
+
+  useEffect(() => {
+    api
+      .get("/api/v1/notification-preferences")
+      .then((res) => setPrefs(res.data.data || []))
+      .catch(() => {});
+  }, []);
+
+  const togglePref = (eventType: string) => {
+    setPrefs((prev) =>
+      prev.map((p) => (p.event_type === eventType ? { ...p, email_enabled: !p.email_enabled } : p))
+    );
+  };
+
+  const savePrefs = async () => {
+    setSavingPrefs(true);
+    try {
+      await api.put("/api/v1/notification-preferences", {
+        preferences: prefs.map((p) => ({ event_type: p.event_type, email_enabled: p.email_enabled })),
+      });
+      toast.success("Preferensi notifikasi tersimpan.");
+    } catch (err) {
+      toast.error(getApiErrorMessage(err, "Gagal menyimpan preferensi."));
+    } finally {
+      setSavingPrefs(false);
+    }
+  };
 
   // ─────── 2FA TOTP ───────
   const [twoFaEnabled, setTwoFaEnabled] = useState<boolean>(!!user?.two_factor_enabled);
@@ -319,6 +356,42 @@ export default function ProfilePage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Preferensi notifikasi email */}
+      {prefs.length > 0 && (
+        <Card className="clean-card">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <BellRing className="w-5 h-5" /> Preferensi Notifikasi Email
+            </CardTitle>
+            <CardDescription>
+              Pilih email otomatis mana yang ingin Anda terima. Notifikasi lonceng in-app dan
+              email keamanan akun (reset password) tetap selalu aktif.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="grid gap-2 sm:grid-cols-2">
+              {prefs.map((p) => (
+                <label
+                  key={p.event_type}
+                  className="flex items-center gap-2 rounded-md border p-2.5 text-sm cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800"
+                >
+                  <input
+                    type="checkbox"
+                    className="h-4 w-4 rounded border-gray-300"
+                    checked={p.email_enabled}
+                    onChange={() => togglePref(p.event_type)}
+                  />
+                  {p.label}
+                </label>
+              ))}
+            </div>
+            <Button onClick={savePrefs} disabled={savingPrefs} className="bg-blue-900 hover:bg-blue-800 text-white">
+              {savingPrefs ? "Menyimpan..." : "Simpan Preferensi"}
+            </Button>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }

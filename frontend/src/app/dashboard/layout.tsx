@@ -5,6 +5,7 @@ import { NotificationBell } from "@/components/NotificationBell";
 import { UserMenu } from "@/components/layout/UserMenu";
 import { TwoFactorBanner } from "@/components/layout/TwoFactorBanner";
 import { OnboardingTour } from "@/components/OnboardingTour";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 export default function DashboardLayout({
   children,
@@ -19,6 +20,7 @@ export default function DashboardLayout({
         <div className="flex h-14 items-center justify-between border-b px-4 md:hidden bg-white dark:bg-slate-900 sticky top-0 z-40">
           <span className="font-bold text-lg text-slate-900 dark:text-white tracking-tight">ACMS</span>
           <div className="flex items-center gap-2">
+             <ThemeToggle />
              <NotificationBell />
              <UserMenu />
           </div>
@@ -28,6 +30,7 @@ export default function DashboardLayout({
         <div className="hidden md:flex h-14 items-center justify-between border-b px-4 bg-white dark:bg-slate-900 sticky top-0 z-40">
           <SidebarTrigger />
           <div className="flex items-center gap-2">
+             <ThemeToggle />
              <NotificationBell />
              <UserMenu />
           </div>
