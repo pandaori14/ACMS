@@ -1,401 +1,341 @@
 # CLAUDE.md — Academic Clinical Management System (ACMS)
 
-> Ini adalah file konfigurasi Claude Code yang dibaca otomatis di setiap sesi. Baca seluruh dokumen ini sebelum menulis kode apapun.
+> File ini dibaca otomatis di **setiap** sesi. Baca seluruhnya sebelum menulis kode.
+> Kualitas file ini menentukan kualitas semua pekerjaan berikutnya — perlakukan sebagai konstitusi proyek. Bila realita kode berbeda dari dokumen ini, **kode yang benar** → perbaiki dokumen ini.
 
 ---
 
-## 1. Identitas Project
+## 0. Prime Directive
 
-**ACMS** adalah sistem manajemen akademik dan klinis untuk **Fakultas Kedokteran Universitas Muhammadiyah Surakarta (UMS)**. Sistem ini mengelola rotasi klinik mahasiswa (koass) ke rumah sakit mitra, logbook kegiatan klinis, penilaian mini-CEX/DOPS/CBD, ujian OSCE/CBT, absensi GPS, keuangan RS, dan pelaporan insiden.
+1. **Sistem SUDAH LIVE PRODUKSI** di `apps-kedokteran.ums.ac.id/acms` dengan data nyata. Perintah berdampak (deploy, seeder, migrasi destruktif) **hanya** atas instruksi eksplisit user.
+2. **JANGAN deploy** tanpa perintah eksplisit. `.env` tidak pernah di-commit.
+3. Ikuti pola yang sudah ada. Cari implementasi/utilitas eksisting sebelum menulis yang baru — sistem ini besar dan konsisten.
+4. Verifikasi klaim ke kode, bukan ingatan. Setelah selesai, laporkan apa adanya (tes lulus/gagal, langkah dilewati).
 
-**Owner:** Fakultas Kedokteran UMS  
-**Status:** Development Phase → Enterprise Develop Phase
+---
+
+## 1. ⚡ Checklist Membuat Fitur Baru (TL;DR — hafalkan)
+
+Urutan wajib untuk setiap endpoint/fitur:
+
+1. **Route ber-permission** di file modul yang benar (`permission:...`). Route **statis sebelum wildcard `{id}`**.
+2. **Controller tipis** → business logic di **Service** → validasi di **FormRequest** (atau inline `$request->validate`).
+3. Dropdown/enum → `exists:system_references,value,category,<kategori>` (Aturan B). **Tanpa hardcode.**
+4. Event penting → **hook notifikasi** (`NotificationService::sendDynamicEmail` matrix + in-app Notification class). Template & matrix key baru masuk **SettingSeeder DAN ProductionSettingsPatchSeeder**.
+5. Perubahan state penting → **`AuditService::log()`** atau trait `Auditable`.
+6. **String UI baru → i18n** (`src/messages/id.json` + `en.json`, `useTranslations`). Jangan hardcode teks.
+7. **Tes PHPUnit** Feature untuk service/controller baru.
+8. **Gates sebelum commit** (semua wajib hijau):
+   ```
+   backend:  php vendor/bin/pint --dirty  &&  php artisan test
+   frontend: npx tsc --noEmit  &&  npx eslint src  &&  npm run build
+   ```
+9. **Commit** Conventional Commits (§15). Push git; **jangan** jalankan deploy.
+
+Waspadai **JEBAKAN KRITIS (§6)** — terutama **dual-ID mahasiswa**.
 
 ---
 
 ## 2. Tech Stack Aktual (Ground Truth)
 
-> ⚠️ Dokumen desain seperti `ARCHITECTURE.md` menggambarkan target produksi. Tabel di bawah ini adalah yang BENAR-BENAR berjalan.
+> Tabel ini = yang BENAR-BENAR berjalan. (Dokumen desain `Build/` bersifat lokal-saja, lihat §17.)
 
-### Backend (`backend/`)
-| Komponen | Versi Aktual | Catatan |
-|----------|-------------|---------|
-| Framework | **Laravel 12.x** | Bukan 11.x |
-| PHP | **8.2+** | Bukan 8.4 |
-| Database (Dev) | **MySQL via XAMPP** | Bukan PostgreSQL |
-| Database (Prod Target) | PostgreSQL 17 | Gunakan syntax MySQL-kompatibel untuk migrasi |
-| Cache/Queue | Database driver | Bukan Redis (dev) |
-| File Storage | Local disk `storage/app/` | Bukan MinIO (dev) |
-| Auth | Laravel Sanctum + SSO Socialite | |
-| RBAC | Spatie Laravel Permission | |
-| PDF | DomPDF (`barryvdh/laravel-dompdf`) | |
-| Excel | Maatwebsite Excel | |
-| Monitoring | Laravel Pulse | |
+### Backend (`backend/`) — Laravel 12, PHP 8.2+
+| Komponen | Aktual | Catatan |
+|----------|--------|---------|
+| Framework | Laravel **12.x**, modular monolith `nwidart/laravel-modules` | 11 modul di `Modules/` |
+| DB (dev) | **MySQL** `acms_db` | Prod target PostgreSQL 17 — migrasi wajib kompatibel keduanya (Aturan D) |
+| Cache/Queue | **Database driver** | Bukan Redis |
+| Storage | Local disk `storage/app` | |
+| Auth | **Sanctum** (cookie SPA, `statefulApi`) + **Socialite** (Google SSO) + **2FA TOTP** (`pragmarx/google2fa`) | |
+| RBAC | **Spatie Laravel Permission** | kebab-case; `Gate::before` Super Admin bypass (AppServiceProvider) |
+| PDF / Excel | DomPDF (`barryvdh/laravel-dompdf`) · Maatwebsite Excel | |
+| QR | `endroid/qr-code` **SvgWriter** | PHP CLI tanpa ext-gd → WAJIB SvgWriter, bukan PNG |
+| Realtime | **Laravel Reverb** (WebSocket) | `BROADCAST_CONNECTION=reverb`; fallback polling di frontend |
+| Monitoring | Laravel Pulse · **Sentry** (`sentry/sentry-laravel`, DSN-gated dorman) | |
 
-### Frontend (`frontend/`)
-| Komponen | Versi Aktual | Catatan |
-|----------|-------------|---------|
-| Framework | **Next.js 15** | App Router. Bukan Next.js 14 |
-| React | **19.x** | |
-| TypeScript | 5.x strict mode | `"any"` dilarang keras |
-| CSS | Tailwind CSS v4 | PostCSS config |
-| UI Components | shadcn/ui | Copy-paste, bukan dependency |
-| State (server) | TanStack Query v5 | |
-| State (client) | Zustand v5 | Persist ke localStorage |
-| Forms | React Hook Form v7 + Zod **v4** | Zod v4 ≠ Zod v3 (ada breaking changes) |
-| HTTP | Axios v1 | withCredentials: true (cookie Sanctum) |
-| Charts | Recharts v3 | |
-| Toast | Sonner v2 | |
-| Base path | `/acms` | Semua route prefix `/acms` |
+### Frontend (`frontend/`) — Next.js 15, React 19
+| Komponen | Aktual | Catatan |
+|----------|--------|---------|
+| Framework | **Next.js 15** App Router, `output: standalone`, basePath **`/acms`** | |
+| Bahasa | React **19** + TypeScript strict — **`any` DILARANG** | |
+| Styling | **Tailwind v4** + **shadcn/ui** (primitives `@base-ui/react`) + **Lucide** | dark mode class `.dark` (toggle ada) |
+| i18n | **next-intl v4** — cookie `NEXT_LOCALE`, **TANPA prefix URL** (`/acms/...` tetap) | id/en |
+| State | TanStack Query **v5** (server) · Zustand **v5** persist (`useAuthStore`) | |
+| Forms | React Hook Form v7 + **Zod v4** (≠ v3) | |
+| HTTP/Realtime | Axios v1 `withCredentials` (`lib/api.ts`) · **laravel-echo** + **pusher-js** (`lib/echo.ts`) | |
+| Lain | Recharts v3 · Sonner v2 · **PWA** (sw.js tulis-tangan) · Sentry (`@sentry/nextjs`) | |
+| E2E | **Cypress** (`npm run test:e2e`) | bukan Playwright |
 
 ---
 
-## 3. Menjalankan Project Lokal
+## 3. Menjalankan Lokal
 
-### Backend
 ```powershell
+# Backend (port 8000)
 cd "d:\xampp\htdocs\Academic Clinical Management System\backend"
-php artisan serve          # Jalan di port 8000
-php artisan migrate --seed # Setup database (jalankan sekali)
-php artisan queue:work     # Worker untuk jobs (PDF generation, dll)
-```
+php artisan serve
+php artisan migrate --seed        # sekali; buat DB acms_db di MySQL dulu
+php artisan queue:work            # job: PDF, email, broadcast (proses terpisah)
+php artisan reverb:start          # WebSocket realtime (opsional lokal)
 
-### Frontend
-```powershell
+# Frontend (port 3000 → akses http://localhost:3000/acms)
 cd "d:\xampp\htdocs\Academic Clinical Management System\frontend"
-npm run dev               # Jalan di port 3000, akses via localhost:3000/acms
+npm run dev
 ```
+`.env` backend: `DB_DATABASE=acms_db`, `DB_USERNAME=root`, `DB_PASSWORD=` (kosong).
 
-### Database
-- Buat database `acms_db` di MySQL XAMPP sebelum migrate
-- File `.env` backend: `DB_CONNECTION=mysql`, `DB_DATABASE=acms_db`, `DB_USERNAME=root`, `DB_PASSWORD=`
+### 🖥️ JEBAKAN MESIN DEV INI (baca sebelum menjalankan tool)
+- **PHP CLI**: `D:\xampp\php\php.exe` (bukan `php` di PATH). **Tanpa ext-gd** → QR harus SvgWriter; Excel/phpspreadsheet minta gd saat `composer`.
+- **Composer TIDAK di PATH**: pakai `composer.phar` (ada di scratchpad sesi). Install dep:
+  `php composer.phar require <paket> --ignore-platform-req=ext-gd`.
+- **MySQL TIDAK bisa distart dari shell agent** (data dir XAMPP butuh admin; error 5 hapus ibtmp1). Start via **XAMPP Control Panel**. Konsekuensi: seeder ke DB dev dijalankan user; **tes TIDAK butuh MySQL**.
+- **PHPUnit**: pakai **SQLite in-memory** + **APP_KEY statis** di `phpunit.xml` → `php artisan test` jalan tanpa MySQL & tanpa `.env`. `BROADCAST_CONNECTION` di-null saat test.
+- **Git di Bash tool**: `export PATH="$PATH:/c/Program Files/Git/cmd"` dulu.
+- **Cypress & MySQL tidak jalan di sandbox agent** → verifikasi via `artisan test` + `tsc` + `eslint` + `npm run build`; Cypress dijalankan user di mesin lokal.
+- **`.env` pernah tertimpa `.env.example`** (APP_KEY dev hilang) — nilai terenkripsi DB dev (API key AI, secret 2FA) tak bisa didekripsi; masukkan ulang bila perlu. Produksi tak terdampak.
 
 ---
 
-## 4. 🚨 ATURAN WAJIB — Baca Sebelum Menulis Kode
+## 4. 🚨 ATURAN WAJIB A–G
 
-### Aturan A: Setiap Endpoint API WAJIB Dilindungi RBAC
-
-Setiap route baru di `api.php` HARUS punya middleware permission:
-
+### A — Setiap Endpoint API Dilindungi RBAC
 ```php
-// ✅ BENAR
-Route::middleware(['auth:sanctum', 'permission:manage-settings'])
-    ->group(function () { ... });
-
-// ❌ SALAH — endpoint terbuka tanpa proteksi
-Route::post('/grades/approve', [GradeController::class, 'approve']);
+Route::middleware(['auth:sanctum', 'permission:manage-settings'])->group(fn () => ...);  // ✅
+Route::post('/grades/approve', [GradeController::class, 'approve']);                        // ❌ terbuka
+```
+Permission kebab-case (§9). Super Admin bypass otomatis via `Gate::before`. Cek di frontend: **`user.permissions`** (bukan state teratas):
+```ts
+const user = useAuthStore((s) => s.user);
+if (user?.permissions?.includes('manage-grades')) { ... }
 ```
 
-Penamaan permission menggunakan **kebab-case** (sesuai seeder aktual):
-`view-dashboard`, `verify-logbook`, `create-assessments`, `manage-settings`, dll.
-Lihat daftar lengkap: `backend/database/seeders/RolePermissionSeeder.php`
+### B — DILARANG Hardcode Enum/Dropdown
+Semua referensi dari tabel `system_references`. Validasi: `'incident_type' => 'exists:system_references,value,category,incident_types'`. UI kelola: `frontend/src/app/dashboard/settings/references/`. Endpoint baca: `GET /api/references/{category}`.
 
-### Aturan B: DILARANG Hardcode Enum / Dropdown
-
-```php
-// ❌ SALAH — hardcoded
-$types = ['student_safety', 'bullying', 'patient_safety'];
-
-// ✅ BENAR — ambil dari system_references
-$types = SystemReference::where('category', 'incident_types')
-    ->where('is_active', true)->get();
-
-// ✅ Validasi request selalu pakai exists:
-'incident_type' => 'required|exists:system_references,value,category,incident_types'
-```
-
-Semua data referensi/dropdown disimpan di tabel `system_references`.  
-UI management: `frontend/src/app/dashboard/settings/references/`
-
-### Aturan C: Setiap Event Penting WAJIB Hook ke SMTP Matrix
-
-Jika Anda membuat fitur yang mengubah state penting (nilai diterbitkan, rotasi ditugaskan, tagihan diterbitkan), **WAJIB** panggil:
-
+### C — Notifikasi = Matrix SMTP + In-App + Preferensi
+**Email** (satu sumber kebenaran `smtp_notification_matrix`, dikelola Super Admin):
 ```php
 NotificationService::sendDynamicEmail(
-    $recipientEmail,
-    "Subject Notifikasi",
-    "template_key",    // key template di settings
-    "matrix_key",      // key di smtp_notification_matrix (contoh: 'grade_published')
-    ['name' => ..., 'value' => ...],  // variabel template
-    ['grade_value' => 'E']            // context untuk conditional rules
+    $recipientEmail, "Subject", "email_template_key", "matrix_key",
+    ['name' => ..., 'stase' => ...],   // variabel template
+    ['grade_value' => 'E']             // context aturan bersyarat (opsional)
 );
 ```
+**In-app**: buat Notification class channel `database` (+ `toArray` {title,message,url,type}); realtime otomatis via Reverb (channel private `App.Models.User.{id}`) — **jangan** panggil broadcast manual. Contoh: `App\Notifications\BroadcastAnnouncement`, `Modules\Assessment\...\DocumentReadyNotification`.
+**Preferensi user** dihormati `NotificationService` (opt-out per event; `CRITICAL_EVENTS` = `reset_password`,`new_account` tak bisa dimatikan).
+⚠️ Template & matrix key baru **WAJIB** ditambah di `SettingSeeder` **DAN** `ProductionSettingsPatchSeeder`.
 
-**JANGAN** hardcode logika "kirim email ke siapa" di controller. Super Admin yang konfigurasi melalui UI Settings.  
-Implementasi: `backend/app/Services/NotificationService.php`
-
-### Aturan D: Migrasi Database WAJIB Kompatibel MySQL
-
-Target produksi adalah PostgreSQL, tapi development menggunakan MySQL. Tulis migrasi yang bisa jalan di keduanya:
-
+### D — Migrasi Kompatibel MySQL & PostgreSQL
 ```php
-// ✅ Kompatibel MySQL & PostgreSQL
-$table->string('status')->default('draft');
-$table->json('metadata')->nullable();
-$table->decimal('amount', 15, 2);
-
-// ❌ PostgreSQL-only, gagal di MySQL dev
-$table->ipAddress('ip_address');  // INET type tidak ada di MySQL
+$table->string('status')->default('draft');  $table->json('metadata')->nullable();  // ✅
+$table->ipAddress('ip');                                                             // ❌ MySQL gagal
 ```
 
----
+### E — i18n (next-intl) untuk SEMUA String UI
+Teks UI baru → key di `src/messages/id.json` + `en.json`; render `useTranslations('ns')` (client) / `getTranslations` (server). Locale dari cookie `NEXT_LOCALE` (`LanguageToggle.tsx`), default `id`, tanpa prefix URL. **Status**: chrome (sidebar/nav) + login sudah dikonversi; body halaman domain masih bertahap — **file yang Anda sentuh, ikut dikonversi**.
 
-## 5. Peta Modul Backend (11 Modul)
+### F — Tes & Gates
+Fitur backend → Feature test PHPUnit. Sebelum commit semua hijau: `pint --dirty`, `artisan test`, `tsc --noEmit`, `eslint src`, `next build`.
 
-Semua modul ada di `backend/Modules/`. Setiap modul punya struktur mandiri.
-
-| Modul | Path | Domain | Status |
-|-------|------|--------|--------|
-| `Auth` | `Modules/Auth/` | Login, logout, SSO Socialite | ✅ Done |
-| `Academic` | `Modules/Academic/` | Fakultas, program, stase, kohort, mahasiswa, kompetensi | ✅ Done |
-| `Rotation` | `Modules/Rotation/` | RS, periode rotasi, penempatan mahasiswa, kapasitas | ✅ Done |
-| `Clinical` | `Modules/Clinical/` | Logbook, prosedur, diagnosis, verifikasi preceptor | ✅ Done |
-| `Assessment` | `Modules/Assessment/` | Mini-CEX, DOPS, CBD, nilai stase, transkrip | ✅ Done |
-| `Examination` | `Modules/Examination/` | OSCE, CBT, WRITTEN, peserta, penilai | ✅ Done |
-| `Finance` | `Modules/Finance/` | Billing RS, honorarium preceptor | ✅ Done |
-| `Attendance` | `Modules/Attendance/` | Absensi GPS (check-in/out) | ✅ Done |
-| `Evaluation` | `Modules/Evaluation/` | Kuesioner evaluasi klinis | ✅ Done |
-| `Incident` | `Modules/Incident/` | Pelaporan insiden (anonim) | ✅ Done |
-| `Core` | `Modules/Core/` | Shared utilities, notification service | ✅ Done |
-
-> Notification, Analytics, Audit **BELUM menjadi modul terpisah**. Mereka ada di `backend/app/Http/Controllers/Api/` dan `backend/app/Services/`.
+### G — Audit
+Perubahan state penting (status mahasiswa, nilai, banding, broadcast, dll) → `AuditService::log($action, $model, $old, $new, $meta)` atau trait `Auditable` di model. Chain hash diverifikasi nightly (`audit:verify-chain`).
 
 ---
 
-## 6. RBAC — 8 Peran & Permission
+## 5. 🔒 Aturan Produksi & Seeder (KRITIS)
 
-### 8 Peran Sistem
-
-| Kode | Role Slug | Nama | Scope |
-|------|-----------|------|-------|
-| SA | `super-admin` | Super Admin | Global — bypass semua scope |
-| AP | `admin-prodi` | Admin Program Studi | Per program |
-| KP | `kaprodi` | Ketua Program Studi | Per program (oversight) |
-| DO | `dosen` | Dosen / Lecturer | Per program + stase assigned |
-| DK | `dodiknis` | Dokter Pendidik Klinis (Preceptor) | Per hospital + stase |
-| AR | `admin-rs` | Admin Rumah Sakit | Per hospital |
-| MH | `mahasiswa` | Mahasiswa (Koass) | Own records only |
-| FN | `finance` | Finance / Keuangan | Per program (finansial) |
-
-### Permission Naming Format
-
-**Kebab-case** — contoh: `view-dashboard`, `manage-users`, `verify-logbook`.  
-Lihat daftar lengkap permission di `backend/database/seeders/RolePermissionSeeder.php`.  
-Untuk detail matriks siapa boleh apa: `Build/RBAC_MATRIX.md`.
-
-### Cek Permission di Kode
-
-```php
-// Middleware route
-Route::middleware('permission:verify-logbook')->...
-
-// Dalam controller
-$this->authorize('update', $logbookEntry); // via Policy
-
-// Di Frontend (TypeScript)
-const { permissions } = useAuthStore();
-if (permissions.includes('manage-grades')) { ... }
-```
+- **JANGAN PERNAH** jalankan `SettingSeeder` / `RolePermissionSeeder` **penuh** di produksi → `updateOrCreate`/`syncPermissions` me-reset **SMTP, API key AI, kustomisasi RBAC** admin.
+- Produksi hanya `ProductionSettingsPatchSeeder` (**idempotent**: `firstOrCreate` + merge matrix + `givePermissionTo` additive) — dijalankan **otomatis** oleh `deploy.sh` (build → down → up).
+- **Permission baru**: tambah di `RolePermissionSeeder` (untuk fresh install) **DAN** `Permission::firstOrCreate` + `givePermissionTo` additive di `ProductionSettingsPatchSeeder`.
+- **Proses long-running produksi**: `queue:work` + `reverb:start` (butuh aturan nginx WS-upgrade dari IT FK UMS; tanpa itu frontend fallback polling 60 dtk).
+- `.env` tak pernah di-commit; rahasia via SSH bukan FTP; password DB alfanumerik bila di-set via shell/sed.
 
 ---
 
-## 7. Struktur Frontend — Lokasi File Aktual
+## 6. ☠️ JEBAKAN KRITIS KODE (dari bug nyata — hafalkan)
+
+**Dual-ID mahasiswa** — jebakan #1, sudah menyebabkan ≥3 bug:
+| Pakai `students.id` (profil) | Pakai `users.id` |
+|---|---|
+| `rotation_assignments`, `logbook_entries`, `attendance_records`, `student_skill_records`, `evaluation_submissions` | `stase_grades`, `clinical_assessments`, `exam_participants`, `ukmppd_results`, `generated_documents`, `grade_appeals` |
+
+Konversi: `$user->student?->id` (users→profil) · `$assignment->student->user_id` (profil→users). Penjaga: `StudentJourneyTest` (E2E). Pola scoping Dodiknis: `resolveTargetProfile()` di `CompetencyProgressController`/`SkillChecklistController`.
+
+**Lainnya:**
+- **Route statis SEBELUM wildcard `{id}`** (kasus `batch-verify` ketangkap `POST {id}` → 404). Contoh benar: `Clinical/routes/api.php`, `Examination/routes/api.php`.
+- Controller/Service Laravel **hidup lintas request** (route cache/Octane) → **jangan memo per-instance** (kasus `blackoutMemo`).
+- Channel broadcast UUID → bandingkan **string**, jangan `(int)` (kasus bocor otorisasi `channels.php`).
+- **RateLimiter di controller**, bukan middleware `throttle` (tak menempel di route modul).
+- **Cache daftar** (mis. `stases_list_*`) wajib `Cache::forget` saat mutasi.
+- Setting `type=secret` **terenkripsi + diredaksi** jadi placeholder (`__SECRET_SET__`) — jangan kirim plaintext ke frontend.
+- `INACTIVE_KEYS` di `SettingsClient.tsx` = setting yang ada tapi belum di-enforce (badge "Belum aktif"); pindahkan keluar saat fiturnya aktif.
+- **Test gotchas**: request guest+session butuh header `Origin: config('app.url')` (Sanctum statefulApi); guard `auth:sanctum` menempel `shouldUse('sanctum')` antar-request → reset `$this->app['auth']->shouldUse('web')` + `forgetGuards()` sebelum panggilan guest.
+
+---
+
+## 7. Peta Modul Backend (11 Modul + cross-cutting)
+
+`backend/Modules/<Nama>/` (mandiri: `app/`, `routes/api.php`, `database/`, `tests/`).
+
+| Modul | Domain (termasuk fitur terbaru) |
+|-------|--------------------------------|
+| `Auth` | Login, logout, SSO Socialite, 2FA TOTP, forgot/reset/change password |
+| `Academic` | Fakultas, prodi, stase (+prasyarat), kohort, mahasiswa (+import, +transisi status), kompetensi, **kalender akademik** |
+| `Rotation` | RS, periode, penempatan, kapasitas, **auto-scheduler**, **swap**, **schedule-matrix (timeline)** |
+| `Clinical` | Logbook (+is_late, batch-verify, export buku), prosedur/diagnosis, progres kompetensi, **skill checklist** |
+| `Assessment` | Mini-CEX/DOPS/CBD, rubrik, nilai stase, transkrip, **banding nilai**, **yudisium eligibility**, surat & buku-logbook (job QR) |
+| `Examination` | OSCE, **CBT online** (timer server-side, auto-grade, shuffle), **bank soal reusable**, **UKMPPD** |
+| `Finance` | Billing RS (invoice PDF), honorarium |
+| `Attendance` | Presensi GPS (geofence + anti-spoof), izin/sakit, koreksi, rekap |
+| `Evaluation` | Kuesioner evaluasi anonim + laporan agregat |
+| `Incident` | Pelaporan insiden (anonim) + konsultasi rahasia + retensi PII |
+| `Core` | Utilitas bersama, NotificationService |
+
+**Cross-cutting di `backend/app/`** (belum jadi modul): Broadcast, `AtRiskDetectionService`, ExecutiveAnalytics, Analytics, Audit, NotificationPreference, Settings, Users, SystemReference, AiAssistant.
+
+---
+
+## 8. Struktur Frontend (aktual)
 
 ```
 frontend/src/
 ├── app/
-│   ├── (auth)/login/               # Halaman login
-│   ├── sso-callback/               # Google SSO callback
-│   ├── dashboard/                  # Semua halaman terproteksi
-│   │   ├── page.tsx                # Dashboard utama
-│   │   ├── layout.tsx              # Layout dengan sidebar
-│   │   ├── academic/               # Stase, kompetensi, fakultas
-│   │   ├── clinical/               # Logbook, absensi, evaluasi, verifikasi
-│   │   ├── rotation/ & rotations/  # RS, periode, penempatan
-│   │   ├── assessments/            # Penilaian
-│   │   ├── examinations/           # Ujian & OSCE
-│   │   ├── finance/                # Billing & honorarium
-│   │   ├── grades/                 # Nilai & transkrip
-│   │   ├── incidents/              # Insiden
-│   │   ├── preceptor/              # View khusus Dodiknis
-│   │   ├── examiner/               # View khusus penilai OSCE
-│   │   ├── settings/               # Pengaturan sistem & RBAC
-│   │   └── users/                  # Manajemen pengguna
-│   └── safety/                     # Halaman publik (SOP, kontak)
-├── components/
-│   ├── ui/                         # 20+ shadcn/ui components
-│   ├── layout/AppSidebar.tsx       # Navigasi sidebar (permission-based)
-│   ├── layout/BottomNav.tsx        # Navigasi mobile
-│   └── NotificationBell.tsx        # Notifikasi dropdown
-├── store/useAuthStore.ts            # Auth state (Zustand, persist localStorage)
-└── lib/api.ts                       # Axios instance (CSRF + interceptor 401)
+│   ├── (auth)/login/ · sso-callback/ · forgot-password/ · reset-password/
+│   ├── verify/[code]/                 # verifikasi dokumen publik (QR)
+│   ├── safety/{sop,protection,contacts}/   # halaman publik insiden
+│   └── dashboard/                     # terproteksi (layout + sidebar)
+│       ├── academic/{stase,students,cohorts,calendar,competencies,faculty}
+│       ├── clinical/{logbooks,verification,attendance,skills,competency-progress,evaluations}
+│       ├── rotations/{,timeline,swap} · rotation/{hospitals}
+│       ├── assessments/ · grades/{,appeals} · my-grades/ · transcripts/{,eligibility} · documents/
+│       ├── examinations/{,[id],question-bank,ukmppd}
+│       ├── finance/ · incidents/ · preceptor/ · examiner/ · hospital/students
+│       ├── analytics/{,executive} · reports/ · broadcasts/ · notifications/
+│       ├── settings/{,roles,references,audit-logs} · users/ · help/ · profile/ · ai-assistant/
+├── components/ ui/(shadcn) · layout/{AppSidebar,BottomNav,UserMenu,TwoFactorBanner}
+│              · NotificationBell · ThemeToggle · LanguageToggle · OnboardingTour · PwaRegister
+├── i18n/request.ts · messages/{id,en}.json      # next-intl
+├── store/useAuthStore.ts · lib/{api.ts,echo.ts}
+└── cypress/e2e/{login,smoke}.cy.ts
 ```
-
-> ⚠️ Tidak ada folder `src/features/` atau `src/types/` — ini hanya ada di design doc, belum diimplementasi.
+Tak ada `src/features/` atau `src/types/` (types inline/`lib/types.ts`).
 
 ---
 
-## 8. UI/Design Rules (UMS Branding)
+## 9. RBAC — 8 Peran & 29 Permission
 
-```
-Warna Primer (UMS Blue):   bg-blue-900 (#1E3A8A) — tombol utama, sidebar aktif
-Warna Aksen (UMS Gold):    bg-yellow-500 (#EAB308) — highlight, aksi primer
-Warna Teks Utama:          text-gray-900 / text-gray-800
-Warna Background:          bg-white / bg-gray-50
-Dark mode:                 Didukung via CSS variables (.dark class)
-Border radius:             rounded-md (default shadcn)
-Card style:                Gunakan class .clean-card (custom utility di globals.css)
-```
+| Slug | Peran | Scope |
+|------|-------|-------|
+| `super-admin` | Super Admin | Global (bypass `Gate::before`) |
+| `admin-prodi` | Admin Prodi | Per program |
+| `kaprodi` | Kaprodi | Per program (oversight, approve nilai) |
+| `dosen` | Dosen | Per program |
+| `dodiknis` | Dokter Pendidik Klinis (Preceptor) | Per RS + stase |
+| `admin-rs` | Admin RS | Per RS (scoped di controller) |
+| `mahasiswa` | Mahasiswa (Koass) | Data sendiri |
+| `finance` | Keuangan | Per program (finansial) |
 
-- **Jangan** mengubah palet warna tanpa persetujuan — ini adalah identitas UMS
-- Gunakan komponen shadcn/ui yang sudah ada di `src/components/ui/`
-- Charts: gunakan **Recharts** dengan warna dari CSS variable `--chart-1` hingga `--chart-5`
-- Icons: **Lucide React** saja — jangan install icon library lain
-- Detail lengkap: `Build/UI_DESIGN_SYSTEM.md`
+**Permission (kebab-case, sumber `RolePermissionSeeder`):** `view-dashboard, view-analytics, manage-stase, manage-hospitals, view-rotations, manage-rotations, view-logbook, verify-logbook, take-examinations, manage-examinations, create-assessments, view-assessments, manage-grades, view-transcripts, report-incidents, manage-incidents, manage-finance, manage-users, manage-academic-master, manage-settings, view-incident-guide, view-audit-logs, view-attendance-recap, manage-consultations, submit-consultation, configure-incident-form, view-anonymous-identity, view-executive-analytics, send-broadcasts`.
+
+Matriks dikelola UI **Pengaturan → Hak Akses (RBAC)**.
 
 ---
 
-## 9. Pola Kode Wajib
+## 10. Peta Route API
 
-### Backend (Laravel)
+| Area | Prefix | File |
+|------|--------|------|
+| Auth / SSO / 2FA | `/api/auth/*`, `/api/sso/*` | `Modules/Auth/routes/api.php` |
+| Academic (kanonik) | `/api/v1/academic/*` (calendar, students/{id}/status) | `Modules/Academic/routes/api.php` |
+| ⤷ alias deprecated | `/api/academic/*` | (jangan dipakai kode baru) |
+| Rotation | `/api/v1/rotation/*` (assignments, schedule/{preview,commit}, schedule-matrix, swaps, capacities) | `Modules/Rotation/` |
+| Clinical | `/api/v1/clinical/*` (logbooks +export/batch-verify, skills, competency-progress) | `Modules/Clinical/` |
+| Attendance | `/api/v1/clinical/attendance/*` | `Modules/Attendance/` |
+| Assessment | `/api/v1/assessments/*` · `/api/v1/grades/*` (+appeals) · `/api/v1/yudisium/*` (eligibility, generate-letter, generate-logbook-book) | `Modules/Assessment/` |
+| Examination | `/api/v1/examinations/*` (question-bank, ukmppd, {id}/attempt) | `Modules/Examination/` |
+| Finance | `/api/v1/finance/*` | `Modules/Finance/` |
+| Incident / Consultation | `/api/v1/incidents/*`, `/api/v1/consultations/*` | `Modules/Incident/` |
+| Dashboard/Users/Settings/RBAC | `/api/dashboard/*`, `/api/users`, `/api/settings`, `/api/role-permissions` | `backend/routes/api.php` |
+| References | `/api/system-references`, `/api/references/{category}` | `backend/routes/api.php` |
+| Notifications / Preferences | `/api/v1/notifications`, `/api/v1/notification-preferences` | `backend/routes/api.php` |
+| Broadcast | `/api/v1/broadcasts` (`send-broadcasts`) | `backend/routes/api.php` |
+| Analytics | `/api/analytics`, `/api/v1/analytics/{executive,at-risk,cohort-comparison}` | `backend/routes/api.php` |
+| Export | `/api/v1/export/*` | `backend/routes/api.php` |
+| Publik (tanpa auth) | `/api/public-settings`, `/api/public-stats`, `/api/public/verify-document/{code}` | `backend/routes/api.php` |
+| Realtime auth | `/broadcasting/auth` (session Sanctum) | `routes/channels.php` |
 
+---
+
+## 11. Pola Kode Wajib
+
+**Backend** — controller tipis → Service → FormRequest → API Resource:
 ```php
-// ✅ THIN Controller — hanya HTTP, tidak ada business logic
-class LogbookController extends Controller {
-    public function store(StoreLogbookRequest $request, LogbookService $service) {
-        $entry = $service->createEntry($request->validated(), auth()->user());
-        return new LogbookResource($entry);
-    }
+public function store(StoreLogbookRequest $r, LogbookService $s) {
+    return new LogbookResource($s->createEntry($r->validated(), $r->user()));
 }
-
-// ✅ Business logic di Service layer
-class LogbookService {
-    public function createEntry(array $data, User $user): LogbookEntry { ... }
-}
-
-// ✅ Validasi di Form Request (bukan di controller)
-class StoreLogbookRequest extends FormRequest {
-    public function rules(): array {
-        return [
-            'activity_type' => 'required|exists:system_references,value,category,activity_types',
-        ];
-    }
-}
-
-// ✅ Return via API Resource
-return new LogbookResource($entry);        // single
-return LogbookCollection::make($entries);  // collection
 ```
+**Frontend** — `'use client'` seperlunya; server state React Query (`staleTime` ≥ menit); tanpa `any`; unduh blob:
+```ts
+const res = await api.get(url, { responseType: 'blob' });
+const a = document.createElement('a'); a.href = URL.createObjectURL(res.data); a.download = name; a.click();
+```
+Scoping non-mahasiswa: pola `resolveTargetProfile` (Mahasiswa=diri; Dodiknis=RS-nya; admin=`?student_id`).
 
-### Frontend (Next.js/TypeScript)
+---
 
-```tsx
-// ✅ 'use client' hanya saat perlu state/event
-'use client';
+## 12. UI/Design (Branding UMS)
 
-// ✅ Server state via React Query
-const { data, isLoading } = useQuery({
-  queryKey: ['logbooks', filters],
-  queryFn: () => api.get('/api/v1/clinical/logbooks', { params: filters }),
-  staleTime: 5 * 60 * 1000, // 5 menit — jangan spam API
-});
+- Primer **UMS Blue** `bg-blue-900 #1E3A8A`; aksen **UMS Gold** `bg-yellow-500 #EAB308`. Teks `text-gray-900`. **Jangan** ubah palet tanpa izin.
+- Dark mode: class `.dark` + CSS variables (toggle `ThemeToggle` sudah ada). Card: `.clean-card`. Radius `rounded-md`.
+- Charts **Recharts** warna `--chart-1..5`; ikon **Lucide** saja; string via **i18n** (Aturan E).
 
-// ✅ Form dengan React Hook Form + Zod v4
-const schema = z.object({ description: z.string().min(10) });
-const form = useForm({ resolver: zodResolver(schema) });
+---
 
-// ✅ Tidak ada 'any' — define types
-interface LogbookEntry {
-  id: string;
-  status: 'draft' | 'submitted' | 'signed' | 'rejected';
-}
+## 13. Workflow Status (aktual — perhatikan koreksi)
+
+```
+Umum        : draft → submitted → verified/approved → published
+Logbook     : draft → submitted → verified / rejected        (BUKAN "signed")
+Assignment  : pending → confirmed → in_progress → completed / remedial   (+ attempt_number)
+Nilai stase : draft → approved → published  (+ published_at; banding accepted → balik approved)
+Banding     : submitted → accepted / rejected
+Swap        : submitted → approved / rejected / cancelled
+Ujian       : DRAFT → ONGOING → COMPLETED
+Dokumen     : processing → ready / failed
+Insiden     : submitted → investigating → resolved
+Konsultasi  : pending → in_progress → responded → closed
 ```
 
 ---
 
-## 10. API Route — Status Aktual
+## 14. Testing
 
-Routes **belum sepenuhnya konsisten** dalam versioning. Gunakan ini sebagai referensi:
-
-| Route Area | Prefix | File |
-|------------|--------|------|
-| Auth | `/api/auth/*` | `Modules/Auth/routes/api.php` |
-| SSO | `/api/sso/*` | `Modules/Auth/routes/api.php` |
-| Academic | `/api/academic/*` | `Modules/Academic/routes/api.php` |
-| Rotation | `/api/v1/rotation/*` | `Modules/Rotation/routes/api.php` |
-| Clinical | `/api/v1/clinical/*` | `Modules/Clinical/routes/api.php` |
-| Assessment | `/api/v1/assessments/*` | `Modules/Assessment/routes/api.php` |
-| Examination | `/api/v1/examinations/*` | `Modules/Examination/routes/api.php` |
-| Finance | `/api/v1/finance/*` | `Modules/Finance/routes/api.php` |
-| Attendance | `/api/v1/clinical/attendance/*` | `Modules/Attendance/routes/api.php` |
-| Dashboard | `/api/dashboard/*` | `backend/routes/api.php` |
-| Users | `/api/users` | `backend/routes/api.php` |
-| Settings | `/api/settings` | `backend/routes/api.php` |
-| References | `/api/system-references` | `backend/routes/api.php` |
-| Notifications | `/api/v1/notifications` | `backend/routes/api.php` |
-| Analytics | `/api/analytics` | `backend/routes/api.php` |
-| Export | `/api/export/*` | `backend/routes/api.php` |
-
-> Untuk route baru — ikuti pola modul yang bersangkutan. Jangan buat route di file yang salah.
+- **PHPUnit**: SQLite in-memory, APP_KEY statis (`phpunit.xml`), `BROADCAST_CONNECTION` null. Jalankan `php artisan test` (tanpa MySQL). Gotcha guest/guard di §6.
+- **Cypress** (`npm run test:e2e`): baseUrl sudah `/acms`; akun demo dari seeder. Dijalankan user lokal (tak jalan di sandbox agent).
+- Penjaga penting: `StudentJourneyTest` (dual-ID E2E), regresi keamanan export nilai.
 
 ---
 
-## 11. Workflow Status Universal
-
-Semua entitas mengikuti workflow ini:
+## 15. Git Commit (Conventional Commits)
 
 ```
-draft → submitted → verified/approved → published
+feat(clinical): tambah skill checklist per stase
+fix(rotation): koreksi guard kapasitas saat konflik jadwal
+chore(repo): higiene gitignore dokumen desain
 ```
-
-Khusus Logbook:
-```
-draft → submitted → signed (approved) / rejected (kembali ke draft)
-```
+Scope: `auth, academic, rotation, clinical, assessment, examination, finance, attendance, evaluation, incident, core, ui, deps, config, repo`. Akhiri body commit dengan `Co-Authored-By:` sesuai instruksi harness.
 
 ---
 
-## 12. Git Commit Format
+## 16. Deploy (JANGAN tanpa perintah user)
 
-Wajib mengikuti Conventional Commits. Format:
-```
-<type>(<scope>): <subject>
-
-feat(clinical): tambah endpoint verifikasi logbook batch
-fix(rotation): koreksi perhitungan kapasitas RS saat konflik jadwal
-chore(deps): update zod ke v4.4.3
-```
-
-Scope yang valid: `auth`, `academic`, `rotation`, `clinical`, `assessment`, `examination`, `finance`, `attendance`, `evaluation`, `incident`, `core`, `ui`, `deps`, `config`
-
-Detail lengkap: `Build/CONVENTIONAL_COMMITS.md`
+Container **Podman** subpath `/acms` di server FK UMS bersama. `./deploy.sh` (build → down → up) menjalankan migrasi + `ProductionSettingsPatchSeeder` idempotent. Detail & jebakan podman ada di memory Claude (`reference_ums_server_deploy`, `project_acms_deployment`).
 
 ---
 
-## 13. Navigasi Dokumen Referensi
+## 17. Referensi & Pengetahuan Lintas-Sesi
 
-| Butuh Info Tentang | Baca File |
-|-------------------|-----------|
-| Semua aturan wajib AI | `Build/CURRENT_STATE_FOR_AI.md` |
-| Index semua dokumen | `Build/CONTEXT_INDEX.md` |
-| Arsitektur sistem | `Build/ARCHITECTURE.md` |
-| Skema database lengkap | `Build/DATABASE_SCHEMA.md` |
-| Spesifikasi API | `Build/API_SPECIFICATION.md` |
-| RBAC detail (siapa boleh apa) | `Build/RBAC_MATRIX.md` |
-| Alur kerja (workflow states) | `Build/WORKFLOW_ENGINE.md` |
-| Algoritma penjadwalan rotasi | `Build/ROTATION_ENGINE.md` |
-| Audit trail spec | `Build/AUDIT_TRAIL_SPEC.md` |
-| Analytics dashboard | `Build/ANALYTICS_SPEC.md` + `Develop/EXECUTIVE_ANALYTICS_DESIGN.md` |
-| UI/Design system | `Build/UI_DESIGN_SYSTEM.md` |
-| Standar kode | `Build/CODING_STANDARDS.md` |
-| Standar commit | `Build/CONVENTIONAL_COMMITS.md` |
-| Backlog fitur | `Build/PRODUCT_BACKLOG.md` |
-| Roadmap implementasi | `Build/IMPLEMENTATION_ROADMAP.md` |
-| Sprint plan (Develop phase) | `Develop/UPGRADE_ROADMAP.md` |
-| Sistem absensi QR | `Develop/SMART_ATTENDANCE_SYSTEM.md` |
-| Analytics eksekutif | `Develop/EXECUTIVE_ANALYTICS_DESIGN.md` |
-| Generator PDF yudisium | `Develop/YUDISIUM_DOCUMENT_GENERATOR.md` |
-| Notifikasi SMTP matrix | `Develop/GLOBAL_NOTIFICATION_HOOKS.md` |
-| Protokol AI agent | `Develop/DEVELOPMENT_AGENTS.md` |
+- **`README.md`** (tracked) — overview publik, fitur, cara jalan, deploy.
+- **`Build/` & `Develop/`** — dokumen desain/spesifikasi = **LOKAL-SAJA, untracked** (sengaja di-gitignore agar repo bersih). Boleh dibaca sebagai acuan **tapi JANGAN `git add` ulang**. Berisi: PRD, ARCHITECTURE, DATABASE_SCHEMA, API_SPECIFICATION, RBAC_MATRIX, WORKFLOW_ENGINE, ROTATION_ENGINE, AUDIT_TRAIL_SPEC, UI_DESIGN_SYSTEM, CODING_STANDARDS, dll.
+- **Memory Claude** (`~/.claude/.../memory/`) — pengetahuan lintas-sesi terverifikasi: `project_acms_id_mapping_trap` (dual-ID), `project_acms_module_completion` (log gelombang), `project_acms_gap_audit` (audit + eksekusi P1–P5), `project_acms_settings`, `project_acms_deployment`, `reference_ums_server_deploy`, `feedback_acms_working_style`. Baca yang relevan di awal sesi.
