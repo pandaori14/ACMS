@@ -16,6 +16,8 @@ import api from "@/lib/api";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
+import { useAuthStore } from "@/store/useAuthStore";
+import { getEcho } from "@/lib/echo";
 
 interface Notification {
   id: string;
@@ -33,6 +35,7 @@ export function NotificationBell() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const router = useRouter();
+  const userId = useAuthStore((state) => state.user?.id);
 
   const fetchNotifications = async () => {
     try {
@@ -44,11 +47,32 @@ export function NotificationBell() {
     }
   };
 
+  // Polling 60 dtk — fallback yang SELALU jalan (walau Reverb mati/tak dikonfigurasi).
   useEffect(() => {
     fetchNotifications();
     const interval = setInterval(fetchNotifications, 60000);
     return () => clearInterval(interval);
   }, []);
+
+  // Realtime (opsional): dengar channel privat user; tiap notifikasi baru →
+  // refetch + toast tanpa tunggu polling. Diam-diam nonaktif bila Echo null.
+  useEffect(() => {
+    if (!userId) return;
+    const echo = getEcho();
+    if (!echo) return;
+
+    const channelName = `App.Models.User.${userId}`;
+    echo
+      .private(channelName)
+      .listen(".notification", (payload: { title?: string; message?: string }) => {
+        fetchNotifications();
+        toast(payload?.title || "Notifikasi baru", { description: payload?.message });
+      });
+
+    return () => {
+      echo.leave(channelName);
+    };
+  }, [userId]);
 
   const markAsRead = async (id: string, url?: string) => {
     try {
