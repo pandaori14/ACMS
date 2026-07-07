@@ -1,29 +1,36 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { useAuthStore } from "@/store/useAuthStore";
 import api from "@/lib/api";
 import { ApiError, AppSetting } from "@/lib/api-helpers";
 
-const loginSchema = z.object({
-  email: z.string().email({ message: "Email tidak valid" }),
-  password: z.string().min(1, { message: "Password wajib diisi" }),
-});
-
-type LoginFormValues = z.infer<typeof loginSchema>;
+type LoginFormValues = { email: string; password: string };
 
 export function LoginForm() {
+  const t = useTranslations("auth");
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [ssoEnabled, setSsoEnabled] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const router = useRouter();
   const setUser = useAuthStore((state) => state.setUser);
+
+  // Skema dibuat di dalam komponen agar pesan validasi ikut bahasa aktif.
+  const loginSchema = useMemo(
+    () =>
+      z.object({
+        email: z.string().email({ message: t("emailInvalid") }),
+        password: z.string().min(1, { message: t("passwordRequired") }),
+      }),
+    [t]
+  );
 
   // Langkah 2FA (setelah kredensial benar)
   const [twoFactorStep, setTwoFactorStep] = useState(false);
@@ -45,7 +52,7 @@ export function LoginForm() {
       }
     } catch (err) {
       const e2 = err as ApiError;
-      setError(e2.response?.data?.message || "Kode tidak valid.");
+      setError(e2.response?.data?.message || t("invalidCode"));
     } finally {
       setIsLoading(false);
     }
@@ -95,7 +102,7 @@ export function LoginForm() {
     } catch (err) {
       const e = err as ApiError;
       setError(
-        e.response?.data?.message || e.response?.data?.errors?.email?.[0] || "Terjadi kesalahan saat login."
+        e.response?.data?.message || e.response?.data?.errors?.email?.[0] || t("loginError")
       );
     } finally {
       setIsLoading(false);
@@ -112,11 +119,9 @@ export function LoginForm() {
           </div>
         )}
         <div className="text-center space-y-1">
-          <p className="font-semibold text-gray-900 dark:text-white">Verifikasi Dua Langkah</p>
+          <p className="font-semibold text-gray-900 dark:text-white">{t("twoStepTitle")}</p>
           <p className="text-sm text-gray-500">
-            {useRecovery
-              ? "Masukkan salah satu recovery code Anda (sekali pakai)."
-              : "Masukkan kode 6 digit dari aplikasi authenticator Anda."}
+            {useRecovery ? t("recoveryHint") : t("authCodeHint")}
           </p>
         </div>
         <input
@@ -132,7 +137,7 @@ export function LoginForm() {
           }
         />
         <button type="submit" disabled={isLoading} className="login-submit-btn">
-          {isLoading ? "Memverifikasi..." : "Verifikasi & Masuk"}
+          {isLoading ? t("verifying") : t("verifyAndEnter")}
         </button>
         <div className="flex justify-between text-xs">
           <button
@@ -140,14 +145,14 @@ export function LoginForm() {
             className="text-blue-700 hover:underline"
             onClick={() => { setUseRecovery(!useRecovery); setTwoFactorCode(""); setError(null); }}
           >
-            {useRecovery ? "Pakai kode authenticator" : "Pakai recovery code"}
+            {useRecovery ? t("useAuthCode") : t("useRecoveryCode")}
           </button>
           <button
             type="button"
             className="text-gray-500 hover:underline"
             onClick={() => { setTwoFactorStep(false); setTwoFactorCode(""); setError(null); }}
           >
-            Kembali ke login
+            {t("backToLogin")}
           </button>
         </div>
       </form>
@@ -169,7 +174,7 @@ export function LoginForm() {
       {/* Email Field */}
       <div className="space-y-2">
         <label htmlFor="login-email" className="login-label">
-          Email
+          {t("email")}
         </label>
         <div className="login-input-wrapper">
           <div className="login-input-icon">
@@ -194,7 +199,7 @@ export function LoginForm() {
       {/* Password Field */}
       <div className="space-y-2">
         <label htmlFor="login-password" className="login-label">
-          Password
+          {t("password")}
         </label>
         <div className="login-input-wrapper">
           <div className="login-input-icon">
@@ -214,7 +219,7 @@ export function LoginForm() {
             type="button"
             onClick={() => setShowPassword(!showPassword)}
             className="login-password-toggle"
-            aria-label={showPassword ? "Sembunyikan password" : "Tampilkan password"}
+            aria-label={showPassword ? t("hidePassword") : t("showPassword")}
           >
             {showPassword ? (
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
@@ -233,7 +238,7 @@ export function LoginForm() {
         )}
         <div className="text-right">
           <Link href="/forgot-password" className="text-xs text-blue-700 hover:underline">
-            Lupa password?
+            {t("forgotPassword")}
           </Link>
         </div>
       </div>
@@ -251,11 +256,11 @@ export function LoginForm() {
               <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" strokeLinecap="round" className="opacity-25"/>
               <path d="M4 12a8 8 0 018-8" stroke="currentColor" strokeWidth="3" strokeLinecap="round" className="opacity-75"/>
             </svg>
-            Sedang memproses...
+            {t("processing")}
           </span>
         ) : (
           <span className="flex items-center justify-center gap-2">
-            Masuk
+            {t("signIn")}
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
             </svg>
@@ -268,7 +273,7 @@ export function LoginForm() {
         <>
           <div className="login-divider">
             <span className="login-divider-line" />
-            <span className="login-divider-text">atau</span>
+            <span className="login-divider-text">{t("or")}</span>
             <span className="login-divider-line" />
           </div>
 
@@ -282,8 +287,8 @@ export function LoginForm() {
                 if (res.data.url) {
                   window.location.href = res.data.url;
                 }
-              } catch (error) {
-                setError("SSO sementara tidak tersedia");
+              } catch {
+                setError(t("ssoUnavailable"));
               }
             }}
           >
@@ -293,7 +298,7 @@ export function LoginForm() {
               <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
               <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
             </svg>
-            Google SSO Universitas
+            {t("googleSso")}
           </button>
         </>
       )}

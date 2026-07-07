@@ -1,14 +1,21 @@
 import { LoginForm } from "@/components/auth/LoginForm";
+import { LanguageToggle } from "@/components/LanguageToggle";
 import { Metadata } from "next";
+import { getTranslations } from "next-intl/server";
 
 export const metadata: Metadata = {
   title: "Login - Academic Clinical Management System",
   description: "Sign in to your ACMS account to access the Academic Clinical Management System.",
 };
 
-export default function LoginPage() {
+export default async function LoginPage() {
+  const t = await getTranslations("auth");
   return (
     <div className="flex min-h-screen w-full">
+      {/* Pengganti bahasa pra-login (chrome dashboard belum tampil di sini) */}
+      <div className="absolute top-4 right-4 z-20">
+        <LanguageToggle />
+      </div>
       {/* Left Branded Panel */}
       <div className="login-brand-panel hidden lg:flex lg:w-[55%] xl:w-[58%] relative overflow-hidden flex-col items-center justify-center">
         {/* Animated Background Elements */}
@@ -37,7 +44,7 @@ export default function LoginPage() {
             Academic Clinical<br />Management System
           </h1>
           <p className="mt-5 text-base xl:text-lg text-slate-300/80 leading-relaxed max-w-md">
-            Platform terpadu untuk pengelolaan klinik akademik — jadwal, rekam medis, dan pelaporan dalam satu sistem.
+            {t("brandTagline")}
           </p>
 
           {/* Feature Highlights */}
@@ -46,19 +53,19 @@ export default function LoginPage() {
               <div className="login-feature-icon">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
               </div>
-              <span className="text-sm text-slate-300/90">Manajemen data pasien & rekam medis</span>
+              <span className="text-sm text-slate-300/90">{t("feature1")}</span>
             </div>
             <div className="login-feature-row">
               <div className="login-feature-icon">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
               </div>
-              <span className="text-sm text-slate-300/90">Penjadwalan klinik & rotasi mahasiswa</span>
+              <span className="text-sm text-slate-300/90">{t("feature2")}</span>
             </div>
             <div className="login-feature-row">
               <div className="login-feature-icon">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
               </div>
-              <span className="text-sm text-slate-300/90">Pelaporan insiden & analitik real-time</span>
+              <span className="text-sm text-slate-300/90">{t("feature3")}</span>
             </div>
           </div>
         </div>
@@ -94,10 +101,10 @@ export default function LoginPage() {
           {/* Desktop heading */}
           <div className="hidden lg:block mb-8">
             <h2 className="text-2xl xl:text-3xl font-bold tracking-tight text-gray-900 dark:text-white">
-              Selamat Datang
+              {t("welcome")}
             </h2>
             <p className="mt-2 text-[15px] text-gray-500 dark:text-gray-400">
-              Masuk ke akun Anda untuk melanjutkan
+              {t("welcomeSub")}
             </p>
           </div>
 
@@ -105,10 +112,10 @@ export default function LoginPage() {
 
           {/* Footer */}
           <p className="mt-10 text-center text-xs text-gray-400 dark:text-gray-500">
-            Dengan masuk, Anda menyetujui{" "}
-            <span className="underline underline-offset-2 cursor-pointer hover:text-gray-600 dark:hover:text-gray-300 transition-colors">Ketentuan Layanan</span>
-            {" "}dan{" "}
-            <span className="underline underline-offset-2 cursor-pointer hover:text-gray-600 dark:hover:text-gray-300 transition-colors">Kebijakan Privasi</span>.
+            {t("termsAgree")}{" "}
+            <span className="underline underline-offset-2 cursor-pointer hover:text-gray-600 dark:hover:text-gray-300 transition-colors">{t("terms")}</span>
+            {" "}{t("and")}{" "}
+            <span className="underline underline-offset-2 cursor-pointer hover:text-gray-600 dark:hover:text-gray-300 transition-colors">{t("privacy")}</span>.
           </p>
         </div>
       </div>
