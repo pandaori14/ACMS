@@ -51,8 +51,7 @@ Thumbs.db
 /Develop/
 /start-dev.bat
 
-# Playwright (E2E) — hasil run & browser, jangan commit
-/frontend/test-results/
-/frontend/playwright-report/
-/frontend/blob-report/
-/frontend/.playwright/
+# Cypress (E2E) — hasil run, jangan commit
+/frontend/cypress/videos/
+/frontend/cypress/screenshots/
+/frontend/cypress/downloads/

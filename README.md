@@ -139,7 +139,9 @@ Modul unggulan dengan landing publik dan alur tertutup (lapor → telaah → tin
 4. **Migrasi** kompatibel MySQL & PostgreSQL.
 5. **Controller tipis** → business logic di Service → validasi di FormRequest → respons via Resource.
 6. Frontend: `'use client'` seperlunya, server state React Query, **tanpa `any`**, ikon Lucide, warna UMS (blue-900 / yellow-500), string UI lewat next-intl.
-7. Setiap service/controller baru diikuti **PHPUnit**; alur kritis lintas-tumpukan diuji **Playwright**.
+7. Setiap service/controller baru diikuti **PHPUnit**; alur kritis lintas-tumpukan diuji **Cypress** (`cypress/e2e/`).
+
+**Menjalankan E2E (Cypress):** jalankan backend (`php artisan serve` dengan DB ber-`migrate --seed`) + frontend (`npm run dev`), lalu `npm run test:e2e` (atau `npm run cypress:open`). Akun demo per peran: `{role}@acms.test` / `password` (mahasiswa, dodiknis, adminprodi, kaprodi, dst).
 
 > Aturan lengkap & konvensi ada di `CLAUDE.md` (di root repo lokal). Dokumen desain/spesifikasi internal (`Build/`, `Develop/`) sengaja **tidak di-commit** agar repo hanya berisi sistem yang berjalan; disimpan sebagai acuan pengembangan.
 
@@ -159,8 +161,8 @@ Academic Clinical Management System/
 │       ├── app/             # (auth)/login, sso-callback, safety/, dashboard/**, verify/
 │       ├── components/      # ui/ (shadcn), layout/, incidents/, landing/
 │       ├── messages/        # katalog i18n id.json / en.json
-│       ├── store/ · lib/    # useAuthStore · api.ts, echo.ts
-│       └── tests/e2e/       # Playwright
+│       └── store/ · lib/    # useAuthStore · api.ts, echo.ts
+│   └── cypress/             # E2E (cypress.config.ts, e2e/, support/)
 ├── scripts/backup-db.sh     # utilitas ops
 ├── deploy.sh · compose*.yml # deploy container (Podman/Docker)
 └── README.md · CLAUDE.md
