@@ -33,6 +33,11 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
+        // Sentry menangkap unhandled exception (Laravel 12 tak lagi auto-capture).
+        // DORMAN bila SENTRY_LARAVEL_DSN kosong — captureException jadi no-op,
+        // tak ada trafik keluar & tak merusak boot. Aktif begitu DSN diisi.
+        \Sentry\Laravel\Integration::handles($exceptions);
+
         // Semua error pada route API dikembalikan sebagai JSON terstandar
         // ({message} atau {message, errors}) — bukan HTML/redirect — apa pun
         // header Accept klien. Di produksi (APP_DEBUG=false) detail internal 500

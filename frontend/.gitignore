@@ -30,8 +30,9 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# env files (can opt-in for committing if needed)
+# env files (rahasia jangan di-commit; TAPI .env.example wajib di-track sbg dokumentasi)
 .env*
+!.env.example
 
 # vercel
 .vercel
