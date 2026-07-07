@@ -43,3 +43,16 @@ Thumbs.db
 /.agents/
 /.claude/skills/
 /skills-lock.json
+
+# ─── Dokumentasi desain & tooling lokal (BUKAN bagian sistem yang berjalan) ───
+# Disimpan lokal sebagai acuan saat upgrade fitur, TAPI tidak di-upload agar
+# repo/server hanya berisi kode yang benar-benar berjalan & mudah di-maintain.
+/Build/
+/Develop/
+/start-dev.bat
+
+# Playwright (E2E) — hasil run & browser, jangan commit
+/frontend/test-results/
+/frontend/playwright-report/
+/frontend/blob-report/
+/frontend/.playwright/
