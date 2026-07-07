@@ -3,11 +3,15 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Services\AtRiskDetectionService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
+use Modules\Academic\Models\Cohort;
 use Modules\Academic\Models\Student;
+use Modules\Assessment\Models\StaseGrade;
 use Modules\Clinical\Models\LogbookEntry;
 use Modules\Examination\Models\ExamParticipant;
+use Modules\Examination\Models\UkmppdResult;
 use Modules\Incident\Models\IncidentReport;
 use Modules\Rotation\Models\Hospital;
 use Modules\Rotation\Models\HospitalCapacity;
@@ -41,6 +45,51 @@ class ExecutiveAnalyticsController extends Controller
                 'logbook_compliance' => $this->logbookCompliance(),
                 'generated_at' => now()->toIso8601String(),
             ];
+        });
+
+        return response()->json(['data' => $data]);
+    }
+
+    /**
+     * Mahasiswa berisiko (early warning) — hasil scan AtRiskDetectionService,
+     * cache 10 menit (scan penuh juga berjalan mingguan via command).
+     */
+    public function atRisk(AtRiskDetectionService $service)
+    {
+        $data = Cache::remember('analytics_at_risk', 600, fn () => $service->scan());
+
+        return response()->json(['data' => $data]);
+    }
+
+    /** Perbandingan antar-angkatan: nilai, kelulusan, UKMPPD. */
+    public function cohortComparison()
+    {
+        $data = Cache::remember('analytics_cohort_comparison', 600, function () {
+            return Cohort::orderBy('year')->get()->map(function (Cohort $cohort) {
+                $profiles = Student::where('cohort_id', $cohort->id)->get(['id', 'user_id', 'status']);
+                if ($profiles->isEmpty()) {
+                    return null;
+                }
+                $userIds = $profiles->pluck('user_id');
+
+                $avgGrade = StaseGrade::whereIn('student_id', $userIds)
+                    ->where('status', 'published')
+                    ->avg('final_score');
+
+                $firstTakes = UkmppdResult::whereIn('student_id', $userIds)
+                    ->where('attempt_number', 1)
+                    ->get(['status']);
+
+                return [
+                    'cohort' => $cohort->name,
+                    'students' => $profiles->count(),
+                    'graduated_pct' => round($profiles->where('status', 'graduated')->count() / $profiles->count() * 100, 1),
+                    'avg_grade' => $avgGrade !== null ? round((float) $avgGrade, 2) : null,
+                    'ukmppd_first_take_pass_pct' => $firstTakes->count() > 0
+                        ? round($firstTakes->where('status', 'passed')->count() / $firstTakes->count() * 100, 1)
+                        : null,
+                ];
+            })->filter()->values();
         });
 
         return response()->json(['data' => $data]);

@@ -5,6 +5,7 @@ use Modules\Rotation\Http\Controllers\HospitalCapacityController;
 use Modules\Rotation\Http\Controllers\HospitalController;
 use Modules\Rotation\Http\Controllers\RotationAssignmentController;
 use Modules\Rotation\Http\Controllers\RotationPeriodController;
+use Modules\Rotation\Http\Controllers\SwapRequestController;
 
 Route::middleware(['auth:sanctum'])->prefix('v1/rotation')->group(function () {
     // Baca terbuka lintas peran (scoping per-peran di controller);
@@ -30,6 +31,18 @@ Route::middleware(['auth:sanctum'])->prefix('v1/rotation')->group(function () {
 
     Route::apiResource('assignments', RotationAssignmentController::class)
         ->only(['index', 'show']);
+
+    // Timeline jadwal (matriks mahasiswa × periode) — peran rotasi
+    Route::get('schedule-matrix', [RotationAssignmentController::class, 'scheduleMatrix'])
+        ->middleware('permission:view-rotations|manage-rotations');
+
+    // Tukar jadwal: mahasiswa mengajukan/membatalkan; admin memutuskan
+    Route::get('swaps', [SwapRequestController::class, 'index']);
+    Route::get('swaps/candidates', [SwapRequestController::class, 'candidates']);
+    Route::post('swaps', [SwapRequestController::class, 'store']);
+    Route::patch('swaps/{id}/cancel', [SwapRequestController::class, 'cancel']);
+    Route::patch('swaps/{id}/decide', [SwapRequestController::class, 'decide'])
+        ->middleware('permission:manage-rotations');
     Route::middleware('permission:manage-rotations')->group(function () {
         // Auto-scheduling: distribusi round-robin satu angkatan (preview → commit)
         Route::post('schedule/preview', [RotationAssignmentController::class, 'schedulePreview']);

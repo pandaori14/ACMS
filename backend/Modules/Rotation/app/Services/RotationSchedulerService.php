@@ -62,6 +62,44 @@ class RotationSchedulerService
     }
 
     /**
+     * Validasi tukar slot dua penempatan (swap): harus se-periode, keduanya
+     * berstatus pending/confirmed (belum berjalan), dan masing-masing
+     * mahasiswa memenuhi prasyarat + guard remedial untuk stase LAWANNYA.
+     * Kapasitas netral (tukar 1:1). Return alasan gagal, atau null bila aman.
+     */
+    public function swapConflict(RotationAssignment $a, RotationAssignment $b): ?string
+    {
+        if ($a->id === $b->id) {
+            return 'Tidak bisa menukar penempatan dengan dirinya sendiri.';
+        }
+        if ($a->rotation_period_id !== $b->rotation_period_id) {
+            return 'Kedua penempatan harus berada pada periode rotasi yang sama.';
+        }
+
+        $swappable = ['pending', 'confirmed'];
+        if (! in_array($a->status, $swappable, true) || ! in_array($b->status, $swappable, true)) {
+            return 'Hanya penempatan berstatus pending/confirmed yang dapat ditukar.';
+        }
+
+        if ($a->stase_id !== $b->stase_id) {
+            if ($reason = $this->prerequisitesUnmet($a->student_id, $b->stase_id)) {
+                return "Pemohon: {$reason}";
+            }
+            if ($reason = $this->remedialGuard($a->student_id, $b->stase_id)) {
+                return "Pemohon: {$reason}";
+            }
+            if ($reason = $this->prerequisitesUnmet($b->student_id, $a->stase_id)) {
+                return "Mitra tukar: {$reason}";
+            }
+            if ($reason = $this->remedialGuard($b->student_id, $a->stase_id)) {
+                return "Mitra tukar: {$reason}";
+            }
+        }
+
+        return null;
+    }
+
+    /**
      * Guard remedial: mengulang stase hanya boleh bila BELUM lulus, dan
      * total percobaan tidak melampaui 1 + Settings `max_remedial_attempts`
      * (lewat batas → butuh keputusan akademik manual, bukan penempatan biasa).

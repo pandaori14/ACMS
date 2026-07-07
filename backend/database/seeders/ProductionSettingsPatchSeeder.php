@@ -39,6 +39,9 @@ class ProductionSettingsPatchSeeder extends Seeder
             ['key' => 'logbook_late_days', 'group' => 'clinical', 'value' => '3', 'type' => 'integer', 'description' => 'Ambang hari kegiatan→submit sebelum logbook ditandai TERLAMBAT (compliance, tidak memblokir)'],
             ['key' => 'email_template_appeal_submitted', 'group' => 'smtp', 'value' => 'Banding nilai diajukan oleh {name} untuk stase {stase}.\n\nAlasan: {reason}\n\nSilakan tinjau di menu Banding Nilai sistem ACMS.', 'type' => 'text', 'description' => 'Template Email Banding Nilai Diajukan'],
             ['key' => 'email_template_appeal_decided', 'group' => 'smtp', 'value' => 'Halo {name},\n\nBanding nilai stase {stase} Anda telah diputuskan: {decision}.\nCatatan peninjau: {note}', 'type' => 'text', 'description' => 'Template Email Hasil Banding Nilai'],
+            ['key' => 'email_template_swap_requested', 'group' => 'smtp', 'value' => 'Permintaan tukar jadwal rotasi diajukan oleh {name} (stase {stase}).\n\nAlasan: {reason}\n\nTinjau di menu Tukar Jadwal sistem ACMS.', 'type' => 'text', 'description' => 'Template Email Permintaan Tukar Jadwal'],
+            ['key' => 'email_template_swap_decided', 'group' => 'smtp', 'value' => 'Halo {name},\n\nPermintaan tukar jadwal rotasi yang melibatkan Anda telah {decision}.\nCatatan: {note}\n\nCek jadwal terbaru Anda di sistem ACMS.', 'type' => 'text', 'description' => 'Template Email Hasil Tukar Jadwal'],
+            ['key' => 'email_template_at_risk_alert', 'group' => 'smtp', 'value' => 'Peringatan dini akademik ACMS:\n\n{count} mahasiswa terdeteksi berisiko ({high} level tinggi).\n\n{list}\n\nDetail lengkap: Dashboard Eksekutif > Mahasiswa Berisiko.', 'type' => 'text', 'description' => 'Template Email Peringatan Mahasiswa Berisiko'],
 
             // Pusat Bantuan (markdown per peran — dirender di /dashboard/help)
             ['key' => 'help_center_umum', 'group' => 'help', 'value' => "## Selamat datang di ACMS\n\nACMS adalah sistem manajemen pendidikan klinik FK UMS. Beberapa hal umum:\n\n- **Profil & Password**: klik avatar di pojok kanan atas → *Profil Saya* untuk mengganti password dan mengaktifkan **2FA**.\n- **Lupa password**: gunakan tautan *Lupa password?* di halaman login.\n- **Notifikasi**: ikon lonceng menampilkan pemberitahuan penting (nilai terbit, logbook diverifikasi, penempatan rotasi).\n- **Install di HP**: buka ACMS di browser HP → menu browser → *Tambahkan ke layar utama*.", 'type' => 'text', 'description' => 'Konten bantuan UMUM (markdown) — tampil untuk semua peran'],
@@ -65,6 +68,9 @@ class ProductionSettingsPatchSeeder extends Seeder
                 'student_status_changed' => ['enabled' => true, 'cc_emails' => '', 'notify_roles' => [], 'conditional_rules' => []],
                 'appeal_submitted' => ['enabled' => true, 'cc_emails' => '', 'notify_roles' => ['Kaprodi', 'Admin Prodi'], 'conditional_rules' => []],
                 'appeal_decided' => ['enabled' => true, 'cc_emails' => '', 'notify_roles' => [], 'conditional_rules' => []],
+                'swap_requested' => ['enabled' => true, 'cc_emails' => '', 'notify_roles' => ['Admin Prodi'], 'conditional_rules' => []],
+                'swap_decided' => ['enabled' => true, 'cc_emails' => '', 'notify_roles' => [], 'conditional_rules' => []],
+                'at_risk_alert' => ['enabled' => true, 'cc_emails' => '', 'notify_roles' => ['Kaprodi', 'Admin Prodi'], 'conditional_rules' => []],
             ];
 
             $changed = false;

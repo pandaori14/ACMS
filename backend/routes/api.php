@@ -64,6 +64,10 @@ Route::middleware('auth:sanctum')->group(function () {
     // Dashboard Eksekutif (4 pilar KPI) — Aturan A
     Route::get('/v1/analytics/executive', [ExecutiveAnalyticsController::class, 'index'])
         ->middleware('permission:view-executive-analytics');
+    Route::get('/v1/analytics/at-risk', [ExecutiveAnalyticsController::class, 'atRisk'])
+        ->middleware('permission:view-executive-analytics');
+    Route::get('/v1/analytics/cohort-comparison', [ExecutiveAnalyticsController::class, 'cohortComparison'])
+        ->middleware('permission:view-executive-analytics');
 
     // Exports — path kanonik v1 (dipakai frontend) + alias lama
     Route::get('/v1/export/transcript/{studentId}', [ExportController::class, 'exportTranscriptPdf'])

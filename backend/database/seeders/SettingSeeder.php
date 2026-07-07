@@ -185,6 +185,9 @@ class SettingSeeder extends Seeder
                     'student_status_changed' => ['enabled' => true, 'cc_emails' => '', 'notify_roles' => [], 'conditional_rules' => []],
                     'appeal_submitted' => ['enabled' => true, 'cc_emails' => '', 'notify_roles' => ['Kaprodi', 'Admin Prodi'], 'conditional_rules' => []],
                     'appeal_decided' => ['enabled' => true, 'cc_emails' => '', 'notify_roles' => [], 'conditional_rules' => []],
+                    'swap_requested' => ['enabled' => true, 'cc_emails' => '', 'notify_roles' => ['Admin Prodi'], 'conditional_rules' => []],
+                    'swap_decided' => ['enabled' => true, 'cc_emails' => '', 'notify_roles' => [], 'conditional_rules' => []],
+                    'at_risk_alert' => ['enabled' => true, 'cc_emails' => '', 'notify_roles' => ['Kaprodi', 'Admin Prodi'], 'conditional_rules' => []],
                     'finance_billing' => ['enabled' => false, 'cc_emails' => '', 'notify_roles' => [], 'conditional_rules' => []],
                     'consultation_submitted' => [
                         'enabled' => true,
@@ -230,6 +233,9 @@ class SettingSeeder extends Seeder
             ['key' => 'email_template_student_status_changed', 'group' => 'smtp', 'value' => 'Halo {name},\n\nStatus akademik Anda di sistem ACMS telah diubah menjadi: {status}.\nAlasan: {reason}\n\nHubungi admin program studi bila ada pertanyaan.', 'type' => 'text', 'description' => 'Template Email Perubahan Status Mahasiswa'],
             ['key' => 'email_template_appeal_submitted', 'group' => 'smtp', 'value' => 'Banding nilai diajukan oleh {name} untuk stase {stase}.\n\nAlasan: {reason}\n\nSilakan tinjau di menu Banding Nilai sistem ACMS.', 'type' => 'text', 'description' => 'Template Email Banding Nilai Diajukan'],
             ['key' => 'email_template_appeal_decided', 'group' => 'smtp', 'value' => 'Halo {name},\n\nBanding nilai stase {stase} Anda telah diputuskan: {decision}.\nCatatan peninjau: {note}', 'type' => 'text', 'description' => 'Template Email Hasil Banding Nilai'],
+            ['key' => 'email_template_swap_requested', 'group' => 'smtp', 'value' => 'Permintaan tukar jadwal rotasi diajukan oleh {name} (stase {stase}).\n\nAlasan: {reason}\n\nTinjau di menu Tukar Jadwal sistem ACMS.', 'type' => 'text', 'description' => 'Template Email Permintaan Tukar Jadwal'],
+            ['key' => 'email_template_swap_decided', 'group' => 'smtp', 'value' => 'Halo {name},\n\nPermintaan tukar jadwal rotasi yang melibatkan Anda telah {decision}.\nCatatan: {note}\n\nCek jadwal terbaru Anda di sistem ACMS.', 'type' => 'text', 'description' => 'Template Email Hasil Tukar Jadwal'],
+            ['key' => 'email_template_at_risk_alert', 'group' => 'smtp', 'value' => 'Peringatan dini akademik ACMS:\n\n{count} mahasiswa terdeteksi berisiko ({high} level tinggi).\n\n{list}\n\nDetail lengkap: Dashboard Eksekutif > Mahasiswa Berisiko.', 'type' => 'text', 'description' => 'Template Email Peringatan Mahasiswa Berisiko'],
 
             // Retensi PII insiden (dipakai command incidents:prune-pii, terjadwal bulanan)
             ['key' => 'incident_retention_months', 'group' => 'incident', 'value' => '24', 'type' => 'string', 'description' => 'Masa retensi identitas pelapor insiden (bulan). Laporan selesai yang lebih tua dianonimkan permanen oleh sistem tiap bulan.'],

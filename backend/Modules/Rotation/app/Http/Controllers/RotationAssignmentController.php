@@ -161,6 +161,62 @@ class RotationAssignmentController extends Controller
         ]);
     }
 
+    /**
+     * Matriks jadwal untuk tampilan timeline: baris = mahasiswa satu
+     * angkatan, kolom = periode rotasi (urut tanggal), sel = stase@RS.
+     */
+    public function scheduleMatrix(Request $request)
+    {
+        $validated = $request->validate(['cohort_id' => 'required|uuid|exists:cohorts,id']);
+
+        $students = Student::with('user:id,name,identity_number')
+            ->where('cohort_id', $validated['cohort_id'])
+            ->get();
+
+        $assignments = RotationAssignment::with(['stase:id,name,color_code', 'hospital:id,name', 'rotationPeriod:id,name,start_date,end_date'])
+            ->whereIn('student_id', $students->pluck('id'))
+            ->get();
+
+        $periods = $assignments->pluck('rotationPeriod')
+            ->filter()
+            ->unique('id')
+            ->sortBy('start_date')
+            ->values()
+            ->map(fn ($p) => [
+                'id' => $p->id,
+                'name' => $p->name,
+                'start_date' => $p->start_date,
+                'end_date' => $p->end_date,
+            ]);
+
+        $byStudent = $assignments->groupBy('student_id');
+
+        $rows = $students->map(function (Student $s) use ($byStudent) {
+            $cells = [];
+            foreach ($byStudent->get($s->id, collect()) as $a) {
+                $cells[$a->rotation_period_id] = [
+                    'assignment_id' => $a->id,
+                    'stase' => $a->stase?->name,
+                    'hospital' => $a->hospital?->name,
+                    'color' => $a->stase?->color_code,
+                    'status' => $a->status,
+                    'attempt_number' => $a->attempt_number,
+                ];
+            }
+
+            return [
+                'student_id' => $s->id,
+                'name' => $s->user?->name,
+                'identity_number' => $s->user?->identity_number,
+                'cells' => $cells,
+            ];
+        })->sortBy('name')->values();
+
+        return response()->json([
+            'data' => ['periods' => $periods, 'rows' => $rows],
+        ]);
+    }
+
     public function show($id)
     {
         $assignment = RotationAssignment::with(['rotationPeriod', 'student.user', 'stase', 'hospital', 'preceptor'])->findOrFail($id);

@@ -88,6 +88,8 @@ export function AppSidebar() {
         { title: "Rumah Sakit", url: "/dashboard/rotation/hospitals", icon: Building2, permissions: ["manage-hospitals"] },
         ...(isAdminRS ? [{ title: "Mahasiswa di RS Saya", url: "/dashboard/hospital/students", icon: Users, permissions: ["view-rotations"] }] : []),
         { title: "Jadwal Rotasi", url: "/dashboard/rotations", icon: CalendarSync, permissions: ["view-rotations", "manage-rotations"] },
+        { title: "Timeline Rotasi", url: "/dashboard/rotations/timeline", icon: CalendarSync, permissions: ["manage-rotations"] },
+        { title: "Tukar Jadwal", url: "/dashboard/rotations/swap", icon: CalendarSync, permissions: ["view-rotations", "manage-rotations"] },
         { title: "Logbook Klinis", url: "/dashboard/clinical/logbooks", icon: ClipboardList, permissions: ["view-logbook"] },
         { title: "Verifikasi Logbook", url: "/dashboard/clinical/verification", icon: CheckCircle, permissions: ["verify-logbook"] },
         { title: "Presensi", url: "/dashboard/clinical/attendance", icon: MapPin, permissions: ["view-logbook"] },

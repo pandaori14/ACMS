@@ -59,6 +59,34 @@ interface ExecutiveData {
 interface PeriodOption { id: string; name?: string }
 interface HospitalOption { id: string; name?: string }
 
+interface AtRiskStudent {
+  student_id: string;
+  user_id: string;
+  name?: string | null;
+  identity_number?: string | null;
+  level: "high" | "medium" | "low";
+  signals: string[];
+}
+
+interface AtRiskData {
+  scanned: number;
+  students: AtRiskStudent[];
+}
+
+interface CohortComparisonRow {
+  cohort: string;
+  students: number;
+  graduated_pct: number;
+  avg_grade: number | null;
+  ukmppd_first_take_pass_pct: number | null;
+}
+
+const RISK_BADGE: Record<string, string> = {
+  high: "bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300",
+  medium: "bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300",
+  low: "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300",
+};
+
 const CHART_COLORS = ["var(--chart-1)", "var(--chart-2)", "var(--chart-3)", "var(--chart-4)", "var(--chart-5)"];
 
 const selectClass =
@@ -94,6 +122,20 @@ export default function ExecutiveAnalyticsPage() {
     queryFn: async (): Promise<HospitalOption[]> =>
       (await api.get("/api/v1/rotation/hospitals")).data.data || [],
     staleTime: 10 * 60 * 1000,
+  });
+
+  const { data: atRisk } = useQuery({
+    queryKey: ["analytics-at-risk"],
+    queryFn: async (): Promise<AtRiskData> =>
+      (await api.get("/api/v1/analytics/at-risk")).data.data,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const { data: cohortComparison = [] } = useQuery({
+    queryKey: ["analytics-cohort-comparison"],
+    queryFn: async (): Promise<CohortComparisonRow[]> =>
+      (await api.get("/api/v1/analytics/cohort-comparison")).data.data || [],
+    staleTime: 5 * 60 * 1000,
   });
 
   const scorecards = data?.scorecards;
@@ -286,6 +328,84 @@ export default function ExecutiveAnalyticsPage() {
                     </div>
                   </div>
                 ))
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Early warning: mahasiswa berisiko */}
+          <Card className="clean-card border-l-4 border-l-red-500">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base">Mahasiswa Berisiko (Early Warning)</CardTitle>
+              <CardDescription>
+                Sinyal dari data nyata: nilai gagal, logbook menggantung/telat, presensi ber-flag,
+                remedial. Dipindai otomatis tiap Senin + ringkasan email ke pengelola.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {!atRisk || atRisk.students.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-6">
+                  Tidak ada mahasiswa berisiko terdeteksi. 🎉
+                </p>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm min-w-[560px]">
+                    <thead>
+                      <tr className="text-left text-xs uppercase text-slate-400 border-b">
+                        <th className="py-2 pr-3">Mahasiswa</th>
+                        <th className="py-2 pr-3">Level</th>
+                        <th className="py-2">Sinyal</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {atRisk.students.slice(0, 15).map((s) => (
+                        <tr key={s.student_id} className="border-b border-slate-100 dark:border-slate-800">
+                          <td className="py-2 pr-3 whitespace-nowrap">
+                            <span className="font-medium">{s.name}</span>
+                            <span className="block text-xs text-slate-400">{s.identity_number}</span>
+                          </td>
+                          <td className="py-2 pr-3">
+                            <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${RISK_BADGE[s.level]}`}>
+                              {s.level === "high" ? "TINGGI" : s.level === "medium" ? "SEDANG" : "RENDAH"}
+                            </span>
+                          </td>
+                          <td className="py-2 text-slate-600 dark:text-slate-300">{s.signals.join(" · ")}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                  {atRisk.students.length > 15 && (
+                    <p className="text-xs text-slate-400 mt-2">
+                      +{atRisk.students.length - 15} mahasiswa lain — lihat email ringkasan mingguan.
+                    </p>
+                  )}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Perbandingan antar-angkatan */}
+          <Card className="clean-card">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base">Perbandingan Antar-Angkatan</CardTitle>
+              <CardDescription>
+                Rata-rata nilai klinis, % lulus program, dan pass-rate UKMPPD first-taker per angkatan
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {cohortComparison.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-6">Belum ada data angkatan.</p>
+              ) : (
+                <ResponsiveContainer width="100%" height={280}>
+                  <BarChart data={cohortComparison} margin={{ left: -10 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+                    <XAxis dataKey="cohort" fontSize={12} />
+                    <YAxis fontSize={12} domain={[0, 100]} />
+                    <Tooltip />
+                    <Bar dataKey="avg_grade" name="Rata-rata Nilai" fill="var(--chart-1)" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="graduated_pct" name="% Lulus Program" fill="var(--chart-2)" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="ukmppd_first_take_pass_pct" name="UKMPPD First-Take %" fill="var(--chart-4)" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
               )}
             </CardContent>
           </Card>
