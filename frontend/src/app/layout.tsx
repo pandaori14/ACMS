@@ -4,6 +4,8 @@ import "./globals.css";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { ThemeInitializer } from "@/components/ThemeInitializer";
 import { Toaster } from "sonner";
+import { NextIntlClientProvider } from "next-intl";
+import { getLocale } from "next-intl/server";
 
 import { Providers } from "@/components/providers";
 import { PwaRegister } from "@/components/PwaRegister";
@@ -29,22 +31,28 @@ export const viewport: Viewport = {
   themeColor: "#1E3A8A",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  // Locale dari cookie NEXT_LOCALE (lihat src/i18n/request.ts); pesan diteruskan
+  // ke NextIntlClientProvider agar useTranslations tersedia di seluruh app.
+  const locale = await getLocale();
+
   return (
-    <html lang="id" suppressHydrationWarning>
+    <html lang={locale} suppressHydrationWarning>
       <body className={`${inter.className} antialiased`}>
-        <ThemeInitializer />
-        <PwaRegister />
-        <Providers>
-            <TooltipProvider>
-            {children}
-            <Toaster position="top-right" richColors />
-            </TooltipProvider>
-        </Providers>
+        <NextIntlClientProvider>
+          <ThemeInitializer />
+          <PwaRegister />
+          <Providers>
+              <TooltipProvider>
+              {children}
+              <Toaster position="top-right" richColors />
+              </TooltipProvider>
+          </Providers>
+        </NextIntlClientProvider>
       </body>
     </html>
   );

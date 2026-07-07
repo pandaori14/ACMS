@@ -3,9 +3,11 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuthStore } from "@/store/useAuthStore";
+import { useTranslations } from "next-intl";
 import { Home, CalendarSync, ClipboardList, CheckCircle, Menu, BookOpen, FileText, MapPin } from "lucide-react";
 
 export function BottomNav() {
+  const t = useTranslations("bottomNav");
   const pathname = usePathname();
   const user = useAuthStore((state) => state.user);
   const userRole = user?.roles?.[0] || "";
@@ -17,18 +19,17 @@ export function BottomNav() {
   };
 
   const navItems = [
-    { title: "Beranda", url: "/dashboard", icon: Home, permissions: ["view-dashboard"] },
-    { title: "Rotasi", url: "/dashboard/rotations", icon: CalendarSync, permissions: ["view-rotations", "manage-rotations"] },
-    { title: "Logbook", url: "/dashboard/clinical/logbooks", icon: ClipboardList, permissions: ["view-logbook"] },
-    { title: "Presensi", url: "/dashboard/clinical/attendance", icon: MapPin, permissions: ["view-logbook"] },
-    { title: "Verifikasi", url: "/dashboard/clinical/verification", icon: CheckCircle, permissions: ["verify-logbook"] },
-    { title: "Penilaian", url: "/dashboard/assessments/create", icon: FileText, permissions: ["create-assessments"] },
-    { title: "Ujian", url: "/dashboard/examinations", icon: CheckCircle, permissions: ["take-examinations", "manage-examinations"] },
-    { title: "Transkrip", url: "/dashboard/my-grades", icon: BookOpen, permissions: ["view-transcripts"] },
-    { title: "Panduan", url: "/dashboard/safety/guide", icon: BookOpen, permissions: ["view-incident-guide"] },
-    // "Lainnya" should ideally open a sidebar or show an overflow menu, 
-    // but for now we just show it if they have Dashboard access as a fallback.
-    { title: "Lainnya", url: "#", icon: Menu, permissions: ["view-dashboard"] },
+    { title: t("home"), url: "/dashboard", icon: Home, permissions: ["view-dashboard"] },
+    { title: t("rotation"), url: "/dashboard/rotations", icon: CalendarSync, permissions: ["view-rotations", "manage-rotations"] },
+    { title: t("logbook"), url: "/dashboard/clinical/logbooks", icon: ClipboardList, permissions: ["view-logbook"] },
+    { title: t("attendance"), url: "/dashboard/clinical/attendance", icon: MapPin, permissions: ["view-logbook"] },
+    { title: t("verification"), url: "/dashboard/clinical/verification", icon: CheckCircle, permissions: ["verify-logbook"] },
+    { title: t("assessment"), url: "/dashboard/assessments/create", icon: FileText, permissions: ["create-assessments"] },
+    { title: t("exam"), url: "/dashboard/examinations", icon: CheckCircle, permissions: ["take-examinations", "manage-examinations"] },
+    { title: t("transcript"), url: "/dashboard/my-grades", icon: BookOpen, permissions: ["view-transcripts"] },
+    { title: t("guide"), url: "/dashboard/safety/guide", icon: BookOpen, permissions: ["view-incident-guide"] },
+    // "Lainnya" idealnya membuka overflow menu; sementara tampil bila punya akses dashboard.
+    { title: t("more"), url: "#", icon: Menu, permissions: ["view-dashboard"] },
   ];
 
   const filteredNavItems = navItems.filter((item) => hasPermission(item.permissions)).slice(0, 5); // Max 5 items for bottom nav

@@ -20,8 +20,10 @@ import {
 import { Building, BookOpen, Home, Settings, Settings2, LogOut, FileText, Building2, GraduationCap, CalendarSync, ClipboardList, CheckCircle, BarChart2, Users, ShieldAlert, Database, ScrollText, MapPin, MessageSquare, MessageSquareDot, Bell, Bot, LifeBuoy } from "lucide-react";
 import api from "@/lib/api";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 
 export function AppSidebar() {
+  const t = useTranslations("nav");
   const pathname = usePathname();
   const user = useAuthStore((state) => state.user);
   const logoutAction = useAuthStore((state) => state.logout);
@@ -70,86 +72,86 @@ export function AppSidebar() {
 
   const navGroups = [
     {
-      label: "Utama",
+      label: t("groups.main"),
       items: [
-        { title: "Dashboard", url: "/dashboard", icon: Home, permissions: ["view-dashboard"] },
-        ...(isDodiknis ? [{ title: "Dasbor Preceptor", url: "/dashboard/preceptor", icon: ClipboardList, permissions: ["view-dashboard"] }] : []),
-        { title: "Notifikasi", url: "/dashboard/notifications", icon: Bell, permissions: ["view-dashboard"] },
-        { title: "Broadcast", url: "/dashboard/broadcasts", icon: MessageSquareDot, permissions: ["send-broadcasts"] },
-        { title: "Analytics & Reports", url: "/dashboard/analytics", icon: BarChart2, permissions: ["view-analytics"] },
-        { title: "Dashboard Eksekutif", url: "/dashboard/analytics/executive", icon: BarChart2, permissions: ["view-executive-analytics"] },
-        { title: "Pusat Laporan", url: "/dashboard/reports", icon: FileText, permissions: ["view-attendance-recap", "manage-grades", "view-analytics", "manage-incidents", "manage-finance", "view-logbook"] },
-        { title: "Pusat Bantuan", url: "/dashboard/help", icon: LifeBuoy, permissions: ["view-dashboard"] },
+        { title: t("dashboard"), url: "/dashboard", icon: Home, permissions: ["view-dashboard"] },
+        ...(isDodiknis ? [{ title: t("preceptorDashboard"), url: "/dashboard/preceptor", icon: ClipboardList, permissions: ["view-dashboard"] }] : []),
+        { title: t("notifications"), url: "/dashboard/notifications", icon: Bell, permissions: ["view-dashboard"] },
+        { title: t("broadcast"), url: "/dashboard/broadcasts", icon: MessageSquareDot, permissions: ["send-broadcasts"] },
+        { title: t("analytics"), url: "/dashboard/analytics", icon: BarChart2, permissions: ["view-analytics"] },
+        { title: t("executiveDashboard"), url: "/dashboard/analytics/executive", icon: BarChart2, permissions: ["view-executive-analytics"] },
+        { title: t("reportCenter"), url: "/dashboard/reports", icon: FileText, permissions: ["view-attendance-recap", "manage-grades", "view-analytics", "manage-incidents", "manage-finance", "view-logbook"] },
+        { title: t("helpCenter"), url: "/dashboard/help", icon: LifeBuoy, permissions: ["view-dashboard"] },
       ]
     },
     {
-      label: "Akademik & Klinis",
+      label: t("groups.academicClinical"),
       items: [
-        { title: "Manajemen Stase", url: "/dashboard/academic/stase", icon: GraduationCap, permissions: ["manage-stase"] },
-        { title: "Rumah Sakit", url: "/dashboard/rotation/hospitals", icon: Building2, permissions: ["manage-hospitals"] },
-        ...(isAdminRS ? [{ title: "Mahasiswa di RS Saya", url: "/dashboard/hospital/students", icon: Users, permissions: ["view-rotations"] }] : []),
-        { title: "Jadwal Rotasi", url: "/dashboard/rotations", icon: CalendarSync, permissions: ["view-rotations", "manage-rotations"] },
-        { title: "Timeline Rotasi", url: "/dashboard/rotations/timeline", icon: CalendarSync, permissions: ["manage-rotations"] },
-        { title: "Tukar Jadwal", url: "/dashboard/rotations/swap", icon: CalendarSync, permissions: ["view-rotations", "manage-rotations"] },
-        { title: "Logbook Klinis", url: "/dashboard/clinical/logbooks", icon: ClipboardList, permissions: ["view-logbook"] },
-        { title: "Verifikasi Logbook", url: "/dashboard/clinical/verification", icon: CheckCircle, permissions: ["verify-logbook"] },
-        { title: "Presensi", url: "/dashboard/clinical/attendance", icon: MapPin, permissions: ["view-logbook"] },
-        { title: "Progres Kompetensi", url: "/dashboard/clinical/competency-progress", icon: CheckCircle, permissions: ["view-logbook", "verify-logbook", "manage-academic-master"] },
-        { title: "Skill Checklist", url: "/dashboard/clinical/skills", icon: ClipboardList, permissions: ["view-logbook", "create-assessments", "manage-academic-master"] },
-        { title: "Rekap Presensi", url: "/dashboard/clinical/attendance/recap", icon: MapPin, permissions: ["view-attendance-recap"] },
+        { title: t("staseManagement"), url: "/dashboard/academic/stase", icon: GraduationCap, permissions: ["manage-stase"] },
+        { title: t("hospitals"), url: "/dashboard/rotation/hospitals", icon: Building2, permissions: ["manage-hospitals"] },
+        ...(isAdminRS ? [{ title: t("myHospitalStudents"), url: "/dashboard/hospital/students", icon: Users, permissions: ["view-rotations"] }] : []),
+        { title: t("rotationSchedule"), url: "/dashboard/rotations", icon: CalendarSync, permissions: ["view-rotations", "manage-rotations"] },
+        { title: t("rotationTimeline"), url: "/dashboard/rotations/timeline", icon: CalendarSync, permissions: ["manage-rotations"] },
+        { title: t("swapSchedule"), url: "/dashboard/rotations/swap", icon: CalendarSync, permissions: ["view-rotations", "manage-rotations"] },
+        { title: t("logbook"), url: "/dashboard/clinical/logbooks", icon: ClipboardList, permissions: ["view-logbook"] },
+        { title: t("logbookVerification"), url: "/dashboard/clinical/verification", icon: CheckCircle, permissions: ["verify-logbook"] },
+        { title: t("attendance"), url: "/dashboard/clinical/attendance", icon: MapPin, permissions: ["view-logbook"] },
+        { title: t("competencyProgress"), url: "/dashboard/clinical/competency-progress", icon: CheckCircle, permissions: ["view-logbook", "verify-logbook", "manage-academic-master"] },
+        { title: t("skillChecklist"), url: "/dashboard/clinical/skills", icon: ClipboardList, permissions: ["view-logbook", "create-assessments", "manage-academic-master"] },
+        { title: t("attendanceRecap"), url: "/dashboard/clinical/attendance/recap", icon: MapPin, permissions: ["view-attendance-recap"] },
       ]
     },
     {
-      label: "Penilaian & Evaluasi",
+      label: t("groups.assessmentEvaluation"),
       items: [
-        { title: "Ujian", url: "/dashboard/examinations", icon: CheckCircle, permissions: ["take-examinations", "manage-examinations"] },
-        { title: "Bank Soal", url: "/dashboard/examinations/question-bank", icon: Database, permissions: ["manage-examinations"] },
-        { title: "UKMPPD", url: "/dashboard/examinations/ukmppd", icon: GraduationCap, permissions: ["take-examinations", "manage-examinations"] },
-        { title: "Isi Penilaian", url: "/dashboard/assessments/create", icon: FileText, permissions: ["create-assessments"] },
-        { title: "Riwayat Penilaian", url: "/dashboard/assessments", icon: BookOpen, permissions: ["view-assessments"] },
-        { title: "Rekapitulasi Nilai", url: "/dashboard/grades", icon: FileText, permissions: ["manage-grades"] },
-        { title: "Banding Nilai", url: "/dashboard/grades/appeals", icon: ShieldAlert, permissions: ["manage-grades"] },
-        { title: "Transkrip (Yudisium)", url: "/dashboard/transcripts", icon: BookOpen, permissions: ["view-transcripts"] },
-        { title: "Kelayakan Yudisium", url: "/dashboard/transcripts/eligibility", icon: CheckCircle, permissions: ["manage-grades"] },
-        { title: "Transkrip Klinis", url: "/dashboard/my-grades", icon: BookOpen, permissions: ["view-transcripts"] },
-        { title: "Dokumen Resmi", url: "/dashboard/documents", icon: FileText, permissions: ["view-transcripts"] },
-        { title: "Laporan Evaluasi", url: "/dashboard/clinical/evaluations/report", icon: BarChart2, permissions: ["view-analytics"] },
+        { title: t("exams"), url: "/dashboard/examinations", icon: CheckCircle, permissions: ["take-examinations", "manage-examinations"] },
+        { title: t("questionBank"), url: "/dashboard/examinations/question-bank", icon: Database, permissions: ["manage-examinations"] },
+        { title: t("ukmppd"), url: "/dashboard/examinations/ukmppd", icon: GraduationCap, permissions: ["take-examinations", "manage-examinations"] },
+        { title: t("fillAssessment"), url: "/dashboard/assessments/create", icon: FileText, permissions: ["create-assessments"] },
+        { title: t("assessmentHistory"), url: "/dashboard/assessments", icon: BookOpen, permissions: ["view-assessments"] },
+        { title: t("gradeRecap"), url: "/dashboard/grades", icon: FileText, permissions: ["manage-grades"] },
+        { title: t("gradeAppeals"), url: "/dashboard/grades/appeals", icon: ShieldAlert, permissions: ["manage-grades"] },
+        { title: t("transcriptYudisium"), url: "/dashboard/transcripts", icon: BookOpen, permissions: ["view-transcripts"] },
+        { title: t("yudisiumEligibility"), url: "/dashboard/transcripts/eligibility", icon: CheckCircle, permissions: ["manage-grades"] },
+        { title: t("clinicalTranscript"), url: "/dashboard/my-grades", icon: BookOpen, permissions: ["view-transcripts"] },
+        { title: t("officialDocuments"), url: "/dashboard/documents", icon: FileText, permissions: ["view-transcripts"] },
+        { title: t("evaluationReport"), url: "/dashboard/clinical/evaluations/report", icon: BarChart2, permissions: ["view-analytics"] },
       ]
     },
     {
-      label: "Keamanan & Laporan",
+      label: t("groups.securityReports"),
       items: [
-        { title: canConfigureIncident ? "Konfigurasi Insiden" : "Lapor Insiden", url: "/dashboard/incidents/report", icon: canConfigureIncident ? Settings2 : ShieldAlert, permissions: ["report-incidents", "configure-incident-form"] },
-        { title: canManageIncidents ? "Daftar Insiden" : "Laporan Saya", url: "/dashboard/incidents", icon: FileText, permissions: ["report-incidents", "manage-incidents"] },
-        { title: "Statistik Insiden", url: "/dashboard/incidents/statistics", icon: BarChart2, permissions: ["manage-incidents"] },
-        { title: "Konsultasi Rahasia", url: "/dashboard/incidents/consult", icon: MessageSquare, permissions: ["submit-consultation"] },
-        { title: "Manajemen Konsultasi", url: "/dashboard/incidents/consultations", icon: MessageSquareDot, permissions: ["manage-consultations"] },
-        { title: "Panduan Pelaporan", url: "/dashboard/safety/guide", icon: BookOpen, permissions: ["view-incident-guide"] },
+        { title: canConfigureIncident ? t("incidentConfigure") : t("incidentReport"), url: "/dashboard/incidents/report", icon: canConfigureIncident ? Settings2 : ShieldAlert, permissions: ["report-incidents", "configure-incident-form"] },
+        { title: canManageIncidents ? t("incidentList") : t("incidentMine"), url: "/dashboard/incidents", icon: FileText, permissions: ["report-incidents", "manage-incidents"] },
+        { title: t("incidentStats"), url: "/dashboard/incidents/statistics", icon: BarChart2, permissions: ["manage-incidents"] },
+        { title: t("confidentialConsultation"), url: "/dashboard/incidents/consult", icon: MessageSquare, permissions: ["submit-consultation"] },
+        { title: t("consultationManagement"), url: "/dashboard/incidents/consultations", icon: MessageSquareDot, permissions: ["manage-consultations"] },
+        { title: t("reportingGuide"), url: "/dashboard/safety/guide", icon: BookOpen, permissions: ["view-incident-guide"] },
       ]
     },
     {
-      label: "Keuangan",
+      label: t("groups.finance"),
       items: [
-        { title: "Tagihan RS", url: "/dashboard/finance/hospitals", icon: Building2, permissions: ["manage-finance"] },
-        { title: "Honorarium", url: "/dashboard/finance/preceptors", icon: FileText, permissions: ["manage-finance"] },
-        ...(isDodiknis ? [{ title: "Honorarium Saya", url: "/dashboard/finance/preceptors", icon: FileText, permissions: ["view-dashboard"] }] : []),
+        { title: t("hospitalBilling"), url: "/dashboard/finance/hospitals", icon: Building2, permissions: ["manage-finance"] },
+        { title: t("honorarium"), url: "/dashboard/finance/preceptors", icon: FileText, permissions: ["manage-finance"] },
+        ...(isDodiknis ? [{ title: t("myHonorarium"), url: "/dashboard/finance/preceptors", icon: FileText, permissions: ["view-dashboard"] }] : []),
       ]
     },
     {
-      label: "Sistem & Master Data",
+      label: t("groups.systemMasterData"),
       items: [
-        { title: "AI Assistant", url: "/dashboard/ai-assistant", icon: Bot, permissions: ["manage-settings"] },
-        { title: "Manajemen Pengguna", url: "/dashboard/users", icon: Users, permissions: ["manage-users"] },
-        { title: "Mahasiswa", url: "/dashboard/academic/students", icon: GraduationCap, permissions: ["manage-academic-master"] },
-        { title: "Angkatan", url: "/dashboard/academic/cohorts", icon: CalendarSync, permissions: ["manage-academic-master"] },
-        { title: "Kalender Akademik", url: "/dashboard/academic/calendar", icon: CalendarSync, permissions: ["manage-academic-master"] },
-        { title: "Master Kompetensi", url: "/dashboard/academic/competencies", icon: ClipboardList, permissions: ["manage-academic-master"] },
-        { title: "Master Rubrik", url: "/dashboard/rubrics", icon: FileText, permissions: ["manage-academic-master"] },
-        { title: "Fakultas & Prodi", url: "/dashboard/academic/faculty", icon: Building, permissions: ["manage-academic-master"] },
-        { title: "Pengaturan Sistem", url: "/dashboard/settings", icon: Settings, permissions: ["manage-settings"] },
-        { title: "Hak Akses (RBAC)", url: "/dashboard/settings/roles", icon: ShieldAlert, permissions: ["manage-settings"] },
-        { title: "Referensi Master", url: "/dashboard/settings/references", icon: Database, permissions: ["manage-settings"] },
-        { title: "Audit Trail", url: "/dashboard/settings/audit-logs", icon: ScrollText, permissions: ["view-audit-logs"] },
+        { title: t("aiAssistant"), url: "/dashboard/ai-assistant", icon: Bot, permissions: ["manage-settings"] },
+        { title: t("userManagement"), url: "/dashboard/users", icon: Users, permissions: ["manage-users"] },
+        { title: t("students"), url: "/dashboard/academic/students", icon: GraduationCap, permissions: ["manage-academic-master"] },
+        { title: t("cohorts"), url: "/dashboard/academic/cohorts", icon: CalendarSync, permissions: ["manage-academic-master"] },
+        { title: t("academicCalendar"), url: "/dashboard/academic/calendar", icon: CalendarSync, permissions: ["manage-academic-master"] },
+        { title: t("masterCompetency"), url: "/dashboard/academic/competencies", icon: ClipboardList, permissions: ["manage-academic-master"] },
+        { title: t("masterRubric"), url: "/dashboard/rubrics", icon: FileText, permissions: ["manage-academic-master"] },
+        { title: t("facultyProgram"), url: "/dashboard/academic/faculty", icon: Building, permissions: ["manage-academic-master"] },
+        { title: t("systemSettings"), url: "/dashboard/settings", icon: Settings, permissions: ["manage-settings"] },
+        { title: t("rbac"), url: "/dashboard/settings/roles", icon: ShieldAlert, permissions: ["manage-settings"] },
+        { title: t("masterReference"), url: "/dashboard/settings/references", icon: Database, permissions: ["manage-settings"] },
+        { title: t("auditTrail"), url: "/dashboard/settings/audit-logs", icon: ScrollText, permissions: ["view-audit-logs"] },
       ]
     }
   ];
@@ -166,7 +168,7 @@ export function AppSidebar() {
         )}
         <div>
           <h2 className="text-2xl font-bold tracking-tight">{appSettings.name}</h2>
-          <p className="text-xs text-muted-foreground">Klinik Akademik</p>
+          <p className="text-xs text-muted-foreground">{t("subtitle")}</p>
         </div>
       </SidebarHeader>
       <SidebarContent>
@@ -202,7 +204,7 @@ export function AppSidebar() {
             <SidebarMenuItem>
               <SidebarMenuButton onClick={handleLogout} className="text-red-500 hover:text-red-600">
                 <LogOut />
-                <span>Logout</span>
+                <span>{t("logout")}</span>
               </SidebarMenuButton>
             </SidebarMenuItem>
           </SidebarMenu>
