@@ -140,5 +140,27 @@ class SystemReferenceSeeder extends Seeder
                 ]
             );
         }
+
+        // Tingkat kesulitan soal bank + status hasil UKMPPD
+        $extraRefs = [
+            'question_difficulties' => [
+                ['name' => 'Mudah', 'value' => 'easy'],
+                ['name' => 'Sedang', 'value' => 'medium'],
+                ['name' => 'Sulit', 'value' => 'hard'],
+            ],
+            'ukmppd_statuses' => [
+                ['name' => 'Lulus', 'value' => 'passed'],
+                ['name' => 'Tidak Lulus', 'value' => 'failed'],
+            ],
+        ];
+
+        foreach ($extraRefs as $category => $rows) {
+            foreach ($rows as $row) {
+                SystemReference::updateOrCreate(
+                    ['category' => $category, 'value' => $row['value']],
+                    ['name' => $row['name'], 'is_active' => true]
+                );
+            }
+        }
     }
 }

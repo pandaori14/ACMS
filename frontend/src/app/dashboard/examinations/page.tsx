@@ -30,6 +30,8 @@ interface Exam {
   start_time?: string | null;
   duration_minutes?: number | null;
   passing_score?: number | null;
+  shuffle_questions?: boolean;
+  shuffle_options?: boolean;
   description?: string | null;
   stase_id?: string;
   stase?: { id?: string; name?: string } | null;
@@ -43,6 +45,8 @@ interface ExamForm {
   start_time: string;
   duration_minutes: string;
   passing_score: string;
+  shuffle_questions: boolean;
+  shuffle_options: boolean;
   description: string;
 }
 
@@ -54,6 +58,8 @@ const EMPTY_FORM: ExamForm = {
   start_time: "",
   duration_minutes: "",
   passing_score: "",
+  shuffle_questions: false,
+  shuffle_options: false,
   description: "",
 };
 
@@ -119,6 +125,8 @@ export default function ExaminationsPage() {
       start_time: exam.start_time ? exam.start_time.slice(0, 5) : "",
       duration_minutes: exam.duration_minutes != null ? String(exam.duration_minutes) : "",
       passing_score: exam.passing_score != null ? String(exam.passing_score) : "",
+      shuffle_questions: !!exam.shuffle_questions,
+      shuffle_options: !!exam.shuffle_options,
       description: exam.description || "",
     });
     setIsFormOpen(true);
@@ -133,6 +141,8 @@ export default function ExaminationsPage() {
     start_time: f.start_time || null,
     duration_minutes: f.duration_minutes ? Number(f.duration_minutes) : null,
     passing_score: f.passing_score ? Number(f.passing_score) : null,
+    shuffle_questions: f.shuffle_questions,
+    shuffle_options: f.shuffle_options,
     description: f.description,
   });
 
@@ -430,9 +440,31 @@ export default function ExaminationsPage() {
               </div>
             </div>
             {(form.type === "CBT" || form.type === "WRITTEN") && (
-              <p className="text-xs text-muted-foreground -mt-2">
-                Durasi dipakai sebagai timer ujian online. Bank soal dikelola dari halaman detail ujian.
-              </p>
+              <>
+                <p className="text-xs text-muted-foreground -mt-2">
+                  Durasi dipakai sebagai timer ujian online. Bank soal dikelola dari halaman detail ujian.
+                </p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <label className="flex items-center gap-2 text-sm rounded-md border p-2.5 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      className="h-4 w-4 rounded border-gray-300"
+                      checked={form.shuffle_questions}
+                      onChange={(e) => setForm({ ...form, shuffle_questions: e.target.checked })}
+                    />
+                    Acak urutan soal per peserta
+                  </label>
+                  <label className="flex items-center gap-2 text-sm rounded-md border p-2.5 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      className="h-4 w-4 rounded border-gray-300"
+                      checked={form.shuffle_options}
+                      onChange={(e) => setForm({ ...form, shuffle_options: e.target.checked })}
+                    />
+                    Acak urutan opsi jawaban
+                  </label>
+                </div>
+              </>
             )}
             <div className="space-y-2">
               <label className="text-sm font-medium">Deskripsi (opsional)</label>

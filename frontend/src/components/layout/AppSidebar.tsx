@@ -100,6 +100,8 @@ export function AppSidebar() {
       label: "Penilaian & Evaluasi",
       items: [
         { title: "Ujian", url: "/dashboard/examinations", icon: CheckCircle, permissions: ["take-examinations", "manage-examinations"] },
+        { title: "Bank Soal", url: "/dashboard/examinations/question-bank", icon: Database, permissions: ["manage-examinations"] },
+        { title: "UKMPPD", url: "/dashboard/examinations/ukmppd", icon: GraduationCap, permissions: ["take-examinations", "manage-examinations"] },
         { title: "Isi Penilaian", url: "/dashboard/assessments/create", icon: FileText, permissions: ["create-assessments"] },
         { title: "Riwayat Penilaian", url: "/dashboard/assessments", icon: BookOpen, permissions: ["view-assessments"] },
         { title: "Rekapitulasi Nilai", url: "/dashboard/grades", icon: FileText, permissions: ["manage-grades"] },

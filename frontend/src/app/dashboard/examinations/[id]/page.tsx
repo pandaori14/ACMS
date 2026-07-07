@@ -204,6 +204,55 @@ export default function ExaminationDetailPage() {
     }
   };
 
+  // ---- Ambil dari Bank Soal (menyalin — ujian menyimpan snapshot sendiri) ----
+  const [isBankOpen, setIsBankOpen] = useState(false);
+  const [bankItems, setBankItems] = useState<{ id: string; question_text: string; points: number; topic?: string | null }[]>([]);
+  const [bankSearch, setBankSearch] = useState("");
+  const [bankSelected, setBankSelected] = useState<string[]>([]);
+  const [isCopying, setIsCopying] = useState(false);
+
+  const openBankPicker = async () => {
+    setBankSelected([]);
+    setBankSearch("");
+    setIsBankOpen(true);
+    try {
+      const res = await api.get("/api/v1/examinations/question-bank", {
+        params: exam?.stase_id ? { stase_id: exam.stase_id, per_page: 50 } : { per_page: 50 },
+      });
+      setBankItems(res.data.data || []);
+    } catch {
+      toast.error("Gagal memuat bank soal.");
+    }
+  };
+
+  const searchBank = async () => {
+    try {
+      const res = await api.get("/api/v1/examinations/question-bank", {
+        params: { search: bankSearch, per_page: 50 },
+      });
+      setBankItems(res.data.data || []);
+    } catch {
+      toast.error("Gagal mencari bank soal.");
+    }
+  };
+
+  const copyFromBank = async () => {
+    if (bankSelected.length === 0) return;
+    setIsCopying(true);
+    try {
+      const res = await api.post(`/api/v1/examinations/${params.id}/questions/from-bank`, {
+        item_ids: bankSelected,
+      });
+      toast.success(res.data.message);
+      setIsBankOpen(false);
+      fetchQuestions();
+    } catch (err) {
+      toast.error(getApiErrorMessage(err, "Gagal menyalin soal dari bank."));
+    } finally {
+      setIsCopying(false);
+    }
+  };
+
   const openStationDialog = async () => {
     setStationForm({ name: "", description: "", assessment_template_id: "" });
     setIsStationOpen(true);
@@ -370,9 +419,14 @@ export default function ExaminationDetailPage() {
                     </CardDescription>
                   </div>
                   {canManage && !questionsLocked && exam.status !== "COMPLETED" && (
-                    <Button variant="outline" size="sm" onClick={() => openQuestionForm()}>
-                      <PlusCircle className="h-4 w-4 mr-1" /> Tambah Soal
-                    </Button>
+                    <div className="flex gap-2">
+                      <Button variant="outline" size="sm" onClick={openBankPicker}>
+                        <ListChecks className="h-4 w-4 mr-1" /> Ambil dari Bank
+                      </Button>
+                      <Button variant="outline" size="sm" onClick={() => openQuestionForm()}>
+                        <PlusCircle className="h-4 w-4 mr-1" /> Tambah Soal
+                      </Button>
+                    </div>
                   )}
                 </div>
               </CardHeader>
@@ -682,6 +736,66 @@ export default function ExaminationDetailPage() {
             )}
             <Button type="submit" className="w-full">Tugaskan</Button>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog ambil soal dari bank (menyalin snapshot ke ujian) */}
+      <Dialog open={isBankOpen} onOpenChange={setIsBankOpen}>
+        <DialogContent className="sm:max-w-xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Ambil Soal dari Bank</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 pt-2">
+            <p className="text-sm text-muted-foreground">
+              Soal disalin ke ujian ini — perubahan bank setelahnya tidak memengaruhi ujian.
+              Daftar awal difilter otomatis ke stase ujian.
+            </p>
+            <div className="flex gap-2">
+              <Input
+                placeholder="Cari soal / topik di seluruh bank..."
+                value={bankSearch}
+                onChange={(e) => setBankSearch(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); searchBank(); } }}
+              />
+              <Button type="button" variant="outline" onClick={searchBank}>Cari</Button>
+            </div>
+            <div className="max-h-72 overflow-y-auto rounded-md border divide-y divide-slate-100 dark:divide-slate-800">
+              {bankItems.length === 0 ? (
+                <p className="text-sm text-slate-400 text-center py-6">Tidak ada soal di bank.</p>
+              ) : (
+                bankItems.map((item) => (
+                  <label key={item.id} className="flex items-start gap-2 p-2.5 text-sm cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800">
+                    <input
+                      type="checkbox"
+                      className="mt-0.5 h-4 w-4 rounded border-gray-300"
+                      checked={bankSelected.includes(item.id)}
+                      onChange={() =>
+                        setBankSelected((prev) =>
+                          prev.includes(item.id) ? prev.filter((x) => x !== item.id) : [...prev, item.id]
+                        )
+                      }
+                    />
+                    <span className="min-w-0">
+                      <span className="line-clamp-2">{item.question_text}</span>
+                      <span className="text-xs text-slate-400">
+                        {item.points} poin{item.topic ? ` · ${item.topic}` : ""}
+                      </span>
+                    </span>
+                  </label>
+                ))
+              )}
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setIsBankOpen(false)}>Batal</Button>
+              <Button
+                disabled={bankSelected.length === 0 || isCopying}
+                onClick={copyFromBank}
+                className="bg-blue-900 hover:bg-blue-800 text-white"
+              >
+                {isCopying ? "Menyalin..." : `Salin ${bankSelected.length} Soal`}
+              </Button>
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
 

@@ -51,6 +51,8 @@ class ExaminationController extends Controller
             'start_time' => 'nullable|date_format:H:i',
             'duration_minutes' => 'nullable|integer|min:5|max:600',
             'passing_score' => 'nullable|numeric|min:0|max:100',
+            'shuffle_questions' => 'boolean',
+            'shuffle_options' => 'boolean',
             'description' => 'nullable|string',
             'stations' => 'nullable|array',
             'stations.*.name' => 'required|string',
@@ -67,6 +69,8 @@ class ExaminationController extends Controller
                 'start_time' => $request->start_time,
                 'duration_minutes' => $request->duration_minutes,
                 'passing_score' => $request->passing_score,
+                'shuffle_questions' => $request->boolean('shuffle_questions'),
+                'shuffle_options' => $request->boolean('shuffle_options'),
                 'status' => 'DRAFT',
                 'description' => $request->description,
             ]);
@@ -129,6 +133,8 @@ class ExaminationController extends Controller
             'start_time' => 'nullable|date_format:H:i',
             'duration_minutes' => 'nullable|integer|min:5|max:600',
             'passing_score' => 'nullable|numeric|min:0|max:100',
+            'shuffle_questions' => 'boolean',
+            'shuffle_options' => 'boolean',
             'description' => 'nullable|string',
         ]);
 
@@ -139,6 +145,7 @@ class ExaminationController extends Controller
         $exam->update($request->only([
             'name', 'type', 'stase_id', 'date', 'description',
             'start_time', 'duration_minutes', 'passing_score',
+            'shuffle_questions', 'shuffle_options',
         ]));
 
         return response()->json(['message' => 'Ujian berhasil diperbarui.', 'data' => $exam->load('stase')]);

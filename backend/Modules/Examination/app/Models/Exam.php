@@ -19,8 +19,15 @@ class Exam extends Model
         'start_time',
         'duration_minutes',
         'passing_score',
+        'shuffle_questions',
+        'shuffle_options',
         'status',
         'description',
+    ];
+
+    protected $casts = [
+        'shuffle_questions' => 'boolean',
+        'shuffle_options' => 'boolean',
     ];
 
     public function stase()

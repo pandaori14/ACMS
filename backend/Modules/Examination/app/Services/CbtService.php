@@ -4,6 +4,7 @@ namespace Modules\Examination\Services;
 
 use App\Models\User;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
 use Modules\Examination\Models\Exam;
 use Modules\Examination\Models\ExamAnswer;
 use Modules\Examination\Models\ExamParticipant;
@@ -152,18 +153,33 @@ class CbtService
 
     private function attemptPayload(Exam $exam, ExamParticipant $participant): array
     {
-        $questions = $exam->questions()->with('options')->get()->map(fn ($q) => [
-            'id' => $q->id,
-            'question_text' => $q->question_text,
-            'points' => $q->points,
-            'order' => $q->order,
-            // TANPA is_correct — kunci tidak boleh bocor ke peserta
-            'options' => $q->options->map(fn ($o) => [
-                'id' => $o->id,
-                'option_text' => $o->option_text,
-                'order' => $o->order,
-            ])->values(),
-        ])->values();
+        $questionModels = $exam->questions()->with('options')->get();
+
+        // Randomisasi DETERMINISTIK per peserta (seed dari id peserta):
+        // urutan stabil antar-reload, berbeda antar-peserta, kunci tetap aman.
+        if ($exam->shuffle_questions) {
+            $questionModels = $this->seededShuffle($questionModels, $participant->id);
+        }
+
+        $questions = $questionModels->map(function ($q) use ($exam, $participant) {
+            $options = $q->options;
+            if ($exam->shuffle_options) {
+                $options = $this->seededShuffle($options, $participant->id.'|'.$q->id);
+            }
+
+            return [
+                'id' => $q->id,
+                'question_text' => $q->question_text,
+                'points' => $q->points,
+                'order' => $q->order,
+                // TANPA is_correct — kunci tidak boleh bocor ke peserta
+                'options' => $options->map(fn ($o) => [
+                    'id' => $o->id,
+                    'option_text' => $o->option_text,
+                    'order' => $o->order,
+                ])->values(),
+            ];
+        })->values();
 
         $answers = ExamAnswer::where('exam_participant_id', $participant->id)
             ->pluck('exam_question_option_id', 'exam_question_id');
@@ -178,6 +194,27 @@ class CbtService
             'deadline' => $deadline?->toIso8601String(),
             'remaining_seconds' => $deadline ? max(0, (int) now()->diffInSeconds($deadline, false)) : null,
         ];
+    }
+
+    /**
+     * Fisher–Yates ber-seed (mt_srand) — hasil sama untuk seed yang sama.
+     *
+     * @template T
+     *
+     * @param  Collection<int, T>  $items
+     * @return Collection<int, T>
+     */
+    private function seededShuffle($items, string $seed)
+    {
+        $arr = $items->values()->all();
+        mt_srand(crc32($seed));
+        for ($i = count($arr) - 1; $i > 0; $i--) {
+            $j = mt_rand(0, $i);
+            [$arr[$i], $arr[$j]] = [$arr[$j], $arr[$i]];
+        }
+        mt_srand(); // kembalikan ke non-deterministik utk pemakaian lain
+
+        return collect($arr);
     }
 
     private function grade(Exam $exam, ExamParticipant $participant): array
