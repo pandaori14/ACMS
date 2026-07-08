@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { useAuthStore } from "@/store/useAuthStore";
 import api from "@/lib/api";
 import { getApiErrorMessage } from "@/lib/api-helpers";
@@ -40,6 +41,8 @@ const EMPTY_PAYMENT: PaymentForm = {
 };
 
 export default function PreceptorHonorariumsPage() {
+  const t = useTranslations("financePreceptors");
+  const tc = useTranslations("common");
   const user = useAuthStore((state) => state.user);
   const queryClient = useQueryClient();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -67,12 +70,12 @@ export default function PreceptorHonorariumsPage() {
       return api.post("/api/v1/finance/honorariums/generate", data);
     },
     onSuccess: () => {
-      toast.success("Honorarium berhasil dikalkulasi.");
+      toast.success(t("calcSuccess"));
       queryClient.invalidateQueries({ queryKey: ['honorariums'] });
       setIsDialogOpen(false);
     },
     onError: (error) => {
-      toast.error("Gagal mengkalkulasi honorarium: " + getApiErrorMessage(error, error.message));
+      toast.error(t("calcError", { error: getApiErrorMessage(error, error.message) }));
     }
   });
 
@@ -84,12 +87,12 @@ export default function PreceptorHonorariumsPage() {
       return api.post(`/api/v1/finance/honorariums/${id}/payment`, form);
     },
     onSuccess: () => {
-      toast.success("Pembayaran honorarium dicatat. Notifikasi dikirim ke preceptor.");
+      toast.success(t("paymentSuccess"));
       queryClient.invalidateQueries({ queryKey: ['honorariums'] });
       setPayingHonor(null);
     },
     onError: (error) => {
-      toast.error(getApiErrorMessage(error, "Gagal mencatat pembayaran."));
+      toast.error(getApiErrorMessage(error, t("paymentError")));
     }
   });
 
@@ -99,9 +102,9 @@ export default function PreceptorHonorariumsPage() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Honorarium Dodiknis</h1>
+          <h1 className="text-3xl font-bold tracking-tight">{t("title")}</h1>
           <p className="text-muted-foreground">
-            {isAdmin ? "Kelola pembayaran insentif bimbingan dan ujian." : "Daftar honorarium / insentif Anda."}
+            {isAdmin ? t("subtitleAdmin") : t("subtitleSelf")}
           </p>
         </div>
         
@@ -109,40 +112,40 @@ export default function PreceptorHonorariumsPage() {
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <DialogTrigger render={<Button className="gap-2" />}>
               <RefreshCcw className="h-4 w-4" />
-              Kalkulasi Honorarium
+              {t("calcTrigger")}
             </DialogTrigger>
             <DialogContent className="sm:max-w-[425px]">
               <DialogHeader>
-                <DialogTitle>Kalkulasi Honorarium Dodiknis</DialogTitle>
+                <DialogTitle>{t("calcDialogTitle")}</DialogTitle>
                 <DialogDescription>
-                  Hitung honorarium berdasarkan jumlah bimbingan mahasiswa dan tugas menguji.
+                  {t("calcDialogDesc")}
                 </DialogDescription>
               </DialogHeader>
               <div className="grid gap-4 py-4">
                 <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="period" className="text-right">Periode</Label>
+                  <Label htmlFor="period" className="text-right">{t("period")}</Label>
                   <Input id="period" value={formData.period} onChange={(e) => setFormData({...formData, period: e.target.value})} className="col-span-3" />
                 </div>
                 <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="start_date" className="text-right">Tgl Mulai</Label>
+                  <Label htmlFor="start_date" className="text-right">{t("startDate")}</Label>
                   <Input type="date" id="start_date" value={formData.start_date} onChange={(e) => setFormData({...formData, start_date: e.target.value})} className="col-span-3" />
                 </div>
                 <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="end_date" className="text-right">Tgl Selesai</Label>
+                  <Label htmlFor="end_date" className="text-right">{t("endDate")}</Label>
                   <Input type="date" id="end_date" value={formData.end_date} onChange={(e) => setFormData({...formData, end_date: e.target.value})} className="col-span-3" />
                 </div>
                 <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="guidance_rate" className="text-right">Insentif Bim.</Label>
+                  <Label htmlFor="guidance_rate" className="text-right">{t("guidanceRate")}</Label>
                   <Input type="number" id="guidance_rate" value={formData.guidance_rate} onChange={(e) => setFormData({...formData, guidance_rate: parseInt(e.target.value) || 0})} className="col-span-3" />
                 </div>
                 <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="exam_rate" className="text-right">Insentif Uji</Label>
+                  <Label htmlFor="exam_rate" className="text-right">{t("examRate")}</Label>
                   <Input type="number" id="exam_rate" value={formData.exam_rate} onChange={(e) => setFormData({...formData, exam_rate: parseInt(e.target.value) || 0})} className="col-span-3" />
                 </div>
               </div>
               <DialogFooter>
                 <Button disabled={generateMutation.isPending} onClick={() => generateMutation.mutate(formData)}>
-                  {generateMutation.isPending ? "Mengkalkulasi..." : "Proses Honorarium"}
+                  {generateMutation.isPending ? t("calculating") : t("processHonorarium")}
                 </Button>
               </DialogFooter>
             </DialogContent>
@@ -154,7 +157,7 @@ export default function PreceptorHonorariumsPage() {
         {honorariums.length === 0 ? (
           <div className="col-span-full py-12 text-center text-muted-foreground border-2 border-dashed rounded-xl bg-muted/10">
             <FileText className="mx-auto h-12 w-12 text-gray-300 mb-3" />
-            <p>Belum ada honorarium yang tercatat.</p>
+            <p>{t("empty")}</p>
           </div>
         ) : (
           honorariums.map((honor) => (
@@ -175,12 +178,12 @@ export default function PreceptorHonorariumsPage() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <p className="text-sm text-muted-foreground mb-2">Catatan: {honor.notes || "-"}</p>
+                <p className="text-sm text-muted-foreground mb-2">{t("notes")}: {honor.notes || "-"}</p>
                 {honor.status === "PAID" && honor.paid_at && (
                   <p className="text-xs text-emerald-600 mb-2">
-                    Dibayar {new Date(honor.paid_at).toLocaleDateString("id-ID")}
-                    {honor.payment_method ? ` via ${honor.payment_method}` : ""}
-                    {honor.payment_reference ? ` (ref: ${honor.payment_reference})` : ""}
+                    {t("paidOn", { date: new Date(honor.paid_at).toLocaleDateString("id-ID") })}
+                    {honor.payment_method ? t("paidVia", { method: honor.payment_method }) : ""}
+                    {honor.payment_reference ? t("paidRef", { reference: honor.payment_reference }) : ""}
                   </p>
                 )}
 
@@ -193,7 +196,7 @@ export default function PreceptorHonorariumsPage() {
                       setPayingHonor(honor);
                     }}
                   >
-                    <CheckCircle className="mr-2 h-4 w-4" /> Catat Pembayaran
+                    <CheckCircle className="mr-2 h-4 w-4" /> {t("recordPayment")}
                   </Button>
                 )}
               </CardContent>
@@ -206,7 +209,7 @@ export default function PreceptorHonorariumsPage() {
       <Dialog open={!!payingHonor} onOpenChange={(open) => !open && setPayingHonor(null)}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
-            <DialogTitle>Catat Pembayaran Honorarium</DialogTitle>
+            <DialogTitle>{t("payDialogTitle")}</DialogTitle>
             <DialogDescription>
               {payingHonor?.preceptor?.name} — {payingHonor?.period} — Rp{" "}
               {new Intl.NumberFormat("id-ID").format(payingHonor?.amount || 0)}
@@ -214,7 +217,7 @@ export default function PreceptorHonorariumsPage() {
           </DialogHeader>
           <div className="grid gap-4 py-2">
             <div className="space-y-2">
-              <Label>Tanggal Pembayaran</Label>
+              <Label>{t("paymentDate")}</Label>
               <Input
                 type="date"
                 value={paymentForm.paid_at}
@@ -222,22 +225,22 @@ export default function PreceptorHonorariumsPage() {
               />
             </div>
             <div className="space-y-2">
-              <Label>Metode Pembayaran</Label>
+              <Label>{t("paymentMethod")}</Label>
               <select
                 className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                 value={paymentForm.payment_method}
                 onChange={(e) => setPaymentForm({ ...paymentForm, payment_method: e.target.value })}
               >
-                <option value="Transfer Bank">Transfer Bank</option>
-                <option value="Virtual Account">Virtual Account</option>
-                <option value="Tunai">Tunai</option>
-                <option value="Lainnya">Lainnya</option>
+                <option value="Transfer Bank">{t("methodBankTransfer")}</option>
+                <option value="Virtual Account">{t("methodVirtualAccount")}</option>
+                <option value="Tunai">{t("methodCash")}</option>
+                <option value="Lainnya">{t("methodOther")}</option>
               </select>
             </div>
             <div className="space-y-2">
-              <Label>No. Referensi / Bukti (opsional)</Label>
+              <Label>{t("paymentRefLabel")}</Label>
               <Input
-                placeholder="Contoh: TRX-20260704-001"
+                placeholder={t("paymentRefPlaceholder")}
                 value={paymentForm.payment_reference}
                 onChange={(e) => setPaymentForm({ ...paymentForm, payment_reference: e.target.value })}
               />
@@ -248,7 +251,7 @@ export default function PreceptorHonorariumsPage() {
               disabled={recordPaymentMutation.isPending}
               onClick={() => payingHonor && recordPaymentMutation.mutate({ id: payingHonor.id, form: paymentForm })}
             >
-              {recordPaymentMutation.isPending ? "Menyimpan..." : "Simpan Pembayaran"}
+              {recordPaymentMutation.isPending ? tc("saving") : t("savePayment")}
             </Button>
           </DialogFooter>
         </DialogContent>
