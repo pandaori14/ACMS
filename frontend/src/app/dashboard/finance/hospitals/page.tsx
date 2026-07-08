@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import api from "@/lib/api";
 import { getApiErrorMessage } from "@/lib/api-helpers";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -40,6 +41,8 @@ const EMPTY_PAYMENT: PaymentForm = {
 };
 
 export default function HospitalBillingsPage() {
+  const t = useTranslations("financeHospitals");
+  const tc = useTranslations("common");
   const queryClient = useQueryClient();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [formData, setFormData] = useState({
@@ -62,12 +65,12 @@ export default function HospitalBillingsPage() {
       return api.post("/api/v1/finance/billings/generate", data);
     },
     onSuccess: () => {
-      toast.success("Tagihan berhasil dikalkulasi.");
+      toast.success(t("calcSuccess"));
       queryClient.invalidateQueries({ queryKey: ['billings'] });
       setIsDialogOpen(false);
     },
     onError: (error) => {
-      toast.error("Gagal mengkalkulasi tagihan: " + getApiErrorMessage(error, error.message));
+      toast.error(t("calcError", { error: getApiErrorMessage(error, error.message) }));
     }
   });
 
@@ -80,17 +83,17 @@ export default function HospitalBillingsPage() {
       return api.post(`/api/v1/finance/billings/${id}/payment`, form);
     },
     onSuccess: () => {
-      toast.success("Pembayaran tagihan berhasil dicatat.");
+      toast.success(t("paymentSuccess"));
       queryClient.invalidateQueries({ queryKey: ['billings'] });
       setPayingBilling(null);
     },
     onError: (error) => {
-      toast.error(getApiErrorMessage(error, "Gagal mencatat pembayaran."));
+      toast.error(getApiErrorMessage(error, t("paymentError")));
     }
   });
 
   const downloadInvoice = async (billing: Billing) => {
-    toast.loading("Membuat invoice PDF...", { id: "invoice-dl" });
+    toast.loading(t("invoiceLoading"), { id: "invoice-dl" });
     try {
       const res = await api.get(`/api/v1/finance/billings/${billing.id}/invoice`, { responseType: "blob" });
       const url = window.URL.createObjectURL(new Blob([res.data]));
@@ -100,9 +103,9 @@ export default function HospitalBillingsPage() {
       document.body.appendChild(link);
       link.click();
       link.parentNode?.removeChild(link);
-      toast.success("Invoice diunduh.", { id: "invoice-dl" });
+      toast.success(t("invoiceDownloaded"), { id: "invoice-dl" });
     } catch {
-      toast.error("Gagal mengunduh invoice.", { id: "invoice-dl" });
+      toast.error(t("invoiceError"), { id: "invoice-dl" });
     }
   };
 
@@ -112,9 +115,9 @@ export default function HospitalBillingsPage() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Tagihan Rumah Sakit</h1>
+          <h1 className="text-3xl font-bold tracking-tight">{t("title")}</h1>
           <p className="text-muted-foreground">
-            Kelola tagihan biaya pendidikan (Billing) ke Rumah Sakit Jejaring.
+            {t("subtitle")}
           </p>
         </div>
         
@@ -122,36 +125,36 @@ export default function HospitalBillingsPage() {
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <DialogTrigger render={<Button variant="outline" className="gap-2" />}>
               <RefreshCcw className="h-4 w-4" />
-              Kalkulasi Tagihan
+              {t("calcTrigger")}
             </DialogTrigger>
             <DialogContent className="sm:max-w-[425px]">
               <DialogHeader>
-                <DialogTitle>Kalkulasi Tagihan RS</DialogTitle>
+                <DialogTitle>{t("calcDialogTitle")}</DialogTitle>
                 <DialogDescription>
-                  Masukkan parameter untuk menghitung tagihan biaya pendidikan ke rumah sakit berdasarkan data rotasi riil mahasiswa.
+                  {t("calcDialogDesc")}
                 </DialogDescription>
               </DialogHeader>
               <div className="grid gap-4 py-4">
                 <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="period" className="text-right">Periode</Label>
+                  <Label htmlFor="period" className="text-right">{t("period")}</Label>
                   <Input id="period" value={formData.period} onChange={(e) => setFormData({...formData, period: e.target.value})} className="col-span-3" />
                 </div>
                 <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="start_date" className="text-right">Tgl Mulai</Label>
+                  <Label htmlFor="start_date" className="text-right">{t("startDate")}</Label>
                   <Input type="date" id="start_date" value={formData.start_date} onChange={(e) => setFormData({...formData, start_date: e.target.value})} className="col-span-3" />
                 </div>
                 <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="end_date" className="text-right">Tgl Selesai</Label>
+                  <Label htmlFor="end_date" className="text-right">{t("endDate")}</Label>
                   <Input type="date" id="end_date" value={formData.end_date} onChange={(e) => setFormData({...formData, end_date: e.target.value})} className="col-span-3" />
                 </div>
                 <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="rate" className="text-right">Tarif/Mhs</Label>
+                  <Label htmlFor="rate" className="text-right">{t("ratePerStudent")}</Label>
                   <Input type="number" id="rate" value={formData.rate_per_student} onChange={(e) => setFormData({...formData, rate_per_student: parseInt(e.target.value) || 0})} className="col-span-3" />
                 </div>
               </div>
               <DialogFooter>
                 <Button disabled={generateMutation.isPending} onClick={() => generateMutation.mutate(formData)}>
-                  {generateMutation.isPending ? "Mengkalkulasi..." : "Proses Tagihan"}
+                  {generateMutation.isPending ? t("calculating") : t("processBilling")}
                 </Button>
               </DialogFooter>
             </DialogContent>
@@ -167,12 +170,12 @@ export default function HospitalBillingsPage() {
               document.body.appendChild(link);
               link.click();
               link.parentNode?.removeChild(link);
-            } catch (err) {
-              toast.error("Gagal mengunduh data tagihan.");
+            } catch {
+              toast.error(t("exportError"));
             }
           }} className="gap-2 bg-green-600 hover:bg-green-700 text-white">
             <FileText className="h-4 w-4" />
-            Unduh Excel
+            {t("downloadExcel")}
           </Button>
         </div>
       </div>
@@ -181,7 +184,7 @@ export default function HospitalBillingsPage() {
         {billings.length === 0 ? (
           <div className="col-span-full py-12 text-center text-muted-foreground border-2 border-dashed rounded-xl bg-muted/10">
             <FileText className="mx-auto h-12 w-12 text-gray-300 mb-3" />
-            <p>Belum ada tagihan yang dibuat.</p>
+            <p>{t("empty")}</p>
           </div>
         ) : (
           billings.map((billing) => (
@@ -202,12 +205,12 @@ export default function HospitalBillingsPage() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <p className="text-sm text-muted-foreground mb-2">Catatan: {billing.notes || "-"}</p>
+                <p className="text-sm text-muted-foreground mb-2">{t("notes")}: {billing.notes || "-"}</p>
                 {billing.status === "PAID" && billing.paid_at && (
                   <p className="text-xs text-emerald-600 mb-2">
-                    Dibayar {new Date(billing.paid_at).toLocaleDateString("id-ID")}
-                    {billing.payment_method ? ` via ${billing.payment_method}` : ""}
-                    {billing.payment_reference ? ` (ref: ${billing.payment_reference})` : ""}
+                    {t("paidOn", { date: new Date(billing.paid_at).toLocaleDateString("id-ID") })}
+                    {billing.payment_method ? t("paidVia", { method: billing.payment_method }) : ""}
+                    {billing.payment_reference ? t("paidRef", { reference: billing.payment_reference }) : ""}
                   </p>
                 )}
 
@@ -221,11 +224,11 @@ export default function HospitalBillingsPage() {
                         setPayingBilling(billing);
                       }}
                     >
-                      <CheckCircle className="mr-2 h-4 w-4" /> Catat Pembayaran
+                      <CheckCircle className="mr-2 h-4 w-4" /> {t("recordPayment")}
                     </Button>
                   )}
                   <Button variant="outline" className="w-full" onClick={() => downloadInvoice(billing)}>
-                    <FileText className="mr-2 h-4 w-4" /> Unduh Invoice PDF
+                    <FileText className="mr-2 h-4 w-4" /> {t("downloadInvoice")}
                   </Button>
                 </div>
               </CardContent>
@@ -238,7 +241,7 @@ export default function HospitalBillingsPage() {
       <Dialog open={!!payingBilling} onOpenChange={(open) => !open && setPayingBilling(null)}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
-            <DialogTitle>Catat Pembayaran Tagihan</DialogTitle>
+            <DialogTitle>{t("payDialogTitle")}</DialogTitle>
             <DialogDescription>
               {payingBilling?.hospital?.name} — {payingBilling?.period} — Rp{" "}
               {new Intl.NumberFormat("id-ID").format(payingBilling?.amount || 0)}
@@ -246,7 +249,7 @@ export default function HospitalBillingsPage() {
           </DialogHeader>
           <div className="grid gap-4 py-2">
             <div className="space-y-2">
-              <Label>Tanggal Pembayaran</Label>
+              <Label>{t("paymentDate")}</Label>
               <Input
                 type="date"
                 value={paymentForm.paid_at}
@@ -254,22 +257,22 @@ export default function HospitalBillingsPage() {
               />
             </div>
             <div className="space-y-2">
-              <Label>Metode Pembayaran</Label>
+              <Label>{t("paymentMethod")}</Label>
               <select
                 className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                 value={paymentForm.payment_method}
                 onChange={(e) => setPaymentForm({ ...paymentForm, payment_method: e.target.value })}
               >
-                <option value="Transfer Bank">Transfer Bank</option>
-                <option value="Virtual Account">Virtual Account</option>
-                <option value="Tunai">Tunai</option>
-                <option value="Lainnya">Lainnya</option>
+                <option value="Transfer Bank">{t("methodBankTransfer")}</option>
+                <option value="Virtual Account">{t("methodVirtualAccount")}</option>
+                <option value="Tunai">{t("methodCash")}</option>
+                <option value="Lainnya">{t("methodOther")}</option>
               </select>
             </div>
             <div className="space-y-2">
-              <Label>No. Referensi / Bukti (opsional)</Label>
+              <Label>{t("paymentRefLabel")}</Label>
               <Input
-                placeholder="Contoh: TRX-20260704-001"
+                placeholder={t("paymentRefPlaceholder")}
                 value={paymentForm.payment_reference}
                 onChange={(e) => setPaymentForm({ ...paymentForm, payment_reference: e.target.value })}
               />
@@ -280,7 +283,7 @@ export default function HospitalBillingsPage() {
               disabled={recordPaymentMutation.isPending}
               onClick={() => payingBilling && recordPaymentMutation.mutate({ id: payingBilling.id, form: paymentForm })}
             >
-              {recordPaymentMutation.isPending ? "Menyimpan..." : "Simpan Pembayaran"}
+              {recordPaymentMutation.isPending ? tc("saving") : t("savePayment")}
             </Button>
           </DialogFooter>
         </DialogContent>
