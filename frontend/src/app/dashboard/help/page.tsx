@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import api from "@/lib/api";
 import { AppSetting } from "@/lib/api-helpers";
 import { Card, CardContent } from "@/components/ui/card";
@@ -14,6 +15,7 @@ import ReactMarkdown from "react-markdown";
  * kontennya via Settings → Pusat Bantuan.
  */
 export default function HelpCenterPage() {
+  const t = useTranslations("helpPage");
   const [roleContent, setRoleContent] = useState<string>("");
   const [generalContent, setGeneralContent] = useState<string>("");
   const [loading, setLoading] = useState(true);
@@ -41,14 +43,14 @@ export default function HelpCenterPage() {
         setGeneralContent(get("help_center_umum"));
       } catch (err) {
         console.error(err);
-        setGeneralContent("### Gagal Memuat Bantuan\n\nTerjadi kesalahan saat mengambil konten bantuan.");
+        setGeneralContent(t("loadError"));
       } finally {
         setLoading(false);
       }
     };
 
     fetchHelp();
-  }, [userRole]);
+  }, [userRole, t]);
 
   if (loading) {
     return (
@@ -65,9 +67,9 @@ export default function HelpCenterPage() {
           <LifeBuoy className="h-5 w-5" />
         </div>
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Pusat Bantuan</h1>
+          <h1 className="text-2xl font-bold tracking-tight">{t("title")}</h1>
           <p className="text-sm text-muted-foreground">
-            Panduan penggunaan ACMS untuk peran Anda ({userRole})
+            {t("subtitle", { role: userRole })}
           </p>
         </div>
       </div>
@@ -95,7 +97,7 @@ export default function HelpCenterPage() {
       {!roleContent && !generalContent && (
         <Card>
           <CardContent className="p-8 text-center text-muted-foreground">
-            Konten bantuan belum dikonfigurasi oleh Super Admin.
+            {t("notConfigured")}
           </CardContent>
         </Card>
       )}

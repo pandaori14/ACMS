@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useAuthStore } from "@/store/useAuthStore";
 import api from "@/lib/api";
 import { getApiErrorStatus } from "@/lib/api-helpers";
@@ -30,6 +31,7 @@ import { useQuery } from "@tanstack/react-query";
 export default function DashboardPage() {
   const user = useAuthStore((state) => state.user);
   const router = useRouter();
+  const t = useTranslations("dashHome");
 
   const { data: stats, isLoading: loading } = useQuery({
     queryKey: ['dashboard_stats'],
@@ -51,7 +53,7 @@ export default function DashboardPage() {
   if (loading) {
     return (
       <div className="space-y-6">
-        <h1 className="text-3xl font-bold">Dashboard</h1>
+        <h1 className="text-3xl font-bold">{t("title")}</h1>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <Skeleton className="h-32 rounded-xl" />
           <Skeleton className="h-32 rounded-xl" />
@@ -67,55 +69,55 @@ export default function DashboardPage() {
       <div className="space-y-6">
         <div>
           <h1 className="text-3xl font-semibold tracking-tight text-slate-900 dark:text-slate-50">
-            Overview Program Studi
+            {t("adminTitle")}
           </h1>
           <p className="text-slate-500 dark:text-slate-400 mt-1">
-            Selamat datang, <span className="font-medium text-slate-900 dark:text-slate-300">{user?.name}</span>. Berikut ringkasan aktivitas klinis saat ini.
+            {t.rich("adminWelcome", { b: (c) => <span className="font-medium text-slate-900 dark:text-slate-300">{c}</span>, name: user?.name ?? "" })}
           </p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <Card className="clean-card">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-slate-600 dark:text-slate-400">Total Mahasiswa</CardTitle>
+              <CardTitle className="text-sm font-medium text-slate-600 dark:text-slate-400">{t("totalStudents")}</CardTitle>
               <Users className="h-4 w-4 text-slate-400" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-semibold text-slate-900 dark:text-slate-50">{stats.metrics.total_students}</div>
-              <p className="text-xs text-slate-500 mt-1">Terdaftar di sistem</p>
+              <p className="text-xs text-slate-500 mt-1">{t("registered")}</p>
             </CardContent>
           </Card>
           
           <Card className="clean-card">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-slate-600 dark:text-slate-400">Stase Aktif</CardTitle>
+              <CardTitle className="text-sm font-medium text-slate-600 dark:text-slate-400">{t("activeStase")}</CardTitle>
               <BookOpen className="h-4 w-4 text-slate-400" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-semibold text-slate-900 dark:text-slate-50">{stats.metrics.total_stase}</div>
-              <p className="text-xs text-slate-500 mt-1">Departemen berjalan</p>
+              <p className="text-xs text-slate-500 mt-1">{t("runningDept")}</p>
             </CardContent>
           </Card>
           
           <Card className="clean-card">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-slate-600 dark:text-slate-400">RS Afiliasi</CardTitle>
+              <CardTitle className="text-sm font-medium text-slate-600 dark:text-slate-400">{t("affiliatedHospitals")}</CardTitle>
               <Building2 className="h-4 w-4 text-slate-400" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-semibold text-slate-900 dark:text-slate-50">{stats.metrics.total_hospitals}</div>
-              <p className="text-xs text-slate-500 mt-1">Rumah Sakit aktif</p>
+              <p className="text-xs text-slate-500 mt-1">{t("activeHospitals")}</p>
             </CardContent>
           </Card>
           
           <Card className="clean-card">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-slate-600 dark:text-slate-400">Rotasi Berjalan</CardTitle>
+              <CardTitle className="text-sm font-medium text-slate-600 dark:text-slate-400">{t("runningRotations")}</CardTitle>
               <Activity className="h-4 w-4 text-slate-400" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-semibold text-slate-900 dark:text-slate-50">{stats.metrics.active_rotations}</div>
-              <p className="text-xs text-slate-500 mt-1">Penugasan saat ini</p>
+              <p className="text-xs text-slate-500 mt-1">{t("currentAssignments")}</p>
             </CardContent>
           </Card>
         </div>
@@ -123,13 +125,13 @@ export default function DashboardPage() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           <Card className="col-span-1 clean-card">
             <CardHeader>
-              <CardTitle className="text-base font-semibold">Sebaran Mahasiswa per Stase</CardTitle>
-              <CardDescription className="text-xs">Distribusi beban tugas stase saat ini</CardDescription>
+              <CardTitle className="text-base font-semibold">{t("distByStase")}</CardTitle>
+              <CardDescription className="text-xs">{t("distByStaseSub")}</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
                 {stats.stase_distribution?.length === 0 ? (
-                  <p className="text-sm text-slate-500">Tidak ada stase aktif.</p>
+                  <p className="text-sm text-slate-500">{t("noActiveStase")}</p>
                 ) : (
                   stats.stase_distribution?.map((item: { name?: string; value?: number }, i: number) => (
                     <div key={i} className="flex items-center group">
@@ -147,13 +149,13 @@ export default function DashboardPage() {
 
           <Card className="col-span-1 flex flex-col clean-card">
             <CardHeader>
-              <CardTitle className="text-base font-semibold">Distribusi Mahasiswa di RS</CardTitle>
-              <CardDescription className="text-xs">Beban kapasitas rumah sakit jejaring saat ini</CardDescription>
+              <CardTitle className="text-base font-semibold">{t("distByHospital")}</CardTitle>
+              <CardDescription className="text-xs">{t("distByHospitalSub")}</CardDescription>
             </CardHeader>
             <CardContent className="flex-1 min-h-[300px]">
               {stats.hospital_distribution?.length === 0 ? (
                 <div className="flex items-center justify-center h-full">
-                  <p className="text-sm text-slate-500">Belum ada data distribusi di RS.</p>
+                  <p className="text-sm text-slate-500">{t("noHospitalDist")}</p>
                 </div>
               ) : (
                 <div style={{ width: '100%', height: 300 }}>
@@ -186,7 +188,7 @@ export default function DashboardPage() {
                         dataKey="total" 
                         fill="#0f172a" 
                         radius={[4, 4, 0, 0]}
-                        name="Jumlah Mahasiswa"
+                        name={t("studentCount")}
                         animationDuration={1000}
                       />
                     </BarChart>
@@ -200,8 +202,8 @@ export default function DashboardPage() {
         {stats.logbook_trend && (
           <Card className="clean-card mt-4">
             <CardHeader>
-              <CardTitle className="text-base font-semibold">Tren Aktivitas Logbook 7 Hari Terakhir</CardTitle>
-              <CardDescription className="text-xs">Jumlah pengisian logbook harian oleh mahasiswa</CardDescription>
+              <CardTitle className="text-base font-semibold">{t("logbookTrend")}</CardTitle>
+              <CardDescription className="text-xs">{t("logbookTrendSub")}</CardDescription>
             </CardHeader>
             <CardContent className="h-[250px]">
               <ResponsiveContainer width="100%" height="100%">
@@ -212,7 +214,7 @@ export default function DashboardPage() {
                   <Tooltip
                     contentStyle={{ borderRadius: '6px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
                   />
-                  <Line type="monotone" dataKey="total" name="Logbook Dibuat" stroke="#3b82f6" strokeWidth={3} dot={{ r: 4, strokeWidth: 2 }} activeDot={{ r: 6 }} />
+                  <Line type="monotone" dataKey="total" name={t("logbookCreated")} stroke="#3b82f6" strokeWidth={3} dot={{ r: 4, strokeWidth: 2 }} activeDot={{ r: 6 }} />
                 </LineChart>
               </ResponsiveContainer>
             </CardContent>
@@ -228,45 +230,45 @@ export default function DashboardPage() {
       <div className="space-y-6">
         <div>
           <h1 className="text-3xl font-semibold tracking-tight text-slate-900 dark:text-slate-50">
-            Dashboard Dodiknis
+            {t("preceptorTitle")}
           </h1>
           <p className="text-slate-500 dark:text-slate-400 mt-1">
-            Selamat datang, Dr. <span className="font-medium text-slate-900 dark:text-slate-300">{user?.name}</span>. Berikut daftar tugas bimbingan Anda.
+            {t.rich("preceptorWelcome", { b: (c) => <span className="font-medium text-slate-900 dark:text-slate-300">{c}</span>, name: user?.name ?? "" })}
           </p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <Card className="clean-card">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-slate-600 dark:text-slate-400">Mahasiswa Bimbingan</CardTitle>
+              <CardTitle className="text-sm font-medium text-slate-600 dark:text-slate-400">{t("supervisedStudents")}</CardTitle>
               <Users className="h-4 w-4 text-slate-400" />
             </CardHeader>
             <CardContent>
               <div className="text-3xl font-semibold text-slate-900 dark:text-slate-50">{stats.active_students_count}</div>
-              <p className="text-sm text-slate-500 mt-1">Sedang rotasi di bawah Anda saat ini</p>
+              <p className="text-sm text-slate-500 mt-1">{t("supervisedSub")}</p>
             </CardContent>
           </Card>
 
           <Card className="clean-card">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-slate-600 dark:text-slate-400">Menunggu Verifikasi</CardTitle>
+              <CardTitle className="text-sm font-medium text-slate-600 dark:text-slate-400">{t("awaitingVerification")}</CardTitle>
               <ClipboardList className="h-4 w-4 text-slate-400" />
             </CardHeader>
             <CardContent>
               <div className="text-3xl font-semibold text-slate-900 dark:text-slate-50">{stats.pending_logbooks}</div>
-              <p className="text-sm text-slate-500 mt-1">Logbook mahasiswa perlu persetujuan Anda</p>
+              <p className="text-sm text-slate-500 mt-1">{t("awaitingVerificationSub")}</p>
             </CardContent>
           </Card>
         </div>
 
         <Card className="clean-card">
           <CardHeader>
-            <CardTitle className="text-base font-semibold">Daftar Mahasiswa Aktif</CardTitle>
+            <CardTitle className="text-base font-semibold">{t("activeStudentList")}</CardTitle>
           </CardHeader>
           <CardContent>
             {stats.active_students?.length === 0 ? (
               <div className="py-8 text-center border border-dashed border-slate-200 dark:border-slate-800 rounded-lg">
-                <p className="text-slate-500 text-sm">Tidak ada mahasiswa yang ditugaskan kepada Anda saat ini.</p>
+                <p className="text-slate-500 text-sm">{t("noAssignedStudents")}</p>
               </div>
             ) : (
               <div className="space-y-3">
@@ -282,7 +284,7 @@ export default function DashboardPage() {
                       </div>
                     </div>
                     <div className="text-sm text-right">
-                      <p className="text-xs text-slate-500">Selesai pada</p>
+                      <p className="text-xs text-slate-500">{t("completedOn")}</p>
                       <p className="font-medium text-slate-700 dark:text-slate-300">{new Date(assignment.rotation_period?.end_date ?? "").toLocaleDateString('id-ID', {day: 'numeric', month: 'short', year: 'numeric'})}</p>
                     </div>
                   </div>
@@ -303,10 +305,10 @@ export default function DashboardPage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-semibold tracking-tight text-slate-900 dark:text-slate-50">
-          Klinik Akademik
+          {t("academicClinic")}
         </h1>
         <p className="text-slate-500 dark:text-slate-400 mt-1">
-          Selamat datang kembali, <span className="font-medium text-slate-900 dark:text-slate-300">{user?.name}</span>.
+          {t.rich("welcomeBack", { b: (c) => <span className="font-medium text-slate-900 dark:text-slate-300">{c}</span>, name: user?.name ?? "" })}
         </p>
       </div>
 
@@ -318,21 +320,21 @@ export default function DashboardPage() {
           <CardContent className="flex flex-col md:flex-row items-center justify-between p-8 md:p-12 relative z-10">
             <div className="mb-6 md:mb-0 space-y-5">
               <div className="inline-flex items-center rounded-full bg-white/20 px-3 py-1 text-sm font-medium text-white ring-1 ring-inset ring-white/20 backdrop-blur-sm">
-                Modul Keamanan & Insiden
+                {t("incidentModule")}
               </div>
               <h2 className="text-3xl md:text-4xl font-bold tracking-tight text-white drop-shadow-sm">
-                Sistem Pelaporan Insiden
+                {t("incidentSystem")}
               </h2>
               <p className="text-indigo-100 max-w-lg text-lg leading-relaxed">
-                Anda memiliki akses untuk melaporkan dan memantau insiden klinis. Peran Anda sangat penting untuk memastikan keselamatan dan standar kualitas tetap terjaga.
+                {t("incidentBlurb")}
               </p>
               <div className="flex gap-4 pt-2">
                 <Button onClick={() => router.push('/dashboard/incidents/report')} className="bg-white text-indigo-600 hover:bg-indigo-50 font-semibold shadow-lg border-0 transition-all hover:scale-105">
-                  Lapor Insiden Baru
+                  {t("reportNewIncident")}
                 </Button>
                 {user?.permissions?.includes('view-incident-guide') && (
                   <Button variant="outline" onClick={() => router.push('/dashboard/safety/guide')} className="bg-transparent text-white border-white hover:bg-white/10 transition-all">
-                    Baca Panduan
+                    {t("readGuide")}
                   </Button>
                 )}
               </div>
@@ -348,8 +350,8 @@ export default function DashboardPage() {
             <div className="p-3 bg-slate-100 dark:bg-slate-800 rounded-full mb-4">
               <CheckCircle className="h-8 w-8 text-slate-400 dark:text-slate-500" />
             </div>
-            <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-50">Tidak Ada Rotasi Aktif</h3>
-            <p className="text-sm text-slate-500 mt-1 max-w-md">Anda saat ini sedang tidak ditugaskan pada stase apapun.</p>
+            <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-50">{t("noActiveRotation")}</h3>
+            <p className="text-sm text-slate-500 mt-1 max-w-md">{t("noActiveRotationSub")}</p>
           </CardContent>
         </Card>
       ) : !hasRotationsAccess && !hasIncidentsAccess ? (
@@ -358,8 +360,8 @@ export default function DashboardPage() {
             <div className="p-3 bg-slate-100 dark:bg-slate-800 rounded-full mb-4">
               <CheckCircle className="h-8 w-8 text-slate-400 dark:text-slate-500" />
             </div>
-            <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-50">Akses Terbatas</h3>
-            <p className="text-sm text-slate-500 mt-1 max-w-md">Silakan gunakan menu navigasi untuk mengakses fitur yang diizinkan untuk peran Anda.</p>
+            <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-50">{t("limitedAccess")}</h3>
+            <p className="text-sm text-slate-500 mt-1 max-w-md">{t("limitedAccessSub")}</p>
           </CardContent>
         </Card>
       ) : (
@@ -367,7 +369,7 @@ export default function DashboardPage() {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
             <Card className="lg:col-span-2 clean-card">
               <CardHeader className="pb-4 border-b border-slate-100 dark:border-slate-800">
-                <CardDescription className="text-xs font-semibold tracking-wide uppercase text-slate-500">Stase Saat Ini</CardDescription>
+                <CardDescription className="text-xs font-semibold tracking-wide uppercase text-slate-500">{t("currentStase")}</CardDescription>
                 <CardTitle className="text-2xl mt-1">{stats.active_assignment.stase?.name}</CardTitle>
               </CardHeader>
               <CardContent className="pt-4">
@@ -378,7 +380,7 @@ export default function DashboardPage() {
                   </div>
                   <div className="flex items-center gap-3">
                     <Users className="h-4 w-4 text-slate-400" />
-                    <span className="text-sm">Dodiknis: Dr. {stats.active_assignment.preceptor?.name}</span>
+                    <span className="text-sm">{t("preceptorLabel", { name: stats.active_assignment.preceptor?.name ?? "" })}</span>
                   </div>
                   <div className="flex items-center gap-3">
                     <Clock className="h-4 w-4 text-slate-400" />
@@ -392,13 +394,13 @@ export default function DashboardPage() {
 
             <Card className="flex flex-col justify-between clean-card">
               <CardHeader className="pb-2 border-b border-slate-100 dark:border-slate-800">
-                <CardTitle className="text-base font-semibold">Progres Logbook</CardTitle>
-                <CardDescription className="text-xs">Status logbook harian</CardDescription>
+                <CardTitle className="text-base font-semibold">{t("logbookProgress")}</CardTitle>
+                <CardDescription className="text-xs">{t("dailyLogbookStatus")}</CardDescription>
               </CardHeader>
               <CardContent className="pt-4 flex-1 flex flex-col justify-center">
                 <div className="flex items-center justify-between mb-2">
                   <div className="text-3xl font-semibold text-slate-900 dark:text-slate-50">{stats.logbook_stats.progress}%</div>
-                  <div className="text-xs text-slate-500 font-medium">Dari {stats.logbook_stats.total} Entri</div>
+                  <div className="text-xs text-slate-500 font-medium">{t("ofEntries", { total: stats.logbook_stats.total })}</div>
                 </div>
                 <Progress value={stats.logbook_stats.progress} className="h-2 mb-4 bg-slate-100 dark:bg-slate-800" />
                 
@@ -433,10 +435,10 @@ export default function DashboardPage() {
             <Card className="clean-card">
               <CardHeader className="border-b border-slate-100 dark:border-slate-800 pb-4">
                 <CardTitle className="flex items-center justify-between text-base font-semibold">
-                  Persetujuan Penilaian
+                  {t("assessmentApproval")}
                   {stats.pending_assessments > 0 && (
                     <span className="bg-slate-900 text-white dark:bg-white dark:text-slate-900 text-[10px] px-2 py-0.5 rounded-full font-semibold">
-                      {stats.pending_assessments} Pending
+                      {t("pendingCount", { count: stats.pending_assessments })}
                     </span>
                   )}
                 </CardTitle>
@@ -444,28 +446,28 @@ export default function DashboardPage() {
               <CardContent className="pt-4">
                 {stats.pending_assessments > 0 ? (
                   <div className="p-3 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-lg">
-                    <p className="text-sm text-slate-700 dark:text-slate-300">Ada {stats.pending_assessments} hasil penilaian baru menunggu persetujuan Anda.</p>
+                    <p className="text-sm text-slate-700 dark:text-slate-300">{t("pendingAssessmentMsg", { count: stats.pending_assessments })}</p>
                   </div>
                 ) : (
-                  <p className="text-sm text-slate-500">Tidak ada penilaian yang menunggu persetujuan Anda saat ini.</p>
+                  <p className="text-sm text-slate-500">{t("noPendingAssessment")}</p>
                 )}
               </CardContent>
             </Card>
             
             <Card className="clean-card">
               <CardHeader className="border-b border-slate-100 dark:border-slate-800 pb-4">
-                <CardTitle className="text-base font-semibold">Nilai Terbaru</CardTitle>
+                <CardTitle className="text-base font-semibold">{t("latestGrades")}</CardTitle>
               </CardHeader>
               <CardContent className="pt-4">
                 {stats.recent_grades?.length === 0 ? (
-                  <p className="text-sm text-slate-500">Belum ada nilai stase yang dipublikasikan.</p>
+                  <p className="text-sm text-slate-500">{t("noPublishedGrades")}</p>
                 ) : (
                   <div className="space-y-3">
                     {stats.recent_grades?.map((grade: StaseGrade) => (
                       <div key={grade.id} className="flex items-center justify-between p-3 border border-slate-200 dark:border-slate-800 rounded-lg bg-slate-50/50 dark:bg-slate-900/50">
                         <div>
                           <p className="font-medium text-sm text-slate-900 dark:text-slate-50">{grade.rotation_assignment?.stase?.name}</p>
-                          <p className="text-xs text-slate-500 mt-0.5">Skor: {grade.final_score}</p>
+                          <p className="text-xs text-slate-500 mt-0.5">{t("score", { score: grade.final_score ?? "" })}</p>
                         </div>
                         <div className="text-xl font-bold text-slate-900 dark:text-slate-50">{grade.letter_grade}</div>
                       </div>

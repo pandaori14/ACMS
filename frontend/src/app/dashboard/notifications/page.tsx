@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Bell, Check, ChevronLeft, ChevronRight, CheckCheck, AlertTriangle, Info, CheckCircle2 } from "lucide-react";
@@ -26,6 +27,8 @@ function typeIcon(type?: string) {
 
 export default function NotificationsPage() {
   const router = useRouter();
+  const t = useTranslations("notif");
+  const tc = useTranslations("common");
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [page, setPage] = useState(1);
@@ -40,11 +43,11 @@ export default function NotificationsPage() {
       setLastPage(res.data.notifications.last_page ?? 1);
       setUnreadCount(res.data.unread_count ?? 0);
     } catch {
-      toast.error("Gagal memuat notifikasi");
+      toast.error(t("loadError"));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     fetchNotifications(page);
@@ -58,17 +61,17 @@ export default function NotificationsPage() {
       }
       if (n.data.url) router.push(n.data.url);
     } catch {
-      toast.error("Gagal memperbarui notifikasi");
+      toast.error(t("updateError"));
     }
   };
 
   const markAllAsRead = async () => {
     try {
       await api.post("/api/v1/notifications/mark-all-read");
-      toast.success("Semua notifikasi ditandai sudah dibaca");
+      toast.success(t("allMarkedRead"));
       fetchNotifications(page);
     } catch {
-      toast.error("Gagal menandai notifikasi");
+      toast.error(t("markError"));
     }
   };
 
@@ -78,18 +81,18 @@ export default function NotificationsPage() {
         <div>
           <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
             <Bell className="h-7 w-7" />
-            Notifikasi
+            {t("title")}
             {unreadCount > 0 && (
               <span className="ml-1 inline-flex items-center rounded-full bg-red-600 text-white text-xs font-semibold px-2 py-0.5">
-                {unreadCount} baru
+                {t("new", { count: unreadCount })}
               </span>
             )}
           </h1>
-          <p className="text-muted-foreground mt-1">Riwayat pemberitahuan terkait laporan insiden, konsultasi, dan aktivitas sistem lainnya.</p>
+          <p className="text-muted-foreground mt-1">{t("subtitle")}</p>
         </div>
         {unreadCount > 0 && (
           <Button variant="outline" size="sm" onClick={markAllAsRead}>
-            <CheckCheck className="h-4 w-4 mr-2" /> Tandai Semua Dibaca
+            <CheckCheck className="h-4 w-4 mr-2" /> {t("markAllRead")}
           </Button>
         )}
       </div>
@@ -97,11 +100,11 @@ export default function NotificationsPage() {
       <Card>
         <CardContent className="p-0 divide-y">
           {loading ? (
-            <div className="p-10 text-center text-sm text-muted-foreground">Memuat notifikasi...</div>
+            <div className="p-10 text-center text-sm text-muted-foreground">{t("loading")}</div>
           ) : notifications.length === 0 ? (
             <div className="p-12 text-center">
               <Bell className="h-10 w-10 text-muted-foreground/40 mx-auto mb-3" />
-              <p className="text-sm text-muted-foreground">Belum ada notifikasi.</p>
+              <p className="text-sm text-muted-foreground">{t("empty")}</p>
             </div>
           ) : (
             notifications.map((n) => (
@@ -121,7 +124,7 @@ export default function NotificationsPage() {
                   <p className="text-sm text-muted-foreground mt-0.5">{n.data.message}</p>
                   <p className="text-[11px] text-muted-foreground/70 mt-1.5">
                     {format(new Date(n.created_at), "dd MMM yyyy, HH:mm")}
-                    {n.data.url ? " · Klik untuk membuka" : ""}
+                    {n.data.url ? ` · ${t("clickToOpen")}` : ""}
                   </p>
                 </div>
                 {n.read_at && <Check className="h-4 w-4 text-muted-foreground/50 shrink-0 mt-1" />}
@@ -134,11 +137,11 @@ export default function NotificationsPage() {
       {lastPage > 1 && (
         <div className="flex items-center justify-between">
           <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>
-            <ChevronLeft className="h-4 w-4 mr-1" /> Sebelumnya
+            <ChevronLeft className="h-4 w-4 mr-1" /> {tc("previous")}
           </Button>
-          <span className="text-sm text-muted-foreground">Halaman {page} dari {lastPage}</span>
+          <span className="text-sm text-muted-foreground">{t("pageOf", { page, total: lastPage })}</span>
           <Button variant="outline" size="sm" disabled={page >= lastPage} onClick={() => setPage((p) => p + 1)}>
-            Berikutnya <ChevronRight className="h-4 w-4 ml-1" />
+            {tc("next")} <ChevronRight className="h-4 w-4 ml-1" />
           </Button>
         </div>
       )}
