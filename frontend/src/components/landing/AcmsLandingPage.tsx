@@ -1,28 +1,236 @@
 "use client";
 
 import Link from "next/link";
-import { Button } from "@/components/ui/button";
 import {
   ArrowRight, Activity, ShieldCheck,
   Stethoscope, Clock,
-  Wallet, PersonStanding, CheckCircle2, Hospital
+  Wallet, BookOpen, CheckCircle2, Hospital,
+  Lock, ChevronRight,
 } from "lucide-react";
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useCallback } from "react";
 import api from "@/lib/api";
 import { AppSetting } from "@/lib/api-helpers";
 import LandingFooter from "@/components/landing/LandingFooter";
 import { jakarta } from "@/lib/fonts";
 import Reveal from "@/components/landing/Reveal";
+import "@/app/landing.css";
 
+/* ----------------------------------------------------------------
+   Types
+   ---------------------------------------------------------------- */
+interface LandingConfig {
+  title: string;
+  badge: string;
+  description: string;
+  appName: string;
+  appLogo: string;
+  ctaText: string;
+  ctaLink: string;
+  showStats: string;
+  showAnnouncement: string;
+  announcementText: string;
+  heroImage: string;
+}
+
+interface PublicStats {
+  hospitals: number;
+  logbook_entries: number;
+  students: number;
+  programs: number;
+}
+
+/* ----------------------------------------------------------------
+   Sub-components
+   ---------------------------------------------------------------- */
+
+/** Animated number that counts up on mount */
+function CountUp({ value, suffix = "" }: { value: number; suffix?: string }) {
+  const [display, setDisplay] = useState(0);
+
+  useEffect(() => {
+    if (value <= 0) return;
+    const duration = 1600; // ms
+    const steps = 40;
+    const increment = value / steps;
+    let current = 0;
+    let step = 0;
+
+    const timer = setInterval(() => {
+      step++;
+      current = Math.min(Math.round(increment * step), value);
+      setDisplay(current);
+      if (step >= steps) clearInterval(timer);
+    }, duration / steps);
+
+    return () => clearInterval(timer);
+  }, [value]);
+
+  return (
+    <span className="landing-stat-value">
+      {display.toLocaleString("id-ID")}{suffix}
+    </span>
+  );
+}
+
+/** Abstract UI mockup — dashboard preview built with CSS */
+function DashboardMockup({ className = "" }: { className?: string }) {
+  return (
+    <div className={`landing-feature-visual p-5 ${className}`}>
+      {/* Title bar */}
+      <div className="flex items-center gap-2 mb-4">
+        <div className="w-3 h-3 rounded-full bg-red-300/60" />
+        <div className="w-3 h-3 rounded-full bg-yellow-300/60" />
+        <div className="w-3 h-3 rounded-full bg-green-300/60" />
+        <div className="landing-mock-bar flex-1 ml-4" style={{ height: 8 }} />
+      </div>
+      {/* Sidebar + content area */}
+      <div className="flex gap-3 h-[calc(100%-2rem)]">
+        {/* Sidebar */}
+        <div className="w-[28%] flex flex-col gap-2 py-2">
+          <div className="landing-mock-bar landing-mock-bar--accent w-full" style={{ height: 8 }} />
+          <div className="landing-mock-bar w-[85%]" style={{ height: 8 }} />
+          <div className="landing-mock-bar w-[70%]" style={{ height: 8 }} />
+          <div className="landing-mock-bar w-[90%]" style={{ height: 8 }} />
+          <div className="landing-mock-bar landing-mock-bar--gold w-[60%] mt-auto" style={{ height: 8 }} />
+        </div>
+        {/* Main content */}
+        <div className="flex-1 bg-white rounded-xl p-3 border border-slate-100 flex flex-col gap-3">
+          {/* Stat cards */}
+          <div className="grid grid-cols-3 gap-2">
+            {[1, 2, 3].map(i => (
+              <div key={i} className="bg-slate-50 rounded-lg p-2 flex flex-col gap-1.5">
+                <div className="landing-mock-bar w-[40%]" style={{ height: 6 }} />
+                <div className={`landing-mock-bar ${i === 1 ? "landing-mock-bar--accent" : i === 2 ? "landing-mock-bar--gold" : ""} w-[65%]`} style={{ height: 12 }} />
+              </div>
+            ))}
+          </div>
+          {/* Table rows */}
+          <div className="flex-1 flex flex-col gap-1.5 mt-1">
+            {[1, 2, 3, 4].map(i => (
+              <div key={i} className="flex gap-2 items-center">
+                <div className="w-5 h-5 rounded bg-slate-100 flex-shrink-0" />
+                <div className="landing-mock-bar flex-1" style={{ height: 8 }} />
+                <div className={`landing-mock-bar ${i % 2 === 0 ? "landing-mock-bar--accent" : ""} w-[15%]`} style={{ height: 8 }} />
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/** Abstract schedule/rotation visual */
+function RotationMockup({ className = "" }: { className?: string }) {
+  return (
+    <div className={`landing-feature-visual p-5 ${className}`}>
+      <div className="flex items-center gap-3 mb-5">
+        <div className="landing-mock-bar landing-mock-bar--accent w-[30%]" style={{ height: 10 }} />
+        <div className="ml-auto landing-mock-bar landing-mock-bar--gold w-[15%]" style={{ height: 8 }} />
+      </div>
+      {/* Calendar grid */}
+      <div className="grid grid-cols-7 gap-1.5">
+        {Array.from({ length: 7 }).map((_, i) => (
+          <div key={`h-${i}`} className="landing-mock-bar" style={{ height: 6 }} />
+        ))}
+        {Array.from({ length: 28 }).map((_, i) => (
+          <div
+            key={i}
+            className={`rounded-md aspect-square flex items-center justify-center ${
+              [4, 5, 11, 12, 18, 19, 25, 26].includes(i)
+                ? "bg-slate-50"
+                : [8, 9, 10].includes(i)
+                ? "bg-blue-900/[0.06] border border-blue-900/10"
+                : [15, 16, 17].includes(i)
+                ? "bg-yellow-400/[0.08] border border-yellow-400/15"
+                : "bg-white border border-slate-100"
+            }`}
+          >
+            {i === 9 && <div className="w-1.5 h-1.5 rounded-full bg-blue-900/30" />}
+            {i === 16 && <div className="w-1.5 h-1.5 rounded-full bg-yellow-500/40" />}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/** Abstract logbook visual */
+function LogbookMockup({ className = "" }: { className?: string }) {
+  return (
+    <div className={`landing-feature-visual p-5 ${className}`}>
+      <div className="flex items-center gap-3 mb-4">
+        <div className="landing-mock-bar landing-mock-bar--accent w-[25%]" style={{ height: 10 }} />
+        <div className="ml-auto flex gap-1.5">
+          <div className="w-7 h-7 rounded-lg bg-blue-900/[0.06] border border-blue-900/10" />
+          <div className="w-7 h-7 rounded-lg bg-slate-100" />
+        </div>
+      </div>
+      {/* Logbook entries */}
+      {[1, 2, 3].map(i => (
+        <div key={i} className="border border-slate-100 rounded-xl p-3 mb-2.5 last:mb-0 bg-white">
+          <div className="flex items-center gap-2 mb-2">
+            <div className="w-6 h-6 rounded-lg bg-slate-100" />
+            <div className="landing-mock-bar flex-1" style={{ height: 8 }} />
+            <div className={`px-2 py-0.5 rounded-md text-[9px] font-semibold ${
+              i === 1 ? "bg-green-50 text-green-600" : i === 2 ? "bg-yellow-50 text-yellow-600" : "bg-slate-50 text-slate-400"
+            }`}>
+              {i === 1 ? "Verified" : i === 2 ? "Pending" : "Draft"}
+            </div>
+          </div>
+          <div className="flex gap-2">
+            <div className="landing-mock-bar flex-1" style={{ height: 6 }} />
+            <div className="landing-mock-bar w-[25%]" style={{ height: 6 }} />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/** Abstract assessment/grading visual */
+function AssessmentMockup({ className = "" }: { className?: string }) {
+  return (
+    <div className={`landing-feature-visual p-5 ${className}`}>
+      <div className="flex items-center gap-3 mb-4">
+        <div className="landing-mock-bar landing-mock-bar--accent w-[28%]" style={{ height: 10 }} />
+      </div>
+      {/* Score gauge */}
+      <div className="flex items-end gap-1.5 mb-4 h-16">
+        {[35, 55, 70, 85, 60, 90, 45, 75, 80, 65, 50, 72].map((h, i) => (
+          <div
+            key={i}
+            className="flex-1 rounded-t-md transition-all"
+            style={{
+              height: `${h}%`,
+              background: h >= 75 ? "hsla(222, 47%, 40%, 0.15)" : h >= 50 ? "hsla(45, 93%, 47%, 0.15)" : "hsl(214, 32%, 92%)",
+            }}
+          />
+        ))}
+      </div>
+      {/* Score rows */}
+      {[1, 2, 3].map(i => (
+        <div key={i} className="flex items-center gap-2 py-2 border-t border-slate-100">
+          <div className="landing-mock-bar flex-1" style={{ height: 7 }} />
+          <div className={`landing-mock-bar w-[12%] ${i === 1 ? "landing-mock-bar--accent" : ""}`} style={{ height: 7 }} />
+          <div className="landing-mock-bar landing-mock-bar--gold w-[8%]" style={{ height: 7 }} />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/* ----------------------------------------------------------------
+   Main Component
+   ---------------------------------------------------------------- */
 export default function AcmsLandingPage() {
   const [mounted, setMounted] = useState(false);
-  const containerRef = useRef<HTMLDivElement>(null);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [navScrolled, setNavScrolled] = useState(false);
 
-  const [landingConfig, setLandingConfig] = useState({
-    title: "Standar Profesionalisme Klinis Medis.",
+  const [config, setConfig] = useState<LandingConfig>({
+    title: "Standar Profesionalisme\nKlinis Medis.",
     badge: "Layanan Resmi Pendidikan Profesi",
-    description: "Sistem manajemen terintegrasi untuk Academic Clinical Management System (ACMS). Akurat, objektif, dan dikelola oleh tenaga ahli profesional.",
+    description: "Sistem manajemen terintegrasi untuk Academic Clinical Management System. Akurat, objektif, dan dikelola oleh tenaga ahli profesional.",
     appName: "ACMS",
     appLogo: "",
     ctaText: "Masuk Portal",
@@ -32,17 +240,18 @@ export default function AcmsLandingPage() {
     announcementText: "",
     heroImage: "",
   });
-  const [stats, setStats] = useState<{ hospitals: number; logbook_entries: number; students: number; programs: number } | null>(null);
 
+  const [stats, setStats] = useState<PublicStats | null>(null);
+
+  /* --- Data fetching --- */
   useEffect(() => {
     setMounted(true);
 
-    // Fetch public settings
     api.get("/api/public-settings").then((res) => {
       const data = res.data;
       const getVal = (key: string) => data.find((s: AppSetting) => s.key === key)?.value;
 
-      setLandingConfig(prev => ({
+      setConfig(prev => ({
         title: getVal("landing_title") || prev.title,
         badge: getVal("landing_hero_badge") || prev.badge,
         description: getVal("landing_description") || prev.description,
@@ -58,627 +267,418 @@ export default function AcmsLandingPage() {
     }).catch(console.error);
 
     api.get("/api/public-stats").then((res) => setStats(res.data.data)).catch(() => {});
-
-    const handleMouseMove = (e: MouseEvent) => {
-      if (!containerRef.current) return;
-
-      const { clientX, clientY } = e;
-      const { innerWidth, innerHeight } = window;
-
-      const xPos = (clientX / innerWidth) * 100;
-      const yPos = (clientY / innerHeight) * 100;
-
-      containerRef.current.style.setProperty('--mouse-x', `${xPos}%`);
-      containerRef.current.style.setProperty('--mouse-y', `${yPos}%`);
-
-      // Parallax for glass card
-      const normalizedX = (clientX / innerWidth) * 2 - 1;
-      const normalizedY = (clientY / innerHeight) * 2 - 1;
-      const tiltX = normalizedY * -10;
-      const tiltY = normalizedX * 10;
-
-      containerRef.current.style.setProperty('--tilt-x', `${tiltX}deg`);
-      containerRef.current.style.setProperty('--tilt-y', `${tiltY}deg`);
-    };
-
-    window.addEventListener('mousemove', handleMouseMove);
-    return () => window.removeEventListener('mousemove', handleMouseMove);
   }, []);
 
-  // Canvas Particle Animation
+  /* --- Scroll-aware nav --- */
+  const handleScroll = useCallback(() => {
+    setNavScrolled(window.scrollY > 24);
+  }, []);
+
   useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, [handleScroll]);
 
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
+  const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000";
 
-    let particlesArray: Particle[] = [];
-    let animationFrameId: number;
+  /* --- Process steps data --- */
+  const steps = [
+    {
+      num: "01",
+      title: "Penjadwalan & Orientasi",
+      desc: "Registrasi, pembagian stase, dan penempatan ke Rumah Sakit jejaring oleh program studi secara otomatis.",
+    },
+    {
+      num: "02",
+      title: "Kegiatan Klinis & Logbook",
+      desc: "Pencatatan aktivitas keseharian medis dengan diagnosis ICD dan tingkat kompetensi, disupervisi oleh Preceptor.",
+    },
+    {
+      num: "03",
+      title: "Evaluasi & Nilai Akhir",
+      desc: "Ujian akhir stase (CBT, OSCE, Mini-CEX, DOPS) dinilai real-time, langsung masuk ke transkrip klinis.",
+    },
+  ];
 
-    const mouse = {
-      x: window.innerWidth / 2,
-      y: window.innerHeight / 2,
-      radius: 150 // Magnet area
-    };
-
-    const updateMousePos = (e: MouseEvent) => {
-      const rect = canvas.getBoundingClientRect();
-      mouse.x = e.clientX - rect.left;
-      mouse.y = e.clientY - rect.top;
-    };
-
-    const updateTouchPos = (e: TouchEvent) => {
-      const rect = canvas.getBoundingClientRect();
-      mouse.x = e.touches[0].clientX - rect.left;
-      mouse.y = e.touches[0].clientY - rect.top;
-    };
-
-    window.addEventListener('mousemove', updateMousePos);
-    window.addEventListener('touchmove', updateTouchPos);
-
-    class Particle {
-      x: number;
-      y: number;
-      size: number;
-      baseX: number;
-      baseY: number;
-      density: number;
-      color: string;
-      angle: number;
-      speed: number;
-
-      constructor(x: number, y: number, color: string) {
-        this.x = x + (Math.random() * 20 - 10);
-        this.y = y + (Math.random() * 20 - 10);
-        this.baseX = x;
-        this.baseY = y;
-        this.size = Math.random() * 2.5 + 1;
-        this.density = (Math.random() * 30) + 1;
-        this.color = color;
-        this.angle = Math.random() * 360;
-        this.speed = (Math.random() * 0.02) + 0.005;
-      }
-
-      draw() {
-        if (!ctx) return;
-        ctx.fillStyle = this.color;
-        ctx.beginPath();
-        ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
-        ctx.closePath();
-        ctx.fill();
-      }
-
-      update() {
-        this.angle += this.speed;
-        const driftX = Math.cos(this.angle) * 3;
-        const driftY = Math.sin(this.angle) * 3;
-
-        const dx = mouse.x - this.x;
-        const dy = mouse.y - this.y;
-        const distance = Math.sqrt(dx * dx + dy * dy);
-        const forceDirectionX = dx / distance;
-        const forceDirectionY = dy / distance;
-        const maxDistance = mouse.radius;
-        const force = (maxDistance - distance) / maxDistance;
-        const directionX = forceDirectionX * force * this.density;
-        const directionY = forceDirectionY * force * this.density;
-
-        if (distance < mouse.radius) {
-          this.x -= directionX * 2;
-          this.y -= directionY * 2;
-        } else {
-          if (this.x !== this.baseX) {
-            const dx = this.x - (this.baseX + driftX);
-            this.x -= dx / 20;
-          }
-          if (this.y !== this.baseY) {
-            const dy = this.y - (this.baseY + driftY);
-            this.y -= dy / 20;
-          }
-        }
-      }
-    }
-
-    const init = () => {
-      if (!canvas) return;
-      canvas.width = window.innerWidth;
-      canvas.height = window.innerHeight;
-      particlesArray = [];
-
-      const width = canvas.width;
-      const height = canvas.height;
-      const centerY = height / 2;
-
-      const strands = 2;
-      const pointsPerStrand = window.innerWidth < 768 ? 80 : 150;
-      const amplitude = window.innerWidth < 768 ? 80 : 120;
-      const frequency = 0.005;
-      const spacing = width / pointsPerStrand;
-
-      const colors = ['#2563eb', '#38bdf8', '#818cf8', '#60a5fa'];
-
-      for (let s = 0; s < strands; s++) {
-        const offset = s * Math.PI;
-        for (let i = 0; i < pointsPerStrand; i++) {
-          const x = i * spacing;
-          const y = centerY + Math.sin(x * frequency + offset) * amplitude;
-
-          particlesArray.push(new Particle(x, y, colors[s % colors.length]));
-
-          for (let j = 0; j < 3; j++) {
-            const scatterX = x + (Math.random() * 40 - 20);
-            const scatterY = y + (Math.random() * 40 - 20);
-            particlesArray.push(new Particle(scatterX, scatterY, colors[Math.floor(Math.random() * colors.length)]));
-          }
-
-          if (s === 0 && i % 4 === 0) {
-            const oppositeY = centerY + Math.sin(x * frequency + offset + Math.PI) * amplitude;
-            const steps = 6;
-            for (let step = 1; step < steps; step++) {
-              const bridgeY = y + ((oppositeY - y) * (step / steps));
-              particlesArray.push(new Particle(x, bridgeY, '#cbd5e1'));
-            }
-          }
-        }
-      }
-
-      const ambientCount = window.innerWidth < 768 ? 100 : 300;
-      for (let i = 0; i < ambientCount; i++) {
-        particlesArray.push(new Particle(
-          Math.random() * width,
-          Math.random() * height,
-          colors[Math.floor(Math.random() * colors.length)]
-        ));
-      }
-    };
-
-    const animate = () => {
-      if (!ctx || !canvas) return;
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-      for (let i = 0; i < particlesArray.length; i++) {
-        particlesArray[i].draw();
-        particlesArray[i].update();
-      }
-
-      connect();
-      animationFrameId = requestAnimationFrame(animate);
-    };
-
-    const connect = () => {
-      let opacityValue = 1;
-      for (let a = 0; a < particlesArray.length; a += 3) {
-        for (let b = a; b < particlesArray.length; b += 3) {
-          const distance = ((particlesArray[a].x - particlesArray[b].x) * (particlesArray[a].x - particlesArray[b].x))
-            + ((particlesArray[a].y - particlesArray[b].y) * (particlesArray[a].y - particlesArray[b].y));
-
-          if (distance < 1500) {
-            opacityValue = 1 - (distance / 1500);
-            ctx.strokeStyle = `rgba(148, 163, 184, ${opacityValue * 0.2})`;
-            ctx.lineWidth = 1;
-            ctx.beginPath();
-            ctx.moveTo(particlesArray[a].x, particlesArray[a].y);
-            ctx.lineTo(particlesArray[b].x, particlesArray[b].y);
-            ctx.stroke();
-          }
-        }
-      }
-    };
-
-    init();
-    animate();
-
-    const handleResize = () => {
-      init();
-    };
-    window.addEventListener('resize', handleResize);
-
-    return () => {
-      window.removeEventListener('mousemove', updateMousePos);
-      window.removeEventListener('touchmove', updateTouchPos);
-      window.removeEventListener('resize', handleResize);
-      cancelAnimationFrame(animationFrameId);
-    };
-  }, []);
+  /* --- Feature blocks data --- */
+  const features = [
+    {
+      icon: Clock,
+      label: "Penjadwalan",
+      title: "Rotasi klinis terdistribusi otomatis",
+      desc: "Algoritma memetakan mahasiswa ke stase dengan memastikan kuota rasio Preceptor:Mahasiswa tetap ideal di setiap Rumah Sakit jejaring. Unduh surat pengantar secara digital.",
+      Visual: RotationMockup,
+      accentClass: "",
+    },
+    {
+      icon: BookOpen,
+      label: "Logbook",
+      title: "Catatan klinis terverifikasi real-time",
+      desc: "Input kasus pasien, tindakan, atau jaga lengkap dengan diagnosis ICD dan level kompetensi. Setiap entri diverifikasi langsung oleh Preceptor dengan sistem feedback internal.",
+      Visual: LogbookMockup,
+      accentClass: "--gold",
+    },
+    {
+      icon: Stethoscope,
+      label: "Evaluasi",
+      title: "Penilaian terstandar dan transparan",
+      desc: "Rubrik penilaian CBT, OSCE, DOPS, dan Mini-CEX diisi oleh penguji melalui aplikasi. Nilai langsung terintegrasi ke transkrip klinis mahasiswa.",
+      Visual: AssessmentMockup,
+      accentClass: "",
+    },
+    {
+      icon: Wallet,
+      label: "Keuangan",
+      title: "Honorarium & billing terhitung otomatis",
+      desc: "Kalkulasi otomatis biaya tagihan stase ke Rumah Sakit dan pencairan honorarium langsung ke rekening Preceptor berdasarkan beban verifikasi logbook.",
+      Visual: DashboardMockup,
+      accentClass: "--gold",
+    },
+  ];
 
   return (
-    <div ref={containerRef} style={{ fontFamily: "var(--font-jakarta), system-ui, sans-serif" }} className={`${jakarta.variable} min-h-screen bg-white font-sans text-slate-900 overflow-x-hidden selection:bg-blue-200`}>
-      <style dangerouslySetInnerHTML={{__html: `
-        :root {
-          --primary: #2b4a8b;
-          --primary-light: #eef2f8;
-          --accent: #c99a3b;
-          --radius-md: 20px;
-          --radius-lg: 32px;
-          --mouse-x: 50%;
-          --mouse-y: 50%;
-          --tilt-x: 0deg;
-          --tilt-y: 0deg;
-        }
-        .font-display {
-          font-family: var(--font-jakarta), 'Plus Jakarta Sans', system-ui, sans-serif;
-          letter-spacing: -0.03em;
-          text-wrap: balance;
-        }
+    <div
+      style={{ fontFamily: "var(--font-jakarta), system-ui, sans-serif" }}
+      className={`${jakarta.variable} min-h-screen bg-slate-50 font-sans text-slate-900 overflow-x-hidden selection:bg-blue-100`}
+    >
+      {/* Grain overlay */}
+      <div className="landing-grain" aria-hidden="true" />
 
-        .cursor-glow {
-          position: absolute;
-          inset: 0;
-          pointer-events: none;
-          z-index: 0;
-          background: radial-gradient(
-            circle 800px at var(--mouse-x) var(--mouse-y),
-            rgba(43, 74, 139, 0.08),
-            transparent 70%
-          );
-        }
-
-        .glass-card {
-          background: rgba(255, 255, 255, 0.75);
-          backdrop-filter: blur(24px);
-          -webkit-backdrop-filter: blur(24px);
-          border: 1px solid rgba(255, 255, 255, 0.8);
-          border-radius: var(--radius-lg);
-          box-shadow: 0 24px 50px rgba(43, 74, 139, 0.12), inset 0 0 0 1px rgba(255, 255, 255, 0.5);
-          transform: perspective(1000px) rotateX(var(--tilt-x)) rotateY(var(--tilt-y)) translateY(-5px);
-          transition: transform 0.1s ease-out;
-          will-change: transform;
-        }
-
-        .bento-card {
-          background: white;
-          border-radius: var(--radius-md);
-          border: 1px solid #f1f5f9;
-          box-shadow: 0 4px 20px rgba(43, 74, 139, 0.05);
-          transition: all 0.3s ease;
-          position: relative;
-          overflow: hidden;
-        }
-        .bento-card::before {
-          content: '';
-          position: absolute;
-          inset: 0;
-          background: radial-gradient(
-            800px circle at var(--mouse-x) var(--mouse-y),
-            rgba(43, 74, 139, 0.06),
-            transparent 40%
-          );
-          opacity: 0;
-          transition: opacity 0.5s ease;
-          z-index: 0;
-          pointer-events: none;
-        }
-        .bento-card:hover::before {
-          opacity: 1;
-        }
-        .bento-card:hover {
-          transform: translateY(-4px);
-          box-shadow: 0 14px 34px rgba(43, 74, 139, 0.12);
-          border-color: rgba(43, 74, 139, 0.15);
-        }
-
-        .bento-content {
-          position: relative;
-          z-index: 1;
-        }
-
-        .timeline-container::before {
-          content: '';
-          position: absolute;
-          left: 0; top: 0; bottom: 0; width: 2px;
-          background: #f1f5f9;
-        }
-        .timeline-indicator {
-          position: absolute;
-          left: -40px; top: 0;
-          width: 32px; height: 32px;
-          border-radius: 50%;
-          background: white;
-          border: 2px solid #2b4a8b;
-          display: flex; align-items: center; justify-content: center;
-          transform: translateX(-50%);
-          color: #2b4a8b;
-          font-weight: 700; font-size: 0.9rem;
-          box-shadow: 0 0 0 4px rgba(43, 74, 139, 0.1);
-          z-index: 2;
-        }
-      `}} />
-
-      {/* --- Navigation --- */}
-      {landingConfig.showAnnouncement === "true" && landingConfig.announcementText && (
-        <div className="bg-red-600 text-white text-sm font-medium py-2 px-4 text-center relative z-[60]">
-          {landingConfig.announcementText}
+      {/* ============================================================
+          SECTION 1 — Announcement + Navigation
+          ============================================================ */}
+      {config.showAnnouncement === "true" && config.announcementText && (
+        <div className="bg-blue-900 text-white text-sm font-medium py-2 px-4 text-center relative z-[60]">
+          {config.announcementText}
         </div>
       )}
-      <nav className={`fixed ${landingConfig.showAnnouncement === "true" && landingConfig.announcementText ? 'top-9' : 'top-0'} left-0 right-0 z-50 border-b border-slate-900/5 bg-white/80 backdrop-blur-xl transition-all`}>
+
+      <nav
+        className={`landing-nav ${navScrolled ? "landing-nav--scrolled" : ""} ${
+          config.showAnnouncement === "true" && config.announcementText ? "!top-9" : ""
+        }`}
+      >
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-6 lg:px-8">
+          {/* Brand */}
           <div className="flex items-center gap-3">
-            {landingConfig.appLogo ? (
-              <img src={`${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000'}${landingConfig.appLogo}`} alt="Logo" className="h-9 w-auto rounded object-contain" />
+            {config.appLogo ? (
+              <img
+                src={`${backendUrl}${config.appLogo}`}
+                alt={`Logo ${config.appName}`}
+                className="h-9 w-auto rounded object-contain"
+              />
             ) : (
-              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#2b4a8b] text-white shadow-sm">
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-900 text-white shadow-sm">
                 <Activity className="h-5 w-5" />
               </div>
             )}
             <div>
-              <span className="block font-display text-lg font-bold leading-none text-slate-900">{landingConfig.appName}</span>
-              <span className="block text-[10px] font-medium tracking-wide text-slate-500 uppercase mt-0.5">Fakultas Kedokteran</span>
+              <span className="block text-lg font-bold leading-none text-slate-900 tracking-tight">
+                {config.appName}
+              </span>
+              <span className="block text-[10px] font-medium tracking-widest text-slate-400 uppercase mt-0.5">
+                Fakultas Kedokteran
+              </span>
             </div>
           </div>
+
+          {/* Nav links */}
           <div className="hidden md:flex items-center gap-8">
-            <a href="#alur" className="text-sm font-medium text-slate-500 hover:text-slate-900 transition-colors">Alur Pelaksanaan</a>
-            <a href="#fitur" className="text-sm font-medium text-slate-500 hover:text-slate-900 transition-colors">Fitur Sistem</a>
+            <a href="#alur" className="landing-nav-link">Alur Pelaksanaan</a>
+            <a href="#fitur" className="landing-nav-link">Fitur Sistem</a>
           </div>
-          <div className="flex items-center gap-4">
-            <Link href={landingConfig.ctaLink}>
-              <Button className="rounded-full shadow-lg shadow-[#2b4a8b]/25 hover:shadow-[#2b4a8b]/40 transition-all bg-[#2b4a8b] hover:bg-[#22407a] hover:-translate-y-0.5 h-10 px-6 font-semibold">
-                {landingConfig.ctaText} <ArrowRight className="ml-2 h-4 w-4" />
-              </Button>
-            </Link>
-          </div>
+
+          {/* CTA */}
+          <Link href={config.ctaLink}>
+            <button className="landing-btn-primary text-sm !py-2.5 !px-5">
+              {config.ctaText}
+              <ArrowRight className="h-4 w-4" />
+            </button>
+          </Link>
         </div>
       </nav>
 
-      {/* --- Hero Section --- */}
+      {/* ============================================================
+          SECTION 2 — Hero (Dark Institutional)
+          ============================================================ */}
       <section
-        className="relative pt-32 pb-20 lg:pt-40 lg:pb-32 overflow-hidden min-h-[90vh] flex items-center bg-slate-50/50"
-        style={landingConfig.heroImage ? {
-          backgroundImage: `url(${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000'}${landingConfig.heroImage})`,
-          backgroundSize: 'cover',
-          backgroundPosition: 'center',
-          backgroundBlendMode: 'overlay',
-          backgroundColor: 'rgba(248, 250, 252, 0.85)'
-        } : {}}
+        className="landing-hero-bg min-h-[100dvh] flex items-center pt-24 pb-20 lg:pt-32 lg:pb-28"
+        style={config.heroImage ? {
+          backgroundImage: `url(${backendUrl}${config.heroImage})`,
+          backgroundSize: "cover",
+          backgroundPosition: "center",
+          backgroundBlendMode: "overlay",
+        } : undefined}
       >
-        <canvas
-          ref={canvasRef}
-          className="absolute inset-0 w-full h-full z-0 pointer-events-auto"
-          style={{ opacity: 0.6 }}
-        />
+        <div className="landing-hero-grid" aria-hidden="true" />
+        <div className="landing-hero-fade" aria-hidden="true" />
 
-        <div className="cursor-glow pointer-events-none"></div>
+        <div className="mx-auto max-w-7xl px-6 lg:px-8 relative z-10 w-full">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-20 items-center">
 
-        <div className="mx-auto max-w-7xl px-6 lg:px-8 relative z-10 pointer-events-none">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
-
-            {/* Left Copy */}
-            <div className={`transition-all duration-1000 transform ${mounted ? 'translate-y-0 opacity-100' : 'translate-y-8 opacity-0'} pointer-events-auto`}>
-              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/80 backdrop-blur-md text-blue-700 font-semibold text-sm mb-6 border border-blue-100 shadow-sm shadow-blue-100/50">
-                <ShieldCheck className="h-4 w-4" /> {landingConfig.badge}
+            {/* Left — Copy */}
+            <div className={`${mounted ? "" : "opacity-0"}`}>
+              {/* Badge */}
+              <div className="landing-hero-badge inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/[0.06] backdrop-blur-md text-white/70 text-sm font-medium border border-white/[0.08] mb-8">
+                <ShieldCheck className="h-3.5 w-3.5 text-yellow-400" />
+                {config.badge}
               </div>
-              <h1 className="font-display text-5xl sm:text-6xl lg:text-[4.2rem] font-extrabold leading-[1.1] tracking-tight text-slate-900 mb-6 drop-shadow-sm whitespace-pre-line">
-                {landingConfig.title}
+
+              {/* Heading */}
+              <h1 className="landing-hero-heading text-[clamp(2.25rem,5.5vw,4rem)] font-extrabold leading-[1.08] tracking-[-0.035em] text-white mb-6 whitespace-pre-line" style={{ textWrap: "balance" as never }}>
+                {config.title}
               </h1>
-              <p className="text-lg text-slate-600 mb-10 max-w-lg leading-relaxed bg-white/50 backdrop-blur-sm p-4 rounded-2xl border border-white">
-                {landingConfig.description}
+
+              {/* Description */}
+              <p className="landing-hero-desc text-base lg:text-lg text-white/50 leading-relaxed max-w-xl mb-10">
+                {config.description}
               </p>
-              <div className="flex flex-wrap gap-4">
-                <Link href={landingConfig.ctaLink}>
-                  <Button size="lg" className="rounded-full h-14 px-8 text-base font-semibold shadow-xl shadow-[#2b4a8b]/25 transition-all bg-[#2b4a8b] hover:bg-[#22407a] hover:-translate-y-1">
-                    {landingConfig.ctaText}
-                  </Button>
+
+              {/* CTA row */}
+              <div className="landing-hero-cta flex flex-wrap items-center gap-4 mb-14">
+                <Link href={config.ctaLink}>
+                  <button className="landing-btn-primary--gold landing-btn-primary">
+                    {config.ctaText}
+                    <ArrowRight className="h-4 w-4" />
+                  </button>
                 </Link>
-                <a href="#alur">
-                  <Button size="lg" variant="outline" className="rounded-full h-14 px-8 text-base font-semibold border-slate-200 bg-white/80 backdrop-blur-md hover:bg-slate-50 transition-all hover:-translate-y-1">
-                    Lihat Alur
-                  </Button>
+                <a href="#alur" className="landing-btn-ghost">
+                  Lihat alur pelaksanaan
+                  <ChevronRight className="h-4 w-4" />
                 </a>
               </div>
+
+              {/* Stats row */}
+              {config.showStats === "true" && stats && (
+                <div className="landing-hero-stats flex flex-wrap items-center gap-6 lg:gap-8">
+                  <div>
+                    <div className="text-3xl lg:text-4xl font-extrabold text-white tracking-tight">
+                      <CountUp value={stats.hospitals} />
+                    </div>
+                    <div className="text-xs text-white/35 font-medium uppercase tracking-widest mt-1">Rumah Sakit</div>
+                  </div>
+                  <div className="landing-stat-divider hidden sm:block" />
+                  <div>
+                    <div className="text-3xl lg:text-4xl font-extrabold text-white tracking-tight">
+                      <CountUp value={stats.students} />
+                    </div>
+                    <div className="text-xs text-white/35 font-medium uppercase tracking-widest mt-1">Mahasiswa</div>
+                  </div>
+                  <div className="landing-stat-divider hidden sm:block" />
+                  <div>
+                    <div className="text-3xl lg:text-4xl font-extrabold text-white tracking-tight">
+                      <CountUp value={stats.logbook_entries} suffix="+" />
+                    </div>
+                    <div className="text-xs text-white/35 font-medium uppercase tracking-widest mt-1">Entri Logbook</div>
+                  </div>
+                  <div className="landing-stat-divider hidden sm:block" />
+                  <div>
+                    <div className="text-3xl lg:text-4xl font-extrabold text-white tracking-tight">
+                      <CountUp value={stats.programs} />
+                    </div>
+                    <div className="text-xs text-white/35 font-medium uppercase tracking-widest mt-1">Program Studi</div>
+                  </div>
+                </div>
+              )}
             </div>
 
-            {/* Right Glass Card (3D Parallax) */}
-            <div className={`hidden lg:block transition-all duration-1000 delay-200 transform ${mounted ? 'translate-y-0 opacity-100' : 'translate-y-8 opacity-0'} pointer-events-auto`}>
-              <div className="glass-card p-10 relative">
-                {/* Decorative reflection line */}
-                <div className="absolute inset-0 bg-gradient-to-tr from-white/0 via-white/40 to-white/0 opacity-50 rounded-[inherit] pointer-events-none" />
-
-                <div className="flex justify-between items-center mb-8 pb-6 border-b border-slate-200/50">
-                  <h3 className="font-display text-xl font-bold text-slate-900">Periode Berjalan</h3>
-                  <span className="px-4 py-1.5 rounded-full bg-[#c99a3b]/15 text-[#9a7325] text-sm font-bold border border-[#c99a3b]/30">2026/2027</span>
-                </div>
-
-                <div className="space-y-6">
-                  <div className="flex items-start gap-4 transform transition-transform hover:translate-x-2">
-                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-blue-50 text-blue-600 shadow-inner">
-                      <Clock className="h-6 w-6" />
-                    </div>
-                    <div>
-                      <h4 className="text-base font-bold text-slate-900">Siklus Rotasi</h4>
-                      <p className="text-sm text-slate-500 mt-1">Sistem penjadwalan stase otomatis<br/>setiap 4 - 10 minggu berturut-turut.</p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-start gap-4 transform transition-transform hover:translate-x-2">
-                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-sky-50 text-sky-600 shadow-inner">
-                      <Hospital className="h-6 w-6" />
-                    </div>
-                    <div>
-                      <h4 className="text-base font-bold text-slate-900">Jejaring RS</h4>
-                      <p className="text-sm text-slate-500 mt-1">Distribusi ke {stats?.hospitals ?? "—"} Rumah Sakit<br/>pendidikan utama dan satelit.</p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-start gap-4 transform transition-transform hover:translate-x-2">
-                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-600 shadow-inner">
-                      <CheckCircle2 className="h-6 w-6" />
-                    </div>
-                    <div>
-                      <h4 className="text-base font-bold text-slate-900">Evaluasi Real-time</h4>
-                      <p className="text-sm text-slate-500 mt-1">Verifikasi logbook dan penilaian CBT/OSCE<br/>terintegrasi di satu platform.</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
+            {/* Right — Abstract visual */}
+            <div className="landing-hero-visual hidden lg:block">
+              <DashboardMockup className="!bg-white/[0.04] !border-white/[0.06] [&_.landing-mock-bar]:!bg-white/[0.08] [&_.landing-mock-bar--accent]:!bg-white/[0.12] [&_.landing-mock-bar--gold]:!bg-yellow-400/[0.1] [&_*]:!border-white/[0.04] [&_.bg-slate-50]:!bg-white/[0.03] [&_.bg-slate-100]:!bg-white/[0.05] [&_.bg-white]:!bg-white/[0.04] [&_.text-green-600]:!text-green-400/60 [&_.text-yellow-600]:!text-yellow-400/60 [&_.text-slate-400]:!text-white/30 [&_.bg-green-50]:!bg-green-400/[0.06] [&_.bg-yellow-50]:!bg-yellow-400/[0.06]" />
             </div>
 
           </div>
         </div>
       </section>
 
-      {/* --- Timeline / Alur Section --- */}
-      <section id="alur" className="py-24 bg-slate-50 relative overflow-hidden">
-        <div className="mx-auto max-w-7xl px-6 lg:px-8 relative z-10">
-          <Reveal variant="up" className="text-center mb-16">
-            <h2 className="font-display text-3xl md:text-4xl font-extrabold text-slate-900 mb-4">Alur Pendidikan Profesi</h2>
-            <p className="text-lg text-slate-500 max-w-2xl mx-auto">Ikuti panduan langkah demi langkah di bawah ini untuk memahami siklus klinis menggunakan sistem ACMS.</p>
+      {/* ============================================================
+          SECTION 3 — Platform Overview
+          ============================================================ */}
+      <section className="py-24 lg:py-32 bg-white relative">
+        <div className="mx-auto max-w-7xl px-6 lg:px-8">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
+            {/* Left — Copy */}
+            <Reveal variant="up">
+              <div className="landing-section-label">
+                <span className="landing-section-label-dot" />
+                Tentang Platform
+              </div>
+              <h2 className="landing-section-heading">
+                Infrastruktur akademik dan klinis dalam satu platform
+              </h2>
+              <p className="landing-section-desc mb-8">
+                ACMS menghubungkan seluruh stakeholder pendidikan profesi — dari Prodi, Rumah Sakit, Preceptor, hingga Mahasiswa — dalam satu ekosistem digital yang transparan dan teraudit.
+              </p>
+              <div className="flex flex-col gap-4">
+                {[
+                  { icon: Hospital, text: "Distribusi otomatis ke rumah sakit jejaring" },
+                  { icon: CheckCircle2, text: "Logbook dan penilaian terverifikasi real-time" },
+                  { icon: ShieldCheck, text: "Rekam jejak terenkripsi dan diaudit berkala" },
+                ].map((item, i) => (
+                  <div key={i} className="flex items-center gap-3 text-sm text-slate-600">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-100 text-slate-500 flex-shrink-0">
+                      <item.icon className="h-4 w-4" />
+                    </div>
+                    {item.text}
+                  </div>
+                ))}
+              </div>
+            </Reveal>
+
+            {/* Right — Stacked cards */}
+            <Reveal variant="scale" delay={200}>
+              <div className="relative">
+                <div className="landing-overview-card p-1 -rotate-2 translate-y-4 opacity-30 absolute inset-0">
+                  <div className="bg-slate-50 rounded-[12px] h-full" />
+                </div>
+                <div className="landing-overview-card p-1 rotate-1 translate-y-2 opacity-50 absolute inset-0">
+                  <div className="bg-slate-50 rounded-[12px] h-full" />
+                </div>
+                <DashboardMockup className="!bg-white relative z-10 !shadow-xl !shadow-slate-900/[0.04]" />
+              </div>
+            </Reveal>
+          </div>
+        </div>
+      </section>
+
+      {/* ============================================================
+          SECTION 4 — Alur Pelaksanaan (Horizontal Steps)
+          ============================================================ */}
+      <section id="alur" className="py-24 lg:py-32 bg-slate-50 relative">
+        <div className="mx-auto max-w-7xl px-6 lg:px-8">
+          <Reveal variant="up">
+            <div className="text-center mb-16 lg:mb-20">
+              <div className="landing-section-label justify-center">
+                <span className="landing-section-label-dot" />
+                Alur Pendidikan Profesi
+              </div>
+              <h2 className="landing-section-heading mx-auto" style={{ maxWidth: "36rem" }}>
+                Tiga tahap menuju kompetensi klinis
+              </h2>
+              <p className="landing-section-desc mx-auto text-center">
+                Ikuti panduan langkah demi langkah untuk memahami siklus rotasi klinis menggunakan sistem ACMS.
+              </p>
+            </div>
           </Reveal>
 
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-start">
-            <div className="lg:col-span-7 pl-10 relative timeline-container">
-
-              <div className="relative mb-12 last:mb-0 group">
-                <div className="timeline-indicator transition-transform group-hover:scale-110 group-hover:bg-[#2b4a8b] group-hover:text-white">1</div>
-                <div className="bento-card p-8 group-hover:-translate-y-1">
-                  <div className="bento-content">
-                    <h3 className="font-display text-xl font-bold text-slate-900 mb-3 group-hover:text-blue-600 transition-colors">Penjadwalan & Orientasi</h3>
-                    <p className="text-slate-600 mb-4">Proses registrasi dan pembagian stase rumah sakit oleh program studi.</p>
-                    <ul className="list-disc pl-5 space-y-2 text-slate-500 text-sm">
-                      <li>Pilih menu <strong>Jadwal Rotasi</strong> untuk melihat penempatan stase Anda.</li>
-                      <li>Unduh surat pengantar institusi secara digital.</li>
-                      <li>Lapor ke Rumah Sakit dan pembimbing (Preceptor) pada hari pertama.</li>
-                    </ul>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 lg:gap-6">
+            {steps.map((step, i) => (
+              <Reveal key={step.num} variant="up" delay={i * 120}>
+                <div className="landing-step relative text-center md:text-left group cursor-default">
+                  {/* Connector (hidden on last & mobile) */}
+                  {i < steps.length - 1 && (
+                    <div className="landing-step-connector hidden md:block" aria-hidden="true" />
+                  )}
+                  {/* Number */}
+                  <div className="landing-step-number mx-auto md:mx-0 mb-5">
+                    {step.num}
                   </div>
-                </div>
-              </div>
-
-              <div className="relative mb-12 last:mb-0 group">
-                <div className="timeline-indicator transition-transform group-hover:scale-110 group-hover:bg-[#2b4a8b] group-hover:text-white">2</div>
-                <div className="bento-card p-8 group-hover:-translate-y-1">
-                  <div className="bento-content">
-                    <h3 className="font-display text-xl font-bold text-slate-900 mb-3 group-hover:text-blue-600 transition-colors">Kegiatan Klinis & Logbook</h3>
-                    <p className="text-slate-600 mb-4">Pencatatan aktivitas keseharian medis yang disupervisi langsung.</p>
-                    <ul className="list-disc pl-5 space-y-2 text-slate-500 text-sm">
-                      <li>Input kegiatan Kasus Pasien, Tindakan, atau Jaga di menu <strong>Logbook</strong>.</li>
-                      <li>Sertakan diagnosis ICD dan tingkat kompetensi (Level 1-4).</li>
-                      <li>Tunggu verifikasi dan *feedback* dari Preceptor secara online.</li>
-                    </ul>
-                  </div>
-                </div>
-              </div>
-
-              <div className="relative mb-12 last:mb-0 group">
-                <div className="timeline-indicator transition-transform group-hover:scale-110 group-hover:bg-[#2b4a8b] group-hover:text-white">3</div>
-                <div className="bento-card p-8 group-hover:-translate-y-1">
-                  <div className="bento-content">
-                    <h3 className="font-display text-xl font-bold text-slate-900 mb-3 group-hover:text-blue-600 transition-colors">Ujian Akhir Stase & Nilai</h3>
-                    <p className="text-slate-600 mb-4">Evaluasi komprehensif penutup stase dan penerbitan transkrip klinis.</p>
-                    <ul className="list-disc pl-5 space-y-2 text-slate-500 text-sm">
-                      <li>Ikuti jadwal ujian (CBT, OSCE, DOPS, Mini-CEX) yang tertera di sistem.</li>
-                      <li>Penguji akan memasukkan nilai rubrik via aplikasi secara real-time.</li>
-                      <li>Nilai akhir stase akan langsung masuk ke halaman <strong>Transkrip</strong> Anda.</li>
-                    </ul>
-                  </div>
-                </div>
-              </div>
-
-            </div>
-
-            <div className="lg:col-span-5 sticky top-28">
-              <div className="rounded-[24px] bg-slate-900 p-10 text-white shadow-2xl shadow-slate-900/20 transform transition-all duration-500 hover:scale-[1.02] relative overflow-hidden">
-                <div className="absolute top-0 right-0 p-8 opacity-10 pointer-events-none">
-                  <ShieldCheck className="h-48 w-48" />
-                </div>
-                <div className="relative z-10">
-                  <div className="flex items-center gap-4 mb-6">
-                    <div className="p-3 bg-blue-500/20 rounded-xl text-blue-400">
-                      <ShieldCheck className="h-8 w-8" />
-                    </div>
-                    <h3 className="font-display text-2xl font-bold">Akses Terpusat</h3>
-                  </div>
-                  <p className="text-slate-400 mb-8 leading-relaxed">
-                    Dengan login ke dalam sistem, Anda menyatakan siap untuk mematuhi seluruh kode etik kedokteran dan aturan rotasi yang berlaku di Rumah Sakit jejaring.
+                  <h3 className="text-lg font-bold text-slate-900 mb-2 tracking-tight">
+                    {step.title}
+                  </h3>
+                  <p className="text-sm text-slate-500 leading-relaxed max-w-xs mx-auto md:mx-0">
+                    {step.desc}
                   </p>
-                  <div className="p-4 rounded-xl bg-white/5 border border-white/10 mb-8 backdrop-blur-sm">
-                    <p className="text-sm text-slate-300">&quot;Sistem ini diaudit secara berkala untuk memastikan rekam jejak logbook valid dan terenkripsi.&quot;</p>
-                  </div>
-                  <Link href="/login" className="block">
-                    <Button className="w-full h-14 rounded-full bg-white text-slate-900 hover:bg-slate-100 font-bold text-base transition-all hover:-translate-y-1 group">
-                      Masuk ke Dashboard <ArrowRight className="ml-2 h-5 w-5 transition-transform group-hover:translate-x-1" />
-                    </Button>
-                  </Link>
                 </div>
-              </div>
-            </div>
+              </Reveal>
+            ))}
           </div>
         </div>
       </section>
 
-      {/* --- Bento Grid Section (Ketentuan & Statistik) --- */}
-      {landingConfig.showStats === "true" && (
-      <section id="fitur" className="py-24 bg-white relative">
-        <div className="cursor-glow"></div>
-        <div className="mx-auto max-w-7xl px-6 lg:px-8 relative z-10">
-          <Reveal variant="up" className="text-center mb-16">
-            <h2 className="font-display text-3xl md:text-4xl font-extrabold text-slate-900 mb-4">Ekosistem Terpadu</h2>
-            <p className="text-lg text-slate-500 max-w-2xl mx-auto">Infrastruktur pendukung operasional akademik dan administrasi finansial rumah sakit.</p>
+      {/* ============================================================
+          SECTION 5 — Fitur Unggulan (Zig-zag)
+          ============================================================ */}
+      <section id="fitur" className="py-24 lg:py-32 bg-white relative">
+        <div className="mx-auto max-w-7xl px-6 lg:px-8">
+          <Reveal variant="up">
+            <div className="text-center mb-16 lg:mb-24">
+              <div className="landing-section-label justify-center">
+                <span className="landing-section-label-dot" />
+                Fitur Sistem
+              </div>
+              <h2 className="landing-section-heading mx-auto" style={{ maxWidth: "36rem" }}>
+                Dibangun untuk kebutuhan institusi medis
+              </h2>
+              <p className="landing-section-desc mx-auto text-center">
+                Setiap modul dirancang khusus untuk operasional pendidikan profesi kedokteran, bukan template generik.
+              </p>
+            </div>
           </Reveal>
 
-          <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
+          <div className="flex flex-col gap-24 lg:gap-32">
+            {features.map((feat, i) => {
+              const isReversed = i % 2 === 1;
+              return (
+                <Reveal key={feat.label} variant={isReversed ? "right" : "left"} delay={100}>
+                  <div className={`landing-feature-block ${isReversed ? "landing-feature-block--reversed" : ""}`}>
+                    {/* Copy */}
+                    <div>
+                      <div className={`landing-accent-line${feat.accentClass ? ` landing-accent-line${feat.accentClass}` : ""}`} />
+                      <div className="landing-section-label">
+                        <feat.icon className="h-3.5 w-3.5" />
+                        {feat.label}
+                      </div>
+                      <h3 className="text-2xl lg:text-3xl font-bold text-slate-900 tracking-tight leading-tight mb-4" style={{ textWrap: "balance" as never }}>
+                        {feat.title}
+                      </h3>
+                      <p className="text-slate-500 leading-relaxed max-w-lg">
+                        {feat.desc}
+                      </p>
+                    </div>
+                    {/* Visual */}
+                    <div>
+                      <feat.Visual />
+                    </div>
+                  </div>
+                </Reveal>
+              );
+            })}
+          </div>
+        </div>
+      </section>
 
-            {/* Bento 1: Kapasitas */}
-            <div className="md:col-span-4 bento-card p-8 flex flex-col group">
-              <div className="bento-content flex flex-col h-full">
-                <div className="h-12 w-12 rounded-xl bg-slate-100 flex items-center justify-center text-slate-900 mb-6 transition-transform group-hover:scale-110 group-hover:bg-blue-100 group-hover:text-blue-600">
-                  <PersonStanding className="h-6 w-6" />
+      {/* ============================================================
+          SECTION 6 — Trust & Security Banner
+          ============================================================ */}
+      <section className="landing-trust-banner py-20 lg:py-28">
+        <div className="mx-auto max-w-7xl px-6 lg:px-8 relative z-10">
+          <Reveal variant="up">
+            <div className="flex flex-col lg:flex-row items-center gap-8 lg:gap-16">
+              {/* Icon + copy */}
+              <div className="flex items-center gap-5 flex-shrink-0">
+                <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white/[0.06] border border-white/[0.08] backdrop-blur-sm">
+                  <Lock className="h-6 w-6 text-yellow-400" />
                 </div>
-                <h4 className="font-display text-xl font-bold text-slate-900 mb-3 group-hover:text-blue-600 transition-colors">Distribusi Presisi</h4>
-                <p className="text-slate-500 text-sm leading-relaxed flex-grow">
-                  Sistem memetakan mahasiswa secara otomatis ke berbagai stase dengan memastikan kuota rasio Preceptor:Mahasiswa tetap ideal di setiap Rumah Sakit.
-                </p>
+                <div>
+                  <h3 className="text-xl lg:text-2xl font-bold text-white tracking-tight">Akses terpusat & teraudit</h3>
+                  <p className="text-white/40 text-sm mt-1">Rekam jejak terenkripsi sesuai standar keamanan data medis</p>
+                </div>
               </div>
-            </div>
 
-            {/* Bento 2: Finansial (Highlight) */}
-            <div className="md:col-span-8 rounded-[20px] bg-[#2b4a8b] p-8 flex flex-col text-white overflow-hidden relative shadow-lg shadow-[#2b4a8b]/20 transition-all hover:-translate-y-1 hover:shadow-[#2b4a8b]/40 group">
-              <div className="absolute top-0 right-0 p-8 opacity-10 transition-transform duration-700 group-hover:scale-125 group-hover:rotate-12 pointer-events-none">
-                <Wallet className="h-32 w-32" />
-              </div>
-              <div className="absolute inset-0 bg-gradient-to-tr from-blue-700/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
-              <div className="relative z-10 flex-grow">
-                <div className="h-12 w-12 rounded-xl bg-white/20 flex items-center justify-center text-white mb-6 backdrop-blur-sm transition-transform group-hover:scale-110">
-                  <Wallet className="h-6 w-6" />
-                </div>
-                <h4 className="font-display text-2xl font-bold mb-3">Honorarium & Billing</h4>
-                <p className="text-blue-100 leading-relaxed max-w-lg mb-8">
-                  Kalkulasi otomatis biaya tagihan stase Universitas ke Rumah Sakit dan pencairan honorarium langsung ke rekening Preceptor berdasarkan beban verifikasi logbook.
-                </p>
-              </div>
-              <Link href="/login" className="relative z-10 flex items-center gap-2 text-sm font-bold text-white hover:text-blue-100 transition-colors w-max mt-auto group/link">
-                Masuk untuk detail finansial <ArrowRight className="h-4 w-4 transition-transform group-hover/link:translate-x-1" />
+              {/* Divider */}
+              <div className="hidden lg:block w-px h-16 bg-white/[0.08]" />
+
+              {/* Statement */}
+              <p className="text-white/50 text-sm leading-relaxed flex-1 text-center lg:text-left max-w-xl">
+                Dengan login ke sistem, Anda menyatakan siap mematuhi seluruh kode etik kedokteran dan aturan rotasi yang berlaku di Rumah Sakit jejaring. Sistem ini diaudit berkala untuk memastikan rekam jejak logbook valid.
+              </p>
+
+              {/* CTA */}
+              <Link href="/login" className="flex-shrink-0">
+                <button className="landing-btn-primary !bg-white !text-slate-900 hover:!bg-slate-100 group">
+                  Masuk ke Dashboard
+                  <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+                </button>
               </Link>
             </div>
-
-            {/* Bento 3: Data */}
-            <div className="md:col-span-5 bento-card p-8 flex flex-col justify-center text-center group">
-              <div className="bento-content">
-                <h4 className="font-display text-lg font-bold text-slate-900 mb-1 group-hover:text-blue-600 transition-colors">Total Entri Logbook</h4>
-                <p className="text-sm text-slate-500 uppercase tracking-widest font-semibold mb-4">Tahun Akademik Ini</p>
-                <div className="font-display text-5xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-[#2b4a8b] to-sky-400 transform transition-transform group-hover:scale-105 tabular-nums">
-                  {stats ? stats.logbook_entries.toLocaleString("id-ID") : "—"}
-                </div>
-              </div>
-            </div>
-
-            {/* Bento 4: Konsultasi */}
-            <div className="md:col-span-7 bento-card p-8 flex flex-col group">
-              <div className="bento-content flex flex-col h-full">
-                <div className="h-12 w-12 rounded-xl bg-amber-50 flex items-center justify-center text-amber-600 mb-6 transition-transform group-hover:scale-110 group-hover:bg-amber-100">
-                  <Stethoscope className="h-6 w-6" />
-                </div>
-                <h4 className="font-display text-xl font-bold text-slate-900 mb-3 group-hover:text-amber-600 transition-colors">Monitoring Dosen Pembimbing</h4>
-                <p className="text-slate-500 text-sm leading-relaxed flex-grow">
-                  Setiap entri aktivitas klinis, baik kasus maupun tindakan, dipantau langsung oleh Konsulen. Fitur pesan *feedback* internal memastikan setiap Mahasiswa mendapatkan asuhan akademik berkualitas.
-                </p>
-              </div>
-            </div>
-
-          </div>
+          </Reveal>
         </div>
       </section>
-      )}
 
-      {/* --- Footer (komponen bersama, settings-driven) --- */}
+      {/* ============================================================
+          SECTION 7 — Footer (shared component)
+          ============================================================ */}
       <div className="relative z-20">
         <LandingFooter accent="blue" icon={Activity} />
       </div>

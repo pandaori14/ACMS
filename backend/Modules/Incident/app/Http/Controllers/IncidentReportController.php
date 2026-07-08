@@ -12,11 +12,15 @@ use Modules\Incident\Http\Requests\StoreIncidentNoteRequest;
 use Modules\Incident\Http\Requests\StoreIncidentRequest;
 use Modules\Incident\Http\Requests\UpdateIncidentStatusRequest;
 use Modules\Incident\Http\Resources\IncidentReportResource;
+use Modules\Incident\Services\IncidentFormService;
 use Modules\Incident\Services\IncidentService;
 
 class IncidentReportController extends Controller
 {
-    public function __construct(private readonly IncidentService $incidentService) {}
+    public function __construct(
+        private readonly IncidentService $incidentService,
+        private readonly IncidentFormService $formService,
+    ) {}
 
     public function index(Request $request): JsonResponse
     {
@@ -46,6 +50,43 @@ class IncidentReportController extends Controller
             ->get(['value', 'name'])
             ->toArray();
 
+        // Template aktif per jenis insiden (sections + fields)
+        $templatesMap = $this->formService->activeTemplatesMap();
+        $formTemplates = [];
+        foreach ($templatesMap as $type => $template) {
+            $formTemplates[$type] = [
+                'id' => $template->id,
+                'name' => $template->name,
+                'header_title' => $template->header_title,
+                'header_subtitle' => $template->header_subtitle,
+                'theme_color' => $template->theme_color,
+                'version' => $template->version,
+                'sections' => $template->sections->map(fn ($s) => [
+                    'id' => $s->id,
+                    'title' => $s->title,
+                    'icon' => $s->icon,
+                    'description' => $s->description,
+                    'sort_order' => $s->sort_order,
+                    'is_visible' => $s->is_visible,
+                    'conditional_field_id' => $s->conditional_field_id,
+                    'conditional_value' => $s->conditional_value,
+                    'fields' => $s->fields->map(fn ($f) => [
+                        'id' => $f->id,
+                        'label' => $f->label,
+                        'field_key' => $f->field_key,
+                        'field_type' => $f->field_type,
+                        'placeholder' => $f->placeholder,
+                        'help_text' => $f->help_text,
+                        'is_required' => $f->is_required,
+                        'sort_order' => $f->sort_order,
+                        'options' => $f->options,
+                        'validation_rules' => $f->validation_rules,
+                        'grid_cols' => $f->grid_cols,
+                    ])->toArray(),
+                ])->toArray(),
+            ];
+        }
+
         return response()->json([
             'data' => [
                 'incident_types' => $byCategory('incident_types'),
@@ -54,6 +95,7 @@ class IncidentReportController extends Controller
                     'max_size_mb' => (int) Setting::getValue('incident_max_attachment_size_mb', 10),
                     'allowed_types' => (string) Setting::getValue('incident_allowed_attachment_types', 'jpg,jpeg,png,pdf,doc,docx'),
                 ],
+                'form_templates' => $formTemplates,
             ],
         ]);
     }
@@ -65,6 +107,26 @@ class IncidentReportController extends Controller
             $request->file('attachment'),
             $request->user()
         );
+
+        // Simpan jawaban form dinamis jika ada template aktif
+        $formAnswers = $request->input('form_answers', []);
+        $templateId = $request->input('form_template_id');
+
+        if ($templateId && ! empty($formAnswers)) {
+            $template = $this->formService->activeTemplateForType($report->incident_type);
+
+            if ($template && $template->id === $templateId) {
+                // Kumpulkan file uploads dari form_files[field_key]
+                $files = [];
+                if ($request->hasFile('form_files')) {
+                    foreach ($request->file('form_files') as $key => $file) {
+                        $files[$key] = $file;
+                    }
+                }
+
+                $this->formService->saveFormResponse($report, $template, $formAnswers, $files);
+            }
+        }
 
         return response()->json([
             'message' => 'Laporan insiden berhasil dikirim. Terima kasih atas partisipasi Anda dalam menjaga keamanan lingkungan klinis.',

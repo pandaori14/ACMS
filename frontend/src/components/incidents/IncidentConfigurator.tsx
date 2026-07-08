@@ -8,11 +8,12 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import Link from "next/link";
-import { Settings2, ListChecks, Gauge, SlidersHorizontal, Eye, Plus, Save, ShieldAlert, BellRing, ExternalLink } from "lucide-react";
+import { Settings2, ListChecks, Gauge, SlidersHorizontal, Eye, Plus, Save, ShieldAlert, BellRing, ExternalLink, LayoutTemplate } from "lucide-react";
 import { toast } from "sonner";
 import api from "@/lib/api";
 import type { IncidentConfig, IncidentConfigSettings, IncidentNotificationConfig } from "@/types/incident";
 import IncidentReportForm from "./IncidentReportForm";
+import FormTemplateBuilder from "./FormTemplateBuilder";
 
 interface EditableRef {
   id?: string;
@@ -113,6 +114,7 @@ export default function IncidentConfigurator() {
         <TabsList className="w-full max-w-full overflow-x-auto justify-start">
           <TabsTrigger value="types" className="shrink-0"><ListChecks className="h-4 w-4" /> Jenis Insiden</TabsTrigger>
           <TabsTrigger value="severities" className="shrink-0"><Gauge className="h-4 w-4" /> Tingkat Keparahan</TabsTrigger>
+          <TabsTrigger value="builder" className="shrink-0"><LayoutTemplate className="h-4 w-4" /> Form Builder</TabsTrigger>
           <TabsTrigger value="rules" className="shrink-0"><SlidersHorizontal className="h-4 w-4" /> Aturan & Notifikasi</TabsTrigger>
           <TabsTrigger value="preview" className="shrink-0"><Eye className="h-4 w-4" /> Preview Mahasiswa</TabsTrigger>
         </TabsList>
@@ -135,6 +137,11 @@ export default function IncidentConfigurator() {
             items={severities}
             setItems={setSeverities}
           />
+        </TabsContent>
+
+        {/* TAB: Form Builder */}
+        <TabsContent value="builder">
+          <FormTemplateBuilder incidentTypes={types} />
         </TabsContent>
 
         {/* TAB: Aturan & Notifikasi */}

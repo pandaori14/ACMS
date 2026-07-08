@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, use } from "react";
+import { useTranslations } from "next-intl";
 import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd";
 import api from "@/lib/api";
 import { getApiErrorMessage } from "@/lib/api-helpers";
@@ -87,6 +88,7 @@ interface SchedulePreviewResult {
 }
 
 export default function RotationScheduler({ params }: { params: Promise<{ id: string }> }) {
+  const t = useTranslations("rotationDetail");
   const resolvedParams = use(params);
   const periodId = resolvedParams.id;
 
@@ -182,7 +184,7 @@ export default function RotationScheduler({ params }: { params: Promise<{ id: st
       });
       setPreviewResult(res.data.data);
     } catch (err) {
-      toast.error(getApiErrorMessage(err, "Gagal membuat preview jadwal."));
+      toast.error(getApiErrorMessage(err, t("previewError")));
     } finally {
       setIsPreviewing(false);
     }
@@ -205,7 +207,7 @@ export default function RotationScheduler({ params }: { params: Promise<{ id: st
       fetchInitialData();
       fetchAssignments();
     } catch (err) {
-      toast.error(getApiErrorMessage(err, "Gagal menerapkan jadwal."));
+      toast.error(getApiErrorMessage(err, t("commitError")));
     } finally {
       setIsCommitting(false);
     }
@@ -280,7 +282,7 @@ export default function RotationScheduler({ params }: { params: Promise<{ id: st
       
     } catch (err) {
       console.error(err);
-      toast.error(getApiErrorMessage(err, "Gagal memindahkan mahasiswa."));
+      toast.error(getApiErrorMessage(err, t("moveError")));
       // Revert Optimistic updates
       fetchInitialData();
       fetchAssignments();
@@ -296,19 +298,19 @@ export default function RotationScheduler({ params }: { params: Promise<{ id: st
     <div className="space-y-6 h-[calc(100vh-4rem)] flex flex-col">
       <div className="flex justify-between items-center shrink-0">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Penjadwalan Interaktif</h1>
-          <p className="text-muted-foreground mt-1">Tarik dan letakkan mahasiswa ke rumah sakit tujuan.</p>
+          <h1 className="text-3xl font-bold tracking-tight">{t("title")}</h1>
+          <p className="text-muted-foreground mt-1">{t("subtitle")}</p>
         </div>
 
         <div className="flex items-center gap-3">
           <Button onClick={openAutoSchedule} className="gap-2 bg-blue-900 hover:bg-blue-800 text-white">
-            <Wand2 className="h-4 w-4" /> Jadwalkan Otomatis
+            <Wand2 className="h-4 w-4" /> {t("autoSchedule")}
           </Button>
           <div className="flex items-center gap-4 bg-white p-2 rounded-xl shadow-sm border">
-            <span className="text-sm font-medium pl-2">Filter Stase:</span>
+            <span className="text-sm font-medium pl-2">{t("filterStase")}</span>
             <Select value={selectedStase} onValueChange={(v) => setSelectedStase(v ?? "")}>
               <SelectTrigger className="w-[250px] border-none shadow-none">
-                <SelectValue placeholder="Pilih Stase" />
+                <SelectValue placeholder={t("selectStase")} />
               </SelectTrigger>
               <SelectContent>
                 {stases.map((stase) => (
@@ -322,9 +324,9 @@ export default function RotationScheduler({ params }: { params: Promise<{ id: st
 
       <Alert>
         <AlertCircle className="h-4 w-4" />
-        <AlertTitle>Mode Penjadwalan Aktif</AlertTitle>
+        <AlertTitle>{t("activeModeTitle")}</AlertTitle>
         <AlertDescription>
-          Perubahan yang Anda lakukan akan langsung tersimpan ke dalam database secara otomatis.
+          {t("activeModeDesc")}
         </AlertDescription>
       </Alert>
 

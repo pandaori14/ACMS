@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useTranslations } from "next-intl";
 import Link from "next/link";
 import api from "@/lib/api";
 import { Button } from "@/components/ui/button";
@@ -60,6 +61,7 @@ const MY_STATUS_BADGE: Record<string, string> = {
 };
 
 export default function RotationPeriodsPage() {
+  const t = useTranslations("rotationList");
   const user = useAuthStore((state) => state.user);
   const canManage = user?.permissions?.includes("manage-rotations");
 
@@ -109,21 +111,21 @@ export default function RotationPeriodsPage() {
       await api.post("/api/v1/rotation/periods", formData);
       setIsOpen(false);
       resetForm();
-      toast.success("Periode rotasi disimpan.");
+      toast.success(t("saved"));
       refetchPeriods();
     } catch (err) {
-      toast.error(getApiErrorMessage(err, "Gagal menyimpan periode rotasi."));
+      toast.error(getApiErrorMessage(err, t("saveError")));
     }
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm("Apakah Anda yakin ingin menghapus periode ini?")) return;
+    if (!confirm(t("deleteConfirm"))) return;
     try {
       await api.delete(`/api/v1/rotation/periods/${id}`);
-      toast.success("Periode rotasi dihapus.");
+      toast.success(t("deleted"));
       refetchPeriods();
     } catch (err) {
-      toast.error(getApiErrorMessage(err, "Gagal menghapus periode rotasi."));
+      toast.error(getApiErrorMessage(err, t("deleteError")));
     }
   };
 
@@ -137,9 +139,9 @@ export default function RotationPeriodsPage() {
     return (
       <div className="space-y-6">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Jadwal Rotasi Saya</h1>
+          <h1 className="text-3xl font-bold tracking-tight">{t("myTitle")}</h1>
           <p className="text-muted-foreground mt-1">
-            Penempatan stase dan rumah sakit Anda selama pendidikan klinik.
+            {t("mySubtitle")}
           </p>
         </div>
 
@@ -151,9 +153,9 @@ export default function RotationPeriodsPage() {
         ) : myAssignments.length === 0 ? (
           <div className="py-16 text-center clean-card border-dashed">
             <Calendar className="mx-auto h-12 w-12 text-slate-300 mb-3" />
-            <h3 className="text-lg font-medium">Belum Ada Penempatan</h3>
+            <h3 className="text-lg font-medium">{t("noPlacementTitle")}</h3>
             <p className="text-muted-foreground mt-2">
-              Anda belum ditempatkan pada stase manapun. Hubungi admin program studi Anda.
+              {t("noPlacementDesc")}
             </p>
           </div>
         ) : (
@@ -169,7 +171,7 @@ export default function RotationPeriodsPage() {
                       <h3 className="font-bold text-lg leading-tight">{a.stase?.name || "-"}</h3>
                       <p className="text-xs text-slate-500">
                         {a.rotation_period?.name}
-                        {a.stase?.duration_weeks ? ` — ${a.stase.duration_weeks} minggu` : ""}
+                        {a.stase?.duration_weeks ? ` — ${t("weeks", { count: a.stase.duration_weeks })}` : ""}
                       </p>
                     </div>
                   </div>
@@ -201,7 +203,7 @@ export default function RotationPeriodsPage() {
                   {a.preceptor?.name && (
                     <div className="flex items-center gap-2">
                       <MapPin className="h-4 w-4 shrink-0 text-slate-400" />
-                      <span>Pembimbing: <span className="font-medium text-slate-900">{a.preceptor.name}</span></span>
+                      <span>{t("supervisor")}: <span className="font-medium text-slate-900">{a.preceptor.name}</span></span>
                     </div>
                   )}
                 </div>
@@ -217,8 +219,8 @@ export default function RotationPeriodsPage() {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Jadwal Rotasi</h1>
-          <p className="text-muted-foreground mt-1">Pilih atau buat periode rotasi untuk mulai mengatur jadwal.</p>
+          <h1 className="text-3xl font-bold tracking-tight">{t("title")}</h1>
+          <p className="text-muted-foreground mt-1">{t("subtitle")}</p>
         </div>
         
         <Dialog open={isOpen} onOpenChange={(open) => {
@@ -226,18 +228,18 @@ export default function RotationPeriodsPage() {
           if (!open) resetForm();
         }}>
           <DialogTrigger render={<Button className="gap-2" />}>
-            <Plus className="h-4 w-4" /> Buat Periode
+            <Plus className="h-4 w-4" /> {t("createPeriod")}
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Buat Periode Baru</DialogTitle>
+              <DialogTitle>{t("createPeriodTitle")}</DialogTitle>
             </DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
-                <Label>Program Studi</Label>
+                <Label>{t("program")}</Label>
                 <Select value={formData.program_id} onValueChange={(val) => setFormData({ ...formData, program_id: val ?? "" })}>
                   <SelectTrigger>
-                    <SelectValue placeholder="Pilih Program Studi" />
+                    <SelectValue placeholder={t("selectProgram")} />
                   </SelectTrigger>
                   <SelectContent>
                     {programs.map((p) => (
@@ -247,17 +249,17 @@ export default function RotationPeriodsPage() {
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label>Nama Periode</Label>
+                <Label>{t("periodName")}</Label>
                 <Input
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  placeholder="e.g. Ganjil 2026/2027"
+                  placeholder={t("periodNamePlaceholder")}
                   required
                 />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label>Tanggal Mulai</Label>
+                  <Label>{t("startDate")}</Label>
                   <Input
                     type="date"
                     value={formData.start_date}
@@ -266,7 +268,7 @@ export default function RotationPeriodsPage() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>Tanggal Selesai</Label>
+                  <Label>{t("endDate")}</Label>
                   <Input
                     type="date"
                     value={formData.end_date}
@@ -276,7 +278,7 @@ export default function RotationPeriodsPage() {
                 </div>
               </div>
               <DialogFooter>
-                <Button type="submit">Simpan Periode</Button>
+                <Button type="submit">{t("savePeriod")}</Button>
               </DialogFooter>
             </form>
           </DialogContent>
@@ -290,8 +292,8 @@ export default function RotationPeriodsPage() {
           ))
         ) : periods.length === 0 ? (
           <div className="col-span-full py-12 text-center clean-card border-dashed">
-            <h3 className="text-lg font-medium">Belum ada Periode Rotasi</h3>
-            <p className="text-muted-foreground mt-2">Buat periode baru untuk mulai mengatur jadwal stase mahasiswa.</p>
+            <h3 className="text-lg font-medium">{t("noPeriodsTitle")}</h3>
+            <p className="text-muted-foreground mt-2">{t("noPeriodsDesc")}</p>
           </div>
         ) : (
           periods.map((period) => (
@@ -314,11 +316,11 @@ export default function RotationPeriodsPage() {
               
               <div className="space-y-2 text-sm text-slate-600 mb-6 border-t pt-4">
                 <div className="flex justify-between">
-                  <span>Mulai:</span>
+                  <span>{t("start")}:</span>
                   <span className="font-medium text-slate-900">{new Date(period.start_date).toLocaleDateString('id-ID')}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span>Selesai:</span>
+                  <span>{t("end")}:</span>
                   <span className="font-medium text-slate-900">{new Date(period.end_date).toLocaleDateString('id-ID')}</span>
                 </div>
               </div>
@@ -328,7 +330,7 @@ export default function RotationPeriodsPage() {
                   href={`/dashboard/rotations/${period.id}`}
                   className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2 w-full group-hover:bg-blue-600"
                 >
-                  Atur Jadwal <ArrowRight className="h-4 w-4" />
+                  {t("manageSchedule")} <ArrowRight className="h-4 w-4" />
                 </Link>
                 <Button variant="outline" size="icon" className="shrink-0 text-red-500 hover:text-red-600 hover:bg-red-50" onClick={(e) => {
                   e.preventDefault();

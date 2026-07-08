@@ -8,12 +8,13 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { ShieldAlert, Info, CheckCircle2, Paperclip, Eye } from "lucide-react";
+import { ShieldAlert, Info, CheckCircle2, Paperclip, Eye, ArrowRight, ArrowLeft } from "lucide-react";
 import api from "@/lib/api";
 import type { IncidentFormOptions } from "@/types/incident";
+import type { ActiveFormTemplate } from "@/types/incident-form";
+import DynamicIncidentForm from "./DynamicIncidentForm";
 
 interface FormState {
-  incident_type: string;
   incident_date: string;
   location: string;
   description: string;
@@ -23,7 +24,6 @@ interface FormState {
 }
 
 const EMPTY_FORM: FormState = {
-  incident_type: "",
   incident_date: "",
   location: "",
   description: "",
@@ -45,6 +45,8 @@ export default function IncidentReportForm({ previewMode = false }: IncidentRepo
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [formData, setFormData] = useState<FormState>(EMPTY_FORM);
+  const [selectedIncidentType, setSelectedIncidentType] = useState<string>("");
+  const [step, setStep] = useState<1 | 2>(1);
 
   useEffect(() => {
     api.get("/api/v1/incidents/form-options")
@@ -61,11 +63,26 @@ export default function IncidentReportForm({ previewMode = false }: IncidentRepo
     setFormData((prev) => ({ ...prev, [field]: value ?? "" }));
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleNextStep = () => {
+    if (!selectedIncidentType) {
+      toast.error("Silakan pilih jenis insiden terlebih dahulu.");
+      return;
+    }
+    setStep(2);
+  };
+
+  const handleBack = () => {
+    setStep(1);
+    setFormData(EMPTY_FORM);
+    setAttachmentFile(null);
+    setIsSubmitted(false);
+  };
+
+  const handleSubmitStatic = async (e: React.FormEvent) => {
     e.preventDefault();
     if (previewMode) return;
 
-    if (!formData.incident_type || !formData.incident_date || !formData.location || !formData.description) {
+    if (!formData.incident_date || !formData.location || !formData.description) {
       toast.error("Harap lengkapi field yang wajib diisi");
       return;
     }
@@ -73,7 +90,7 @@ export default function IncidentReportForm({ previewMode = false }: IncidentRepo
     setLoading(true);
     try {
       const fd = new FormData();
-      fd.append("incident_type", formData.incident_type);
+      fd.append("incident_type", selectedIncidentType);
       fd.append("incident_date", formData.incident_date);
       fd.append("location", formData.location);
       fd.append("description", formData.description);
@@ -96,6 +113,8 @@ export default function IncidentReportForm({ previewMode = false }: IncidentRepo
   };
 
   const resetForm = () => {
+    setStep(1);
+    setSelectedIncidentType("");
     setFormData(EMPTY_FORM);
     setAttachmentFile(null);
     if (fileInputRef.current) fileInputRef.current.value = "";
@@ -121,59 +140,115 @@ export default function IncidentReportForm({ previewMode = false }: IncidentRepo
     );
   }
 
+  const activeTemplate: ActiveFormTemplate | null = options?.form_templates?.[selectedIncidentType] ?? null;
+
+  // Step 1: Pilih Jenis Insiden
+  if (step === 1) {
+    return (
+      <div className={previewMode ? "" : "max-w-3xl mx-auto space-y-6 pb-12"}>
+        {!previewMode && (
+          <>
+            <div>
+              <h1 className="text-3xl font-bold tracking-tight text-red-700 dark:text-red-400 flex items-center gap-2">
+                <ShieldAlert className="h-8 w-8" />
+                Pelaporan Insiden
+              </h1>
+              <p className="text-muted-foreground mt-2">
+                Pilih jenis insiden yang ingin Anda laporkan. Formulir pelaporan akan disesuaikan dengan jenis insiden yang dipilih.
+              </p>
+            </div>
+
+            <div className="bg-blue-50 dark:bg-blue-950/30 text-blue-800 dark:text-blue-300 p-4 rounded-lg flex gap-3 text-sm border border-blue-200 dark:border-blue-900">
+              <Info className="h-5 w-5 shrink-0 mt-0.5" />
+              <p>
+                Laporan Anda akan ditangani secara rahasia. Opsi anonimitas tersedia di dalam formulir pelaporan (jika didukung oleh template).
+              </p>
+            </div>
+          </>
+        )}
+
+        {previewMode && (
+          <div className="bg-amber-50 dark:bg-amber-950/30 text-amber-800 dark:text-amber-300 p-4 rounded-lg flex gap-3 text-sm border border-amber-200 dark:border-amber-900 mb-4">
+            <Eye className="h-5 w-5 shrink-0 mt-0.5" />
+            <p>
+              <strong>Mode Preview.</strong> Anda dapat melihat bagaimana pelapor memilih jenis insiden sebelum mengisi form lengkapnya.
+            </p>
+          </div>
+        )}
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Langkah 1: Jenis Insiden</CardTitle>
+            <CardDescription>Pilih kategori kejadian yang paling sesuai.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4 max-w-xl">
+              <Label htmlFor="incident_type" className="text-base">Kategori Insiden <span className="text-red-500">*</span></Label>
+              <Select value={selectedIncidentType} onValueChange={(v) => setSelectedIncidentType(v || "")} disabled={disabled}>
+                <SelectTrigger className="w-full h-12 text-base">
+                  <SelectValue placeholder="Pilih Jenis Insiden..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {(options?.incident_types ?? []).map((t) => (
+                    <SelectItem key={t.value} value={t.value} className="py-3 cursor-pointer">
+                      <div className="font-medium">{t.name}</div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </CardContent>
+          <CardFooter className="bg-muted/20 pt-6">
+            <Button
+              type="button"
+              onClick={handleNextStep}
+              disabled={!selectedIncidentType || disabled}
+              className="ml-auto bg-blue-600 hover:bg-blue-700"
+            >
+              Lanjutkan <ArrowRight className="h-4 w-4 ml-2" />
+            </Button>
+          </CardFooter>
+        </Card>
+      </div>
+    );
+  }
+
+  // Step 2 (Dynamic Template)
+  if (activeTemplate) {
+    return (
+      <div className={previewMode ? "" : "max-w-3xl mx-auto space-y-6 pb-12"}>
+        <div className="flex items-center gap-2 mb-2">
+          <Button variant="ghost" size="sm" onClick={handleBack} disabled={loading || disabled}>
+            <ArrowLeft className="h-4 w-4 mr-2" /> Kembali
+          </Button>
+        </div>
+        <DynamicIncidentForm
+          template={activeTemplate}
+          incidentType={selectedIncidentType}
+          previewMode={previewMode}
+          onSubmitSuccess={resetForm} // DynamicIncidentForm has its own success screen, but if it calls this, we reset
+        />
+      </div>
+    );
+  }
+
+  // Step 2 (Static Fallback Form)
   return (
     <div className={previewMode ? "" : "max-w-3xl mx-auto space-y-6 pb-12"}>
-      {!previewMode && (
-        <>
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight text-red-700 dark:text-red-400 flex items-center gap-2">
-              <ShieldAlert className="h-8 w-8" />
-              Pelaporan Insiden
-            </h1>
-            <p className="text-muted-foreground mt-2">
-              Formulir untuk melaporkan insiden keselamatan mahasiswa, keselamatan pasien, K3, perundungan, atau pelanggaran etik di lingkungan akademik klinis.
-            </p>
-          </div>
-
-          <div className="bg-blue-50 dark:bg-blue-950/30 text-blue-800 dark:text-blue-300 p-4 rounded-lg flex gap-3 text-sm border border-blue-200 dark:border-blue-900">
-            <Info className="h-5 w-5 shrink-0 mt-0.5" />
-            <p>
-              Laporan Anda akan ditangani secara rahasia. Jika Anda memilih opsi <strong>Lapor Anonim</strong>, identitas Anda tidak akan direkam di database dan tidak dapat dilihat oleh siapapun termasuk Admin.
-            </p>
-          </div>
-        </>
-      )}
-
-      {previewMode && (
-        <div className="bg-amber-50 dark:bg-amber-950/30 text-amber-800 dark:text-amber-300 p-4 rounded-lg flex gap-3 text-sm border border-amber-200 dark:border-amber-900 mb-4">
-          <Eye className="h-5 w-5 shrink-0 mt-0.5" />
-          <p>
-            <strong>Mode Preview.</strong> Beginilah tampilan form yang dilihat mahasiswa/pelapor berdasarkan konfigurasi saat ini. Input dinonaktifkan di mode ini.
-          </p>
-        </div>
-      )}
+      <div className="flex items-center gap-2 mb-2">
+        <Button variant="ghost" size="sm" onClick={handleBack} disabled={loading || disabled}>
+          <ArrowLeft className="h-4 w-4 mr-2" /> Kembali
+        </Button>
+      </div>
 
       <Card>
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={handleSubmitStatic}>
           <CardHeader>
-            <CardTitle>Detail Insiden</CardTitle>
+            <CardTitle>Detail Laporan: {(options?.incident_types ?? []).find(t => t.value === selectedIncidentType)?.name}</CardTitle>
             <CardDescription>Jelaskan kejadian dengan sebenar-benarnya dan selengkap mungkin.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="space-y-2">
-                <Label htmlFor="incident_type">Jenis Insiden <span className="text-red-500">*</span></Label>
-                <Select value={formData.incident_type} onValueChange={(v) => handleChange("incident_type", v)} disabled={disabled}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Pilih Jenis Insiden" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {(options?.incident_types ?? []).map((t) => (
-                      <SelectItem key={t.value} value={t.value}>{t.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
               <div className="space-y-2">
                 <Label htmlFor="incident_date">Tanggal Kejadian <span className="text-red-500">*</span></Label>
                 <Input
@@ -185,20 +260,19 @@ export default function IncidentReportForm({ previewMode = false }: IncidentRepo
                   disabled={disabled}
                 />
               </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="severity">Tingkat Keparahan</Label>
-              <Select value={formData.severity} onValueChange={(v) => handleChange("severity", v)} disabled={disabled}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Pilih Tingkat Keparahan (opsional)" />
-                </SelectTrigger>
-                <SelectContent>
-                  {(options?.incident_severities ?? []).map((s) => (
-                    <SelectItem key={s.value} value={s.value}>{s.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <div className="space-y-2">
+                <Label htmlFor="severity">Tingkat Keparahan</Label>
+                <Select value={formData.severity} onValueChange={(v) => handleChange("severity", v)} disabled={disabled}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Pilih Tingkat Keparahan (opsional)" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {(options?.incident_severities ?? []).map((s) => (
+                      <SelectItem key={s.value} value={s.value}>{s.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
 
             <div className="space-y-2">
@@ -299,7 +373,7 @@ export default function IncidentReportForm({ previewMode = false }: IncidentRepo
           </CardContent>
           <CardFooter className="flex flex-col-reverse sm:flex-row sm:justify-between gap-3 bg-muted/20 pt-6">
             {!previewMode && (
-              <Button type="button" variant="outline" className="w-full sm:w-auto" onClick={() => window.history.back()}>Batal</Button>
+              <Button type="button" variant="outline" className="w-full sm:w-auto" onClick={handleBack}>Batal</Button>
             )}
             <Button type="submit" disabled={loading || disabled} className="bg-red-600 hover:bg-red-700 text-white w-full sm:w-auto sm:ml-auto">
               {loading ? "Mengirim Laporan..." : "Kirim Laporan Insiden"}

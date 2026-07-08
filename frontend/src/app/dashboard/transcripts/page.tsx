@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useTranslations } from "next-intl";
 import api from "@/lib/api";
 import { Student } from "@/lib/types";
 import { useRouter } from "next/navigation";
@@ -14,6 +15,8 @@ import { FileText, Search, GraduationCap, ChevronLeft, ChevronRight } from "luci
 
 export default function TranscriptsPage() {
   const router = useRouter();
+  const t = useTranslations("yudisiumTranscripts");
+  const tc = useTranslations("common");
   const [searchTerm, setSearchTerm] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [page, setPage] = useState(1);
@@ -48,21 +51,21 @@ export default function TranscriptsPage() {
     <div className="max-w-6xl mx-auto space-y-6">
       <div className="flex flex-col md:flex-row justify-between md:items-end gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Transkrip & Yudisium</h1>
-          <p className="text-muted-foreground mt-1">Cetak rekapitulasi nilai akhir profesi mahasiswa.</p>
+          <h1 className="text-3xl font-bold tracking-tight">{t("title")}</h1>
+          <p className="text-muted-foreground mt-1">{t("subtitle")}</p>
         </div>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle>Daftar Mahasiswa (Peserta Didik)</CardTitle>
-          <CardDescription>Pilih mahasiswa untuk melihat dan mencetak transkrip nilainya.</CardDescription>
+          <CardTitle>{t("listTitle")}</CardTitle>
+          <CardDescription>{t("listDescription")}</CardDescription>
           <div className="mt-4 flex max-w-sm items-center space-x-2">
             <div className="relative flex-1">
               <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input
                 type="search"
-                placeholder="Cari nama atau NIM..."
+                placeholder={t("searchPlaceholder")}
                 className="pl-8"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
@@ -82,11 +85,11 @@ export default function TranscriptsPage() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>NIM</TableHead>
-                    <TableHead>Nama Mahasiswa</TableHead>
-                    <TableHead>Angkatan</TableHead>
-                    <TableHead>Program Studi</TableHead>
-                    <TableHead className="text-right">Aksi</TableHead>
+                    <TableHead>{t("nim")}</TableHead>
+                    <TableHead>{t("studentName")}</TableHead>
+                    <TableHead>{t("cohort")}</TableHead>
+                    <TableHead>{t("program")}</TableHead>
+                    <TableHead className="text-right">{tc("actions")}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -110,7 +113,7 @@ export default function TranscriptsPage() {
                             onClick={() => router.push(`/dashboard/transcripts/${student.user_id}`)}
                           >
                             <FileText className="h-4 w-4" />
-                            Lihat Transkrip
+                            {t("viewTranscript")}
                           </Button>
                         </TableCell>
                       </TableRow>
@@ -118,7 +121,7 @@ export default function TranscriptsPage() {
                   ) : (
                     <TableRow>
                       <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">
-                        Tidak ada mahasiswa yang ditemukan.
+                        {t("empty")}
                       </TableCell>
                     </TableRow>
                   )}
@@ -130,7 +133,7 @@ export default function TranscriptsPage() {
         {!isLoading && totalPages > 1 && (
           <CardFooter className="flex items-center justify-between border-t p-4">
             <div className="text-sm text-muted-foreground">
-              Halaman {page} dari {totalPages} (Total: {paginatedData?.total || 0} Mahasiswa)
+              {t("pageInfo", { page, totalPages, total: paginatedData?.total || 0 })}
             </div>
             <div className="flex space-x-2">
               <Button
@@ -140,7 +143,7 @@ export default function TranscriptsPage() {
                 disabled={page === 1}
               >
                 <ChevronLeft className="h-4 w-4 mr-1" />
-                Sebelumnya
+                {tc("previous")}
               </Button>
               <Button
                 variant="outline"
@@ -148,7 +151,7 @@ export default function TranscriptsPage() {
                 onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                 disabled={page === totalPages}
               >
-                Selanjutnya
+                {tc("next")}
                 <ChevronRight className="h-4 w-4 ml-1" />
               </Button>
             </div>

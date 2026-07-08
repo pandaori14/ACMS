@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useTranslations } from "next-intl";
 import { useAuthStore } from "@/store/useAuthStore";
 import api from "@/lib/api";
 import { getApiErrorMessage } from "@/lib/api-helpers";
@@ -67,6 +68,8 @@ const selectClass =
   "flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background";
 
 export default function ExaminationsPage() {
+  const t = useTranslations("examList");
+  const tc = useTranslations("common");
   const user = useAuthStore((state) => state.user);
   const permissions = user?.permissions;
   const queryClient = useQueryClient();
@@ -165,7 +168,7 @@ export default function ExaminationsPage() {
                 passing_score: full.passing_score,
               };
         await api.put(`/api/v1/examinations/${editingId}`, payload);
-        toast.success("Ujian diperbarui.");
+        toast.success(t("updated"));
       } else {
         await api.post("/api/v1/examinations", {
           ...toPayload(form),
@@ -174,12 +177,12 @@ export default function ExaminationsPage() {
               ? stations.filter((s) => s.trim() !== "").map((name) => ({ name }))
               : undefined,
         });
-        toast.success("Ujian dijadwalkan.");
+        toast.success(t("scheduled"));
       }
       setIsFormOpen(false);
       refresh();
     } catch (err) {
-      toast.error(getApiErrorMessage(err, "Gagal menyimpan ujian."));
+      toast.error(getApiErrorMessage(err, t("saveError")));
     } finally {
       setIsSaving(false);
     }
@@ -189,10 +192,10 @@ export default function ExaminationsPage() {
     if (!deleting) return;
     try {
       await api.delete(`/api/v1/examinations/${deleting.id}`);
-      toast.success("Ujian dihapus.");
+      toast.success(t("deleted"));
       refresh();
     } catch (err) {
-      toast.error(getApiErrorMessage(err, "Gagal menghapus ujian."));
+      toast.error(getApiErrorMessage(err, t("deleteError")));
     } finally {
       setDeleting(null);
     }
@@ -201,10 +204,10 @@ export default function ExaminationsPage() {
   const handleChangeStatus = async (exam: Exam, status: string) => {
     try {
       await api.patch(`/api/v1/examinations/${exam.id}/status`, { status });
-      toast.success(`Status ujian diubah ke ${status}.`);
+      toast.success(t("statusChanged", { status }));
       refresh();
     } catch (err) {
-      toast.error(getApiErrorMessage(err, "Gagal mengubah status."));
+      toast.error(getApiErrorMessage(err, t("statusError")));
     }
   };
 

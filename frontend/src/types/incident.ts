@@ -89,6 +89,8 @@ export interface IncidentFormOptions {
     max_size_mb: number;
     allowed_types: string;
   };
+  /** Template form aktif per jenis insiden (dari form builder). */
+  form_templates?: Record<string, import('./incident-form').ActiveFormTemplate>;
 }
 
 /** Konfigurasi penuh (termasuk item nonaktif) untuk halaman CONFIGURE. */

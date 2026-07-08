@@ -225,5 +225,26 @@
     "latestGrades": "Nilai Terbaru",
     "noPublishedGrades": "Belum ada nilai stase yang dipublikasikan.",
     "score": "Skor: {score}"
+  },
+  "preceptorDash": {
+    "title": "Dasbor Preceptor",
+    "subtitle": "Pantau mahasiswa bimbingan, verifikasi logbook, dan lakukan penilaian klinis.",
+    "supervisedStudents": "Mahasiswa Bimbingan",
+    "supervisedStudentsSub": "Total mahasiswa yang pernah/masih dibimbing",
+    "awaitingVerification": "Menunggu Verifikasi",
+    "logbooksToReview": "Logbook perlu ditinjau",
+    "totalAssessments": "Total Penilaian",
+    "assessmentsSub": "Mini-CEX / DOPS / CBD yang telah diisi",
+    "activeSupervised": "Mahasiswa Bimbingan Aktif",
+    "activeSupervisedSub": "Mahasiswa pada periode rotasi yang sedang berjalan.",
+    "noActiveStudents": "Belum ada mahasiswa yang ditugaskan kepada Anda pada periode berjalan.",
+    "quickActions": "Aksi Cepat",
+    "quickActionsSub": "Jalan pintas untuk tugas harian",
+    "verifyLogbook": "Verifikasi Logbook",
+    "logbooksWaiting": "{count} logbook menunggu tinjauan",
+    "fillAssessment": "Isi Penilaian Klinis",
+    "startAssessmentSession": "Mulai sesi Mini-CEX / DOPS / CBD",
+    "myHonorarium": "Honorarium Saya",
+    "honorariumSub": "Riwayat insentif bimbingan & ujian"
   }
 }

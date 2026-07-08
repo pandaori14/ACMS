@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Users, FileText, CheckCircle, Clock, Wallet } from "lucide-react";
@@ -23,6 +24,7 @@ interface PreceptorStats {
 }
 
 export default function PreceptorDashboardPage() {
+  const t = useTranslations("preceptorDash");
   const [stats, setStats] = useState<PreceptorStats | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -54,48 +56,48 @@ export default function PreceptorDashboardPage() {
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-white">Dasbor Preceptor</h1>
+        <h1 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-white">{t("title")}</h1>
         <p className="text-muted-foreground mt-2">
-          Pantau mahasiswa bimbingan, verifikasi logbook, dan lakukan penilaian klinis.
+          {t("subtitle")}
         </p>
       </div>
 
       <div className="grid gap-4 md:grid-cols-3">
         <Card className="hover:shadow-md transition-shadow border-l-4 border-l-blue-500">
           <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-            <CardTitle className="text-sm font-medium">Mahasiswa Bimbingan</CardTitle>
+            <CardTitle className="text-sm font-medium">{t("supervisedStudents")}</CardTitle>
             <Users className="h-4 w-4 text-blue-500" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{stats?.assigned_students || 0}</div>
             <p className="text-xs text-muted-foreground mt-1">
-              Total mahasiswa yang pernah/masih dibimbing
+              {t("supervisedStudentsSub")}
             </p>
           </CardContent>
         </Card>
 
         <Card className="hover:shadow-md transition-shadow border-l-4 border-l-orange-500">
           <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-            <CardTitle className="text-sm font-medium">Menunggu Verifikasi</CardTitle>
+            <CardTitle className="text-sm font-medium">{t("awaitingVerification")}</CardTitle>
             <Clock className="h-4 w-4 text-orange-500" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{stats?.pending_logbooks || 0}</div>
             <p className="text-xs text-muted-foreground mt-1">
-              Logbook perlu ditinjau
+              {t("logbooksToReview")}
             </p>
           </CardContent>
         </Card>
 
         <Card className="hover:shadow-md transition-shadow border-l-4 border-l-green-500">
           <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-            <CardTitle className="text-sm font-medium">Total Penilaian</CardTitle>
+            <CardTitle className="text-sm font-medium">{t("totalAssessments")}</CardTitle>
             <CheckCircle className="h-4 w-4 text-green-500" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{stats?.total_assessments || 0}</div>
             <p className="text-xs text-muted-foreground mt-1">
-              Mini-CEX / DOPS / CBD yang telah diisi
+              {t("assessmentsSub")}
             </p>
           </CardContent>
         </Card>
@@ -104,9 +106,9 @@ export default function PreceptorDashboardPage() {
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7 mt-8">
         <Card className="col-span-full lg:col-span-4">
           <CardHeader>
-            <CardTitle>Mahasiswa Bimbingan Aktif</CardTitle>
+            <CardTitle>{t("activeSupervised")}</CardTitle>
             <CardDescription>
-              Mahasiswa pada periode rotasi yang sedang berjalan.
+              {t("activeSupervisedSub")}
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -114,7 +116,7 @@ export default function PreceptorDashboardPage() {
               <div className="flex flex-col items-center justify-center p-8 text-center bg-gray-50 dark:bg-gray-800/50 rounded-lg border border-dashed">
                 <Users className="h-10 w-10 text-gray-400 mb-3" />
                 <p className="text-sm text-gray-500 max-w-sm">
-                  Belum ada mahasiswa yang ditugaskan kepada Anda pada periode berjalan.
+                  {t("noActiveStudents")}
                 </p>
               </div>
             ) : (
@@ -139,8 +141,8 @@ export default function PreceptorDashboardPage() {
 
         <Card className="col-span-full lg:col-span-3">
           <CardHeader>
-            <CardTitle>Aksi Cepat</CardTitle>
-            <CardDescription>Jalan pintas untuk tugas harian</CardDescription>
+            <CardTitle>{t("quickActions")}</CardTitle>
+            <CardDescription>{t("quickActionsSub")}</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <Link href="/dashboard/clinical/verification" className="flex items-center p-3 rounded-lg border hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
@@ -148,9 +150,9 @@ export default function PreceptorDashboardPage() {
                 <Clock className="h-5 w-5 text-orange-600 dark:text-orange-400" />
               </div>
               <div>
-                <h4 className="text-sm font-medium">Verifikasi Logbook</h4>
+                <h4 className="text-sm font-medium">{t("verifyLogbook")}</h4>
                 <p className="text-xs text-muted-foreground">
-                  {stats?.pending_logbooks || 0} logbook menunggu tinjauan
+                  {t("logbooksWaiting", { count: stats?.pending_logbooks || 0 })}
                 </p>
               </div>
             </Link>
@@ -160,8 +162,8 @@ export default function PreceptorDashboardPage() {
                 <FileText className="h-5 w-5 text-blue-600 dark:text-blue-400" />
               </div>
               <div>
-                <h4 className="text-sm font-medium">Isi Penilaian Klinis</h4>
-                <p className="text-xs text-muted-foreground">Mulai sesi Mini-CEX / DOPS / CBD</p>
+                <h4 className="text-sm font-medium">{t("fillAssessment")}</h4>
+                <p className="text-xs text-muted-foreground">{t("startAssessmentSession")}</p>
               </div>
             </Link>
 

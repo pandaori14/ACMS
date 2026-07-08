@@ -3,6 +3,7 @@
 use Illuminate\Support\Facades\Route;
 use Modules\Incident\Http\Controllers\ConsultationController;
 use Modules\Incident\Http\Controllers\IncidentConfigController;
+use Modules\Incident\Http\Controllers\IncidentFormTemplateController;
 use Modules\Incident\Http\Controllers\IncidentReportController;
 
 Route::middleware(['auth:sanctum'])->prefix('v1/incidents')->name('api.v1.incidents.')->group(function () {
@@ -19,6 +20,17 @@ Route::middleware(['auth:sanctum'])->prefix('v1/incidents')->name('api.v1.incide
     Route::middleware('permission:configure-incident-form')->group(function () {
         Route::get('/config', [IncidentConfigController::class, 'show'])->name('config.show');
         Route::put('/config', [IncidentConfigController::class, 'update'])->name('config.update');
+
+        // Form Template Builder
+        Route::get('/config/field-types', [IncidentFormTemplateController::class, 'fieldTypes'])->name('config.fieldTypes');
+        Route::get('/config/templates', [IncidentFormTemplateController::class, 'index'])->name('config.templates.index');
+        Route::post('/config/templates', [IncidentFormTemplateController::class, 'store'])->name('config.templates.store');
+        Route::get('/config/templates/{id}', [IncidentFormTemplateController::class, 'show'])->name('config.templates.show');
+        Route::put('/config/templates/{id}', [IncidentFormTemplateController::class, 'update'])->name('config.templates.update');
+        Route::patch('/config/templates/{id}/activate', [IncidentFormTemplateController::class, 'activate'])->name('config.templates.activate');
+        Route::patch('/config/templates/{id}/deactivate', [IncidentFormTemplateController::class, 'deactivate'])->name('config.templates.deactivate');
+        Route::post('/config/templates/{id}/clone', [IncidentFormTemplateController::class, 'clone'])->name('config.templates.clone');
+        Route::delete('/config/templates/{id}', [IncidentFormTemplateController::class, 'destroy'])->name('config.templates.destroy');
     });
 
     Route::get('/{id}', [IncidentReportController::class, 'show'])->name('show');

@@ -225,5 +225,26 @@
     "latestGrades": "Latest Grades",
     "noPublishedGrades": "No published stase grades yet.",
     "score": "Score: {score}"
+  },
+  "preceptorDash": {
+    "title": "Preceptor Dashboard",
+    "subtitle": "Monitor your supervised students, verify logbooks, and conduct clinical assessments.",
+    "supervisedStudents": "Supervised Students",
+    "supervisedStudentsSub": "Total students supervised (past or ongoing)",
+    "awaitingVerification": "Awaiting Verification",
+    "logbooksToReview": "Logbooks to review",
+    "totalAssessments": "Total Assessments",
+    "assessmentsSub": "Mini-CEX / DOPS / CBD completed",
+    "activeSupervised": "Active Supervised Students",
+    "activeSupervisedSub": "Students in the ongoing rotation period.",
+    "noActiveStudents": "No students are assigned to you in the current period yet.",
+    "quickActions": "Quick Actions",
+    "quickActionsSub": "Shortcuts for daily tasks",
+    "verifyLogbook": "Verify Logbook",
+    "logbooksWaiting": "{count} logbooks awaiting review",
+    "fillAssessment": "Fill Clinical Assessment",
+    "startAssessmentSession": "Start a Mini-CEX / DOPS / CBD session",
+    "myHonorarium": "My Honorarium",
+    "honorariumSub": "Supervision & exam incentive history"
   }
 }

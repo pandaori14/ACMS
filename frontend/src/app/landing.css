@@ -1,0 +1,445 @@
+/* ================================================================
+   ACMS Landing Page — Enterprise Styles
+   ================================================================
+   Dedicated CSS for the landing page. Zero inline <style> blocks.
+   Imported by AcmsLandingPage.tsx.
+   ================================================================ */
+
+/* --- Grain / noise overlay ------------------------------------ */
+.landing-grain {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 9999;
+  opacity: 0.028;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.82' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-repeat: repeat;
+  background-size: 180px;
+  mix-blend-mode: overlay;
+}
+
+/* --- Hero mesh gradient background ---------------------------- */
+.landing-hero-bg {
+  position: relative;
+  background: linear-gradient(
+    168deg,
+    hsl(222, 47%, 8%) 0%,
+    hsl(220, 40%, 12%) 35%,
+    hsl(215, 35%, 15%) 65%,
+    hsl(210, 30%, 10%) 100%
+  );
+  overflow: hidden;
+}
+
+/* Ambient radial mesh blobs — pure CSS, no canvas */
+.landing-hero-bg::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 55% 45% at 12% 35%, hsla(220, 60%, 30%, 0.35) 0%, transparent 70%),
+    radial-gradient(ellipse 40% 50% at 85% 65%, hsla(45, 80%, 50%, 0.06) 0%, transparent 70%),
+    radial-gradient(ellipse 60% 40% at 55% 20%, hsla(200, 50%, 40%, 0.12) 0%, transparent 60%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Subtle grid pattern on hero */
+.landing-hero-grid {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.018) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.018) 1px, transparent 1px);
+  background-size: 64px 64px;
+  mask-image: radial-gradient(ellipse 80% 60% at 50% 40%, black 20%, transparent 75%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Hero fade-out at the bottom */
+.landing-hero-fade {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 160px;
+  background: linear-gradient(to top, hsl(210, 20%, 98%), transparent);
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* --- Navigation ------------------------------------------------ */
+.landing-nav {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 50;
+  backdrop-filter: blur(20px) saturate(1.8);
+  -webkit-backdrop-filter: blur(20px) saturate(1.8);
+  background: rgba(255, 255, 255, 0.82);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.04);
+  transition: all 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.landing-nav--scrolled {
+  box-shadow: 0 1px 12px rgba(0, 0, 0, 0.06);
+}
+
+.landing-nav--dark {
+  background: rgba(15, 23, 42, 0.75);
+  border-bottom-color: rgba(255, 255, 255, 0.04);
+}
+
+/* Nav link hover underline */
+.landing-nav-link {
+  position: relative;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: hsl(215, 16%, 47%);
+  transition: color 0.2s ease;
+}
+
+.landing-nav-link:hover {
+  color: hsl(222, 47%, 11%);
+}
+
+.landing-nav-link::after {
+  content: "";
+  position: absolute;
+  bottom: -2px;
+  left: 0;
+  right: 0;
+  height: 1.5px;
+  background: hsl(222, 47%, 11%);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.25s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.landing-nav-link:hover::after {
+  transform: scaleX(1);
+}
+
+/* --- Stat counter (hero) -------------------------------------- */
+.landing-stat-value {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.03em;
+  line-height: 1;
+}
+
+.landing-stat-divider {
+  width: 1px;
+  height: 48px;
+  background: rgba(255, 255, 255, 0.1);
+  flex-shrink: 0;
+}
+
+/* --- Process steps (horizontal) -------------------------------- */
+.landing-step-connector {
+  position: absolute;
+  top: 24px;
+  left: calc(50% + 24px);
+  width: calc(100% - 48px);
+  height: 2px;
+  background: repeating-linear-gradient(
+    90deg,
+    hsl(214, 32%, 85%) 0px,
+    hsl(214, 32%, 85%) 6px,
+    transparent 6px,
+    transparent 12px
+  );
+}
+
+/* last column has no connector */
+.landing-step-connector--hidden {
+  display: none;
+}
+
+/* Step number badge */
+.landing-step-number {
+  width: 48px;
+  height: 48px;
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: hsl(222, 47%, 11%);
+  background: hsl(210, 20%, 97%);
+  border: 2px solid hsl(214, 32%, 91%);
+  transition: all 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+  flex-shrink: 0;
+}
+
+.landing-step:hover .landing-step-number {
+  background: hsl(222, 47%, 11%);
+  color: white;
+  border-color: hsl(222, 47%, 11%);
+  transform: scale(1.08);
+  box-shadow: 0 4px 20px hsla(222, 47%, 11%, 0.2);
+}
+
+/* --- Feature blocks (zig-zag) --------------------------------- */
+.landing-feature-block {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4rem;
+  align-items: center;
+}
+
+.landing-feature-block--reversed {
+  direction: rtl;
+}
+
+.landing-feature-block--reversed > * {
+  direction: ltr;
+}
+
+@media (max-width: 768px) {
+  .landing-feature-block,
+  .landing-feature-block--reversed {
+    grid-template-columns: 1fr;
+    gap: 2rem;
+    direction: ltr;
+  }
+}
+
+/* Feature visual placeholder (abstract UI) */
+.landing-feature-visual {
+  position: relative;
+  border-radius: 20px;
+  background: hsl(210, 20%, 97%);
+  border: 1px solid hsl(214, 32%, 91%);
+  overflow: hidden;
+  aspect-ratio: 4 / 3;
+  transition: all 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.landing-feature-visual:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 20px 50px hsla(222, 47%, 11%, 0.08);
+  border-color: hsla(222, 47%, 11%, 0.12);
+}
+
+/* Internal UI mockup bars for visual */
+.landing-mock-bar {
+  height: 10px;
+  border-radius: 5px;
+  background: hsl(214, 32%, 88%);
+}
+
+.landing-mock-bar--accent {
+  background: hsla(222, 47%, 40%, 0.15);
+}
+
+.landing-mock-bar--gold {
+  background: hsla(45, 93%, 47%, 0.2);
+}
+
+/* Feature accent line */
+.landing-accent-line {
+  width: 48px;
+  height: 3px;
+  border-radius: 2px;
+  background: hsl(222, 47%, 11%);
+  margin-bottom: 1.5rem;
+}
+
+.landing-accent-line--gold {
+  background: hsl(45, 93%, 47%);
+}
+
+/* --- Trust banner ---------------------------------------------- */
+.landing-trust-banner {
+  background: linear-gradient(
+    135deg,
+    hsl(222, 47%, 9%) 0%,
+    hsl(220, 40%, 13%) 100%
+  );
+  position: relative;
+  overflow: hidden;
+}
+
+.landing-trust-banner::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 40% 60% at 10% 50%, hsla(45, 80%, 50%, 0.04) 0%, transparent 60%),
+    radial-gradient(ellipse 50% 40% at 90% 50%, hsla(220, 60%, 40%, 0.08) 0%, transparent 60%);
+  pointer-events: none;
+}
+
+/* --- Scroll-aware entrance animations ------------------------- */
+@keyframes landing-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes landing-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes landing-scale-in {
+  from {
+    opacity: 0;
+    transform: scale(0.92);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Hero entrance stagger */
+.landing-hero-badge {
+  animation: landing-fade-up 0.8s cubic-bezier(0.22, 1, 0.36, 1) 0.1s both;
+}
+
+.landing-hero-heading {
+  animation: landing-fade-up 0.9s cubic-bezier(0.22, 1, 0.36, 1) 0.25s both;
+}
+
+.landing-hero-desc {
+  animation: landing-fade-up 0.85s cubic-bezier(0.22, 1, 0.36, 1) 0.4s both;
+}
+
+.landing-hero-cta {
+  animation: landing-fade-up 0.8s cubic-bezier(0.22, 1, 0.36, 1) 0.55s both;
+}
+
+.landing-hero-stats {
+  animation: landing-fade-up 0.8s cubic-bezier(0.22, 1, 0.36, 1) 0.7s both;
+}
+
+.landing-hero-visual {
+  animation: landing-scale-in 1s cubic-bezier(0.22, 1, 0.36, 1) 0.5s both;
+}
+
+/* --- CTA button premium style --------------------------------- */
+.landing-btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.875rem 2rem;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: white;
+  background: hsl(222, 47%, 11%);
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+  box-shadow: 0 2px 8px hsla(222, 47%, 11%, 0.25);
+  text-decoration: none;
+}
+
+.landing-btn-primary:hover {
+  background: hsl(222, 47%, 16%);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px hsla(222, 47%, 11%, 0.3);
+}
+
+.landing-btn-primary:active {
+  transform: translateY(0);
+  box-shadow: 0 1px 4px hsla(222, 47%, 11%, 0.2);
+}
+
+.landing-btn-primary--gold {
+  background: hsl(45, 93%, 47%);
+  color: hsl(222, 47%, 11%);
+  box-shadow: 0 2px 8px hsla(45, 93%, 47%, 0.3);
+}
+
+.landing-btn-primary--gold:hover {
+  background: hsl(45, 93%, 52%);
+  box-shadow: 0 8px 25px hsla(45, 93%, 47%, 0.35);
+}
+
+.landing-btn-ghost {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.9375rem;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.6);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: color 0.2s ease;
+  text-decoration: none;
+}
+
+.landing-btn-ghost:hover {
+  color: white;
+}
+
+/* --- Section heading pattern ----------------------------------- */
+.landing-section-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: hsl(215, 16%, 47%);
+  margin-bottom: 1rem;
+}
+
+.landing-section-label-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: hsl(45, 93%, 47%);
+  flex-shrink: 0;
+}
+
+.landing-section-heading {
+  font-size: clamp(1.875rem, 4vw, 2.75rem);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1.15;
+  color: hsl(222, 47%, 11%);
+  text-wrap: balance;
+  margin-bottom: 1.25rem;
+}
+
+.landing-section-desc {
+  font-size: 1.0625rem;
+  line-height: 1.7;
+  color: hsl(215, 16%, 47%);
+  max-width: 42rem;
+}
+
+/* --- Platform overview abstract card -------------------------- */
+.landing-overview-card {
+  background: white;
+  border-radius: 16px;
+  border: 1px solid hsl(214, 32%, 91%);
+  box-shadow: 0 4px 24px hsla(222, 47%, 11%, 0.04);
+  overflow: hidden;
+  transition: all 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.landing-overview-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 40px hsla(222, 47%, 11%, 0.08);
+  border-color: hsla(222, 47%, 11%, 0.1);
+}
+
+/* Smooth scroll for anchor links */
+html {
+  scroll-behavior: smooth;
+}

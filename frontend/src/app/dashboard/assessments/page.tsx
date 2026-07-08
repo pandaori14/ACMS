@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import { useTranslations } from "next-intl";
 import api from "@/lib/api";
 import { RubricSchema } from "@/lib/types";
 import {
@@ -45,6 +46,8 @@ interface Assessment {
 }
 
 export default function AssessmentHistoryPage() {
+  const t = useTranslations("assessmentList");
+  const tc = useTranslations("common");
   const [assessments, setAssessments] = useState<Assessment[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedAssessment, setSelectedAssessment] = useState<Assessment | null>(null);
@@ -93,11 +96,11 @@ export default function AssessmentHistoryPage() {
   const getStatusBadge = (status: string) => {
     switch (status) {
       case "draft":
-        return <span className="inline-flex items-center rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-800">Draf</span>;
+        return <span className="inline-flex items-center rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-800">{t("statusDraft")}</span>;
       case "submitted":
-        return <span className="inline-flex items-center rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-medium text-amber-800">Menunggu Persetujuan</span>;
+        return <span className="inline-flex items-center rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-medium text-amber-800">{t("statusSubmitted")}</span>;
       case "acknowledged":
-        return <span className="inline-flex items-center rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-medium text-emerald-800">Disetujui</span>;
+        return <span className="inline-flex items-center rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-medium text-emerald-800">{t("statusAcknowledged")}</span>;
       default:
         return <span>{status}</span>;
     }
@@ -128,11 +131,11 @@ export default function AssessmentHistoryPage() {
         scores: editScores,
         feedback_notes: editFeedback,
       });
-      toast.success("Penilaian diperbarui.");
+      toast.success(t("updated"));
       setEditing(null);
       fetchAssessments();
     } catch (err) {
-      toast.error(getApiErrorMessage(err, "Gagal memperbarui penilaian."));
+      toast.error(getApiErrorMessage(err, t("updateError")));
     } finally {
       setIsSavingEdit(false);
     }
@@ -142,10 +145,10 @@ export default function AssessmentHistoryPage() {
     if (!deleting) return;
     try {
       await api.delete(`/api/v1/assessments/${deleting.id}`);
-      toast.success("Penilaian dihapus.");
+      toast.success(t("deleted"));
       fetchAssessments();
     } catch (err) {
-      toast.error(getApiErrorMessage(err, "Gagal menghapus penilaian."));
+      toast.error(getApiErrorMessage(err, t("deleteError")));
     } finally {
       setDeleting(null);
     }
@@ -155,9 +158,9 @@ export default function AssessmentHistoryPage() {
     <div className="space-y-6">
       <div className="mb-8 flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight text-gray-900">Riwayat Penilaian</h1>
+          <h1 className="text-3xl font-bold tracking-tight text-gray-900">{t("title")}</h1>
           <p className="text-muted-foreground mt-1">
-            Lihat hasil evaluasi Mini-CEX, DOPS, dan CBD Anda.
+            {t("subtitle")}
           </p>
         </div>
       </div>
@@ -166,13 +169,13 @@ export default function AssessmentHistoryPage() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Tanggal</TableHead>
-              <TableHead>Jenis Instrumen</TableHead>
-              {!isStudent && <TableHead>Mahasiswa</TableHead>}
-              {isStudent && <TableHead>Dodiknis / Penilai</TableHead>}
-              <TableHead>Total Nilai</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead className="text-right">Aksi</TableHead>
+              <TableHead>{tc("date")}</TableHead>
+              <TableHead>{t("colInstrumentType")}</TableHead>
+              {!isStudent && <TableHead>{t("colStudent")}</TableHead>}
+              {isStudent && <TableHead>{t("colAssessor")}</TableHead>}
+              <TableHead>{t("totalScore")}</TableHead>
+              <TableHead>{tc("status")}</TableHead>
+              <TableHead className="text-right">{tc("actions")}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -191,7 +194,7 @@ export default function AssessmentHistoryPage() {
               <TableRow>
                 <TableCell colSpan={6} className="text-center py-10">
                   <BookOpen className="mx-auto h-10 w-10 text-muted-foreground mb-3 opacity-20" />
-                  <p className="text-muted-foreground">Belum ada riwayat penilaian.</p>
+                  <p className="text-muted-foreground">{t("empty")}</p>
                 </TableCell>
               </TableRow>
             ) : (
@@ -201,7 +204,7 @@ export default function AssessmentHistoryPage() {
                   <TableCell className="font-medium text-blue-600">
                     <div className="flex items-center gap-2">
                       <FileText className="h-4 w-4" />
-                      {a.template?.name || "Instrumen"}
+                      {a.template?.name || t("instrument")}
                     </div>
                   </TableCell>
                   {!isStudent && <TableCell>{a.student?.name}</TableCell>}
@@ -212,11 +215,11 @@ export default function AssessmentHistoryPage() {
                   <TableCell>{getStatusBadge(a.status)}</TableCell>
                   <TableCell className="text-right whitespace-nowrap">
                     <Button variant="outline" size="sm" onClick={() => viewDetails(a)}>
-                      Detail
+                      {t("detailBtn")}
                     </Button>
                     {!isStudent && a.status !== "acknowledged" && (
                       <>
-                        <Button variant="ghost" size="sm" className="ml-1" onClick={() => openEdit(a)} aria-label="Edit">
+                        <Button variant="ghost" size="sm" className="ml-1" onClick={() => openEdit(a)} aria-label={tc("edit")}>
                           <Pencil className="h-4 w-4" />
                         </Button>
                         <Button
@@ -224,7 +227,7 @@ export default function AssessmentHistoryPage() {
                           size="sm"
                           className="text-red-600 hover:text-red-700"
                           onClick={() => setDeleting(a)}
-                          aria-label="Hapus"
+                          aria-label={tc("delete")}
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>
@@ -241,31 +244,31 @@ export default function AssessmentHistoryPage() {
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent className="sm:max-w-xl max-h-[85vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Detail Penilaian</DialogTitle>
+            <DialogTitle>{t("detailTitle")}</DialogTitle>
           </DialogHeader>
           {selectedAssessment && (
             <div className="space-y-6 mt-4">
               <div className="grid grid-cols-2 gap-4 text-sm bg-muted/30 p-4 rounded-lg">
                 <div>
-                  <p className="text-muted-foreground">Instrumen</p>
+                  <p className="text-muted-foreground">{t("instrument")}</p>
                   <p className="font-medium">{selectedAssessment.template?.name}</p>
                 </div>
                 <div>
-                  <p className="text-muted-foreground">Tanggal</p>
+                  <p className="text-muted-foreground">{tc("date")}</p>
                   <p className="font-medium">{new Date(selectedAssessment.assessment_date).toLocaleDateString('id-ID')}</p>
                 </div>
                 <div>
-                  <p className="text-muted-foreground">Dodiknis</p>
+                  <p className="text-muted-foreground">{t("fieldPreceptor")}</p>
                   <p className="font-medium">{selectedAssessment.preceptor?.name}</p>
                 </div>
                 <div>
-                  <p className="text-muted-foreground">Total Nilai</p>
+                  <p className="text-muted-foreground">{t("totalScore")}</p>
                   <p className="font-bold text-blue-600 text-lg">{selectedAssessment.total_score}</p>
                 </div>
               </div>
 
               <div>
-                <h4 className="font-semibold mb-3 border-b pb-2">Rincian Nilai</h4>
+                <h4 className="font-semibold mb-3 border-b pb-2">{t("scoreBreakdown")}</h4>
                 <div className="space-y-3">
                   {selectedAssessment.template?.rubric_schema?.indicators?.map((indicator) => {
                     const score = selectedAssessment.scores?.find(s => s.rubric_key === indicator.key);
@@ -282,25 +285,25 @@ export default function AssessmentHistoryPage() {
               </div>
 
               <div>
-                <h4 className="font-semibold mb-2 border-b pb-2">Umpan Balik (Feedback)</h4>
+                <h4 className="font-semibold mb-2 border-b pb-2">{t("feedback")}</h4>
                 <p className="text-sm text-gray-700 whitespace-pre-wrap bg-yellow-50/50 p-4 rounded-lg border border-yellow-100">
-                  {selectedAssessment.feedback_notes || "Tidak ada catatan."}
+                  {selectedAssessment.feedback_notes || t("noFeedback")}
                 </p>
               </div>
 
               {isStudent && selectedAssessment.status === "submitted" && (
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 flex items-center justify-between mt-6">
                   <div>
-                    <h5 className="font-medium text-blue-800">Persetujuan Penilaian</h5>
-                    <p className="text-sm text-blue-600">Klik tombol di samping untuk menyatakan Anda telah menerima hasil ini.</p>
+                    <h5 className="font-medium text-blue-800">{t("ackHeading")}</h5>
+                    <p className="text-sm text-blue-600">{t("ackDesc")}</p>
                   </div>
-                  <Button 
+                  <Button
                     className="bg-blue-600 hover:bg-blue-700 gap-2"
                     onClick={() => handleAcknowledge(selectedAssessment.id)}
                     disabled={acknowledging}
                   >
                     <CheckCircle2 className="h-4 w-4" />
-                    Setujui (Acknowledge)
+                    {t("ackBtn")}
                   </Button>
                 </div>
               )}
@@ -313,7 +316,7 @@ export default function AssessmentHistoryPage() {
       <Dialog open={!!editing} onOpenChange={(open) => !open && setEditing(null)}>
         <DialogContent className="sm:max-w-xl max-h-[85vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Edit Penilaian — {editing?.student?.name}</DialogTitle>
+            <DialogTitle>{t("editTitle", { name: editing?.student?.name ?? "" })}</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleSaveEdit} className="space-y-4 pt-2">
             <div className="space-y-3">
@@ -338,7 +341,7 @@ export default function AssessmentHistoryPage() {
               ))}
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-medium">Umpan Balik</label>
+              <label className="text-sm font-medium">{t("feedbackLabel")}</label>
               <Textarea
                 required
                 rows={4}
@@ -347,7 +350,7 @@ export default function AssessmentHistoryPage() {
               />
             </div>
             <Button type="submit" className="w-full" disabled={isSavingEdit}>
-              {isSavingEdit ? "Menyimpan..." : "Simpan Perubahan"}
+              {isSavingEdit ? tc("saving") : t("saveChanges")}
             </Button>
           </form>
         </DialogContent>
@@ -357,17 +360,19 @@ export default function AssessmentHistoryPage() {
       <Dialog open={!!deleting} onOpenChange={(open) => !open && setDeleting(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Hapus Penilaian?</DialogTitle>
+            <DialogTitle>{t("deleteTitle")}</DialogTitle>
           </DialogHeader>
           <p className="text-sm text-slate-600 dark:text-slate-300">
-            Penilaian {deleting?.template?.name} untuk{" "}
-            <span className="font-semibold">{deleting?.student?.name}</span> akan dihapus.
-            Penilaian yang sudah disetujui mahasiswa tidak dapat dihapus.
+            {t.rich("deleteConfirm", {
+              template: deleting?.template?.name ?? "",
+              name: deleting?.student?.name ?? "",
+              b: (chunks) => <span className="font-semibold">{chunks}</span>,
+            })}
           </p>
           <div className="flex justify-end gap-2 pt-2">
-            <Button variant="outline" onClick={() => setDeleting(null)}>Batal</Button>
+            <Button variant="outline" onClick={() => setDeleting(null)}>{tc("cancel")}</Button>
             <Button className="bg-red-600 hover:bg-red-700 text-white" onClick={handleDelete}>
-              Hapus
+              {tc("delete")}
             </Button>
           </div>
         </DialogContent>

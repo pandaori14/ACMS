@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import { useTranslations } from "next-intl";
 import api from "@/lib/api";
 import { getApiErrorMessage } from "@/lib/api-helpers";
 import { AssessmentTemplate, RotationAssignment } from "@/lib/types";
@@ -19,7 +20,8 @@ import { Save, Send, FileSignature } from "lucide-react";
 
 export default function CreateAssessmentPage() {
   const router = useRouter();
-  
+  const t = useTranslations("assessmentCreate");
+
   const [templates, setTemplates] = useState<AssessmentTemplate[]>([]);
   const [assignments, setAssignments] = useState<RotationAssignment[]>([]);
   
