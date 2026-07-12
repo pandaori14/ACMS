@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import api from "@/lib/api";
 import { getApiErrorMessage } from "@/lib/api-helpers";
 import { Button } from "@/components/ui/button";
@@ -38,10 +39,10 @@ interface AppealRow {
   } | null;
 }
 
-const STATUS_BADGE: Record<string, { label: string; cls: string }> = {
-  submitted: { label: "Menunggu", cls: "bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300" },
-  accepted: { label: "Diterima", cls: "bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300" },
-  rejected: { label: "Ditolak", cls: "bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300" },
+const STATUS_CLS: Record<string, string> = {
+  submitted: "bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300",
+  accepted: "bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300",
+  rejected: "bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300",
 };
 
 /**
@@ -49,6 +50,8 @@ const STATUS_BADGE: Record<string, { label: string; cls: string }> = {
  * ke approved untuk dikoreksi & diterbitkan ulang; ditolak → nilai tetap.
  */
 export default function GradeAppealsPage() {
+  const t = useTranslations("assessmentAppeals");
+  const tc = useTranslations("common");
   const [appeals, setAppeals] = useState<AppealRow[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [target, setTarget] = useState<AppealRow | null>(null);
@@ -62,11 +65,11 @@ export default function GradeAppealsPage() {
       const res = await api.get("/api/v1/grades/appeals");
       setAppeals(res.data.data || []);
     } catch (err) {
-      toast.error(getApiErrorMessage(err, "Gagal memuat daftar banding."));
+      toast.error(getApiErrorMessage(err, t("loadError")));
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     fetchAppeals();
@@ -85,7 +88,7 @@ export default function GradeAppealsPage() {
       setTarget(null);
       fetchAppeals();
     } catch (err) {
-      toast.error(getApiErrorMessage(err, "Gagal menyimpan keputusan."));
+      toast.error(getApiErrorMessage(err, t("saveError")));
     } finally {
       setIsSaving(false);
     }
@@ -94,10 +97,9 @@ export default function GradeAppealsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">Banding Nilai</h1>
+        <h1 className="text-3xl font-bold tracking-tight">{t("title")}</h1>
         <p className="text-muted-foreground mt-1">
-          Keberatan nilai dari mahasiswa. Banding yang <span className="font-medium">diterima</span>{" "}
-          membuka kembali nilai (status approved) untuk dikoreksi lalu diterbitkan ulang.
+          {t.rich("subtitle", { b: (c) => <span className="font-medium">{c}</span> })}
         </p>
       </div>
 
@@ -105,32 +107,31 @@ export default function GradeAppealsPage() {
         <Table className="min-w-[760px]">
           <TableHeader>
             <TableRow>
-              <TableHead>Tanggal</TableHead>
-              <TableHead>Mahasiswa</TableHead>
-              <TableHead>Stase</TableHead>
-              <TableHead>Nilai</TableHead>
-              <TableHead>Alasan</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead className="text-right">Aksi</TableHead>
+              <TableHead>{tc("date")}</TableHead>
+              <TableHead>{t("colStudent")}</TableHead>
+              <TableHead>{t("colStase")}</TableHead>
+              <TableHead>{t("colGrade")}</TableHead>
+              <TableHead>{t("colReason")}</TableHead>
+              <TableHead>{tc("status")}</TableHead>
+              <TableHead className="text-right">{tc("actions")}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {isLoading ? (
               <TableRow>
-                <TableCell colSpan={7} className="text-center text-slate-500 py-10">Memuat...</TableCell>
+                <TableCell colSpan={7} className="text-center text-slate-500 py-10">{tc("loading")}</TableCell>
               </TableRow>
             ) : appeals.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={7} className="py-12">
                   <div className="flex flex-col items-center gap-2 text-center">
                     <Scale className="w-10 h-10 text-slate-300" />
-                    <p className="text-sm text-slate-500">Tidak ada banding nilai.</p>
+                    <p className="text-sm text-slate-500">{t("empty")}</p>
                   </div>
                 </TableCell>
               </TableRow>
             ) : (
               appeals.map((row) => {
-                const badge = STATUS_BADGE[row.status];
                 return (
                   <TableRow key={row.id}>
                     <TableCell className="whitespace-nowrap text-sm">
@@ -152,12 +153,12 @@ export default function GradeAppealsPage() {
                       </span>
                       {row.decision_note && (
                         <span className="block text-xs text-slate-400 mt-0.5" title={row.decision_note}>
-                          Keputusan: {row.decision_note}
+                          {t("decisionNote", { note: row.decision_note })}
                         </span>
                       )}
                     </TableCell>
                     <TableCell>
-                      <Badge className={badge.cls}>{badge.label}</Badge>
+                      <Badge className={STATUS_CLS[row.status]}>{t(`status.${row.status}`)}</Badge>
                     </TableCell>
                     <TableCell className="text-right whitespace-nowrap">
                       {row.status === "submitted" && (
@@ -170,7 +171,7 @@ export default function GradeAppealsPage() {
                             setNote("");
                           }}
                         >
-                          Tinjau
+                          {t("reviewBtn")}
                         </Button>
                       )}
                     </TableCell>
@@ -187,8 +188,10 @@ export default function GradeAppealsPage() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>
-              Tinjau Banding — {target?.student?.name} (
-              {target?.stase_grade?.rotation_assignment?.stase?.name})
+              {t("reviewTitle", {
+                name: target?.student?.name ?? "",
+                stase: target?.stase_grade?.rotation_assignment?.stase?.name ?? "",
+              })}
             </DialogTitle>
           </DialogHeader>
           <form onSubmit={decide} className="space-y-4 pt-2">
@@ -196,7 +199,7 @@ export default function GradeAppealsPage() {
               {target?.reason}
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-medium">Keputusan</label>
+              <label className="text-sm font-medium">{t("decisionLabel")}</label>
               <div className="flex gap-2">
                 <Button
                   type="button"
@@ -204,7 +207,7 @@ export default function GradeAppealsPage() {
                   className={decision === "accepted" ? "bg-emerald-600 hover:bg-emerald-700 text-white" : ""}
                   onClick={() => setDecision("accepted")}
                 >
-                  Terima (buka nilai)
+                  {t("acceptBtn")}
                 </Button>
                 <Button
                   type="button"
@@ -212,12 +215,12 @@ export default function GradeAppealsPage() {
                   className={decision === "rejected" ? "bg-red-600 hover:bg-red-700 text-white" : ""}
                   onClick={() => setDecision("rejected")}
                 >
-                  Tolak
+                  {t("rejectBtn")}
                 </Button>
               </div>
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-medium">Catatan keputusan (dikirim ke mahasiswa)</label>
+              <label className="text-sm font-medium">{t("noteLabel")}</label>
               <textarea
                 className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                 required
@@ -228,9 +231,9 @@ export default function GradeAppealsPage() {
               />
             </div>
             <div className="flex justify-end gap-2">
-              <Button type="button" variant="outline" onClick={() => setTarget(null)}>Batal</Button>
+              <Button type="button" variant="outline" onClick={() => setTarget(null)}>{tc("cancel")}</Button>
               <Button type="submit" disabled={isSaving} className="bg-blue-900 hover:bg-blue-800 text-white">
-                {isSaving ? "Menyimpan..." : "Simpan Keputusan"}
+                {isSaving ? tc("saving") : t("saveDecision")}
               </Button>
             </div>
           </form>

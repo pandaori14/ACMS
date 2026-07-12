@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import api from "@/lib/api";
 import { getApiErrorMessage } from "@/lib/api-helpers";
 import { StaseGrade } from "@/lib/types";
@@ -17,6 +18,8 @@ import {
 } from "@/components/ui/dialog";
 
 export default function StudentGradesPage() {
+  const t = useTranslations("assessmentMyGrades");
+  const tc = useTranslations("common");
   const [grades, setGrades] = useState<StaseGrade[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -51,7 +54,7 @@ export default function StudentGradesPage() {
       setAppealTarget(null);
       setAppealReason("");
     } catch (err) {
-      toast.error(getApiErrorMessage(err, "Gagal mengajukan banding."));
+      toast.error(getApiErrorMessage(err, t("appealError")));
     } finally {
       setIsAppealing(false);
     }
@@ -60,10 +63,9 @@ export default function StudentGradesPage() {
   return (
     <div className="space-y-6">
       <div className="mb-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <h1 className="text-3xl font-bold tracking-tight text-gray-900">Transkrip Klinis (Internal)</h1>
+        <h1 className="text-3xl font-bold tracking-tight text-gray-900">{t("title")}</h1>
         <p className="text-muted-foreground mt-1">
-          Berikut adalah rincian Nilai Akhir Stase yang telah dipublikasikan oleh Program Studi.
-          Nilai ini akan diteruskan ke SIAKAD sebagai nilai KHS Resmi.
+          {t("subtitle")}
         </p>
       </div>
 
@@ -83,8 +85,8 @@ export default function StudentGradesPage() {
         ) : grades.length === 0 ? (
           <div className="col-span-full py-20 text-center border-2 border-dashed rounded-xl bg-gray-50/50">
             <BookOpen className="mx-auto h-12 w-12 text-muted-foreground opacity-30 mb-4" />
-            <h3 className="text-lg font-medium text-gray-900">Belum Ada Nilai</h3>
-            <p className="text-muted-foreground mt-1">Anda belum memiliki nilai akhir stase yang dipublikasikan.</p>
+            <h3 className="text-lg font-medium text-gray-900">{t("emptyTitle")}</h3>
+            <p className="text-muted-foreground mt-1">{t("emptyDesc")}</p>
           </div>
         ) : (
           grades.map((grade) => (
@@ -127,11 +129,11 @@ export default function StudentGradesPage() {
 
                 <div className="flex items-center justify-between p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border border-blue-100">
                   <div>
-                    <span className="block text-sm text-blue-800 mb-1">Nilai Akhir</span>
+                    <span className="block text-sm text-blue-800 mb-1">{t("finalScore")}</span>
                     <span className="text-3xl font-bold text-blue-900">{grade.final_score}</span>
                   </div>
                   <div className="text-right">
-                    <span className="block text-sm text-blue-800 mb-1">Huruf Mutu</span>
+                    <span className="block text-sm text-blue-800 mb-1">{t("letterGrade")}</span>
                     <span className="text-3xl font-black text-blue-700">{grade.letter_grade}</span>
                   </div>
                 </div>
@@ -145,7 +147,7 @@ export default function StudentGradesPage() {
                     setAppealReason("");
                   }}
                 >
-                  <Scale className="w-4 h-4 mr-1" /> Ajukan Keberatan Nilai
+                  <Scale className="w-4 h-4 mr-1" /> {t("appealBtn")}
                 </Button>
               </CardContent>
             </Card>
@@ -158,14 +160,12 @@ export default function StudentGradesPage() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>
-              Banding Nilai — {appealTarget?.rotation_assignment?.stase?.name}
+              {t("appealTitle", { stase: appealTarget?.rotation_assignment?.stase?.name ?? "" })}
             </DialogTitle>
           </DialogHeader>
           <form onSubmit={submitAppeal} className="space-y-4 pt-2">
             <p className="text-sm text-slate-600 dark:text-slate-300">
-              Banding hanya dapat diajukan <span className="font-medium">satu kali per nilai</span>{" "}
-              dan dalam jendela waktu yang ditetapkan prodi sejak nilai terbit. Jelaskan dasar
-              keberatan Anda sekonkret mungkin (komponen yang belum dihitung, tanggal penilaian, dsb.).
+              {t.rich("appealDesc", { b: (c) => <span className="font-medium">{c}</span> })}
             </p>
             <textarea
               className="flex min-h-[100px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
@@ -174,18 +174,18 @@ export default function StudentGradesPage() {
               maxLength={2000}
               value={appealReason}
               onChange={(e) => setAppealReason(e.target.value)}
-              placeholder="Contoh: Penilaian DOPS tanggal 20 Juni oleh dr. X belum termasuk dalam perhitungan..."
+              placeholder={t("appealPlaceholder")}
             />
             <div className="flex justify-end gap-2">
               <Button type="button" variant="outline" onClick={() => setAppealTarget(null)}>
-                Batal
+                {tc("cancel")}
               </Button>
               <Button
                 type="submit"
                 disabled={isAppealing || appealReason.trim().length < 20}
                 className="bg-blue-900 hover:bg-blue-800 text-white"
               >
-                {isAppealing ? "Mengirim..." : "Kirim Banding"}
+                {isAppealing ? t("sending") : t("submitAppeal")}
               </Button>
             </div>
           </form>
