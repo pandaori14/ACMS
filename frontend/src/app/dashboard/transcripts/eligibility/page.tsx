@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import api from "@/lib/api";
 import { getApiErrorMessage } from "@/lib/api-helpers";
 import { Cohort } from "@/lib/types";
@@ -42,6 +43,8 @@ const selectClass =
  * presensi). Endpoint digating manage-grades.
  */
 export default function YudisiumEligibilityPage() {
+  const t = useTranslations("yudisiumEligibility");
+  const tc = useTranslations("common");
   const [cohorts, setCohorts] = useState<Cohort[]>([]);
   const [cohortId, setCohortId] = useState("");
   const [result, setResult] = useState<BatchResult | null>(null);
@@ -51,7 +54,8 @@ export default function YudisiumEligibilityPage() {
     api
       .get("/api/v1/academic/cohorts")
       .then((res) => setCohorts(res.data.data || res.data))
-      .catch(() => toast.error("Gagal memuat daftar angkatan."));
+      .catch(() => toast.error(t("loadCohortsError")));
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- sekali saat mount
   }, []);
 
   const runCheck = async () => {
@@ -64,7 +68,7 @@ export default function YudisiumEligibilityPage() {
       });
       setResult(res.data.data);
     } catch (err) {
-      toast.error(getApiErrorMessage(err, "Gagal memeriksa kelayakan."));
+      toast.error(getApiErrorMessage(err, t("checkError")));
     } finally {
       setIsLoading(false);
     }
@@ -73,24 +77,23 @@ export default function YudisiumEligibilityPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">Kelayakan Yudisium</h1>
+        <h1 className="text-3xl font-bold tracking-tight">{t("title")}</h1>
         <p className="text-muted-foreground mt-1">
-          Validasi otomatis syarat kelulusan seluruh mahasiswa satu angkatan sebelum sidang yudisium.
+          {t("subtitle")}
         </p>
       </div>
 
       <Card className="clean-card">
         <CardHeader className="pb-4">
           <CardTitle className="text-base flex items-center gap-2">
-            <ClipboardCheck className="w-5 h-5 text-blue-900 dark:text-blue-300" /> Pilih Angkatan
+            <ClipboardCheck className="w-5 h-5 text-blue-900 dark:text-blue-300" /> {t("selectCohortTitle")}
           </CardTitle>
           <CardDescription>
-            Syarat yang dicek: semua stase wajib lulus · logbook terverifikasi seluruhnya · target
-            kompetensi terpenuhi · penilaian klinis minimum · presensi tanpa catatan menggantung.
+            {t("requirementsDesc")}
           </CardDescription>
           <div className="flex flex-col sm:flex-row gap-2 pt-2">
             <select className={selectClass} value={cohortId} onChange={(e) => setCohortId(e.target.value)}>
-              <option value="">Pilih Angkatan</option>
+              <option value="">{t("selectCohortPlaceholder")}</option>
               {cohorts.map((c) => (
                 <option key={c.id} value={c.id}>{c.name}</option>
               ))}
@@ -101,9 +104,9 @@ export default function YudisiumEligibilityPage() {
               className="bg-blue-900 hover:bg-blue-800 text-white"
             >
               {isLoading ? (
-                <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Memeriksa...</>
+                <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> {t("checking")}</>
               ) : (
-                <><Search className="w-4 h-4 mr-2" /> Periksa Kelayakan</>
+                <><Search className="w-4 h-4 mr-2" /> {t("checkButton")}</>
               )}
             </Button>
           </div>
@@ -114,13 +117,13 @@ export default function YudisiumEligibilityPage() {
         <>
           <div className="flex flex-wrap gap-3 text-sm">
             <Badge className="bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200 text-sm px-3 py-1">
-              Total: {result.total} mahasiswa
+              {t("totalBadge", { count: result.total })}
             </Badge>
             <Badge className="bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300 text-sm px-3 py-1">
-              Layak: {result.eligible}
+              {t("eligibleBadge", { count: result.eligible })}
             </Badge>
             <Badge className="bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300 text-sm px-3 py-1">
-              Belum layak: {result.total - result.eligible}
+              {t("notEligibleBadge", { count: result.total - result.eligible })}
             </Badge>
           </div>
 
@@ -128,18 +131,18 @@ export default function YudisiumEligibilityPage() {
             <Table className="min-w-[720px]">
               <TableHeader>
                 <TableRow>
-                  <TableHead>NIM</TableHead>
-                  <TableHead>Nama</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Kelayakan</TableHead>
-                  <TableHead>Syarat Belum Terpenuhi</TableHead>
+                  <TableHead>{t("nim")}</TableHead>
+                  <TableHead>{tc("name")}</TableHead>
+                  <TableHead>{tc("status")}</TableHead>
+                  <TableHead>{t("eligibilityCol")}</TableHead>
+                  <TableHead>{t("unmetRequirements")}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {result.students.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={5} className="text-center text-slate-500 py-10">
-                      Angkatan ini belum memiliki mahasiswa.
+                      {t("emptyCohort")}
                     </TableCell>
                   </TableRow>
                 ) : (
@@ -151,11 +154,11 @@ export default function YudisiumEligibilityPage() {
                       <TableCell>
                         {row.eligible ? (
                           <Badge className="bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300">
-                            LAYAK
+                            {t("eligibleTag")}
                           </Badge>
                         ) : (
                           <Badge className="bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300">
-                            BELUM
+                            {t("notEligibleTag")}
                           </Badge>
                         )}
                       </TableCell>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import api from "@/lib/api";
 import { getApiErrorMessage } from "@/lib/api-helpers";
 import { useAuthStore } from "@/store/useAuthStore";
@@ -56,33 +57,22 @@ interface EligibilityResult {
   requirements: EligibilityRequirement[];
 }
 
-const STATUS_BADGE: Record<string, { label: string; cls: string }> = {
-  processing: { label: "Diproses...", cls: "bg-amber-100 text-amber-700" },
-  ready: { label: "Siap Diunduh", cls: "bg-emerald-100 text-emerald-700" },
-  failed: { label: "Gagal", cls: "bg-red-100 text-red-700" },
+const STATUS_BADGE: Record<string, { labelKey: string; cls: string }> = {
+  processing: { labelKey: "statusProcessing", cls: "bg-amber-100 text-amber-700" },
+  ready: { labelKey: "statusReady", cls: "bg-emerald-100 text-emerald-700" },
+  failed: { labelKey: "statusFailed", cls: "bg-red-100 text-red-700" },
 };
 
-const DOC_TYPE_LABEL: Record<string, string> = {
-  transcript: "Transkrip Resmi",
-  logbook_book: "Buku Logbook",
-  letter_active: "Surat Ket. Aktif",
-  letter_graduated: "Surat Ket. Lulus",
-};
-
-const docSummary = (doc: GeneratedDoc): string => {
-  if (doc.type === "logbook_book" && doc.meta?.entry_count != null) {
-    return `${doc.meta.entry_count} kegiatan pada ${doc.meta.stase_count ?? "-"} stase`;
-  }
-  if (doc.type.startsWith("letter_") && doc.meta?.letter_number) {
-    return `No. ${doc.meta.letter_number}`;
-  }
-  if (doc.meta?.stase_count != null) {
-    return `${doc.meta.stase_count} stase — rata-rata ${doc.meta.average ?? "-"}`;
-  }
-  return "-";
+const DOC_TYPE_KEY: Record<string, string> = {
+  transcript: "docTranscript",
+  logbook_book: "docLogbook",
+  letter_active: "docLetterActive",
+  letter_graduated: "docLetterGraduated",
 };
 
 export default function DocumentsPage() {
+  const t = useTranslations("yudisiumDocuments");
+  const tc = useTranslations("common");
   const user = useAuthStore((state) => state.user);
   const isStudent = user?.roles?.includes("Mahasiswa") ?? false;
 
@@ -129,14 +119,29 @@ export default function DocumentsPage() {
       toast.success(res.data.message);
       fetchDocs();
     } catch (err) {
-      toast.error(getApiErrorMessage(err, "Gagal memulai pembuatan dokumen."));
+      toast.error(getApiErrorMessage(err, t("generateError")));
     } finally {
       setGenerating(null);
     }
   };
 
+  const docTypeLabel = (type: string) => (DOC_TYPE_KEY[type] ? t(DOC_TYPE_KEY[type]) : type);
+
+  const docSummary = (doc: GeneratedDoc): string => {
+    if (doc.type === "logbook_book" && doc.meta?.entry_count != null) {
+      return t("summaryLogbook", { count: doc.meta.entry_count, stase: doc.meta.stase_count ?? "-" });
+    }
+    if (doc.type.startsWith("letter_") && doc.meta?.letter_number) {
+      return t("summaryLetter", { number: doc.meta.letter_number });
+    }
+    if (doc.meta?.stase_count != null) {
+      return t("summaryTranscript", { stase: doc.meta.stase_count, average: doc.meta.average ?? "-" });
+    }
+    return "-";
+  };
+
   const handleDownload = async (doc: GeneratedDoc) => {
-    toast.loading("Mengunduh dokumen...", { id: "doc-dl" });
+    toast.loading(t("downloading"), { id: "doc-dl" });
     try {
       const res = await api.get(`/api/v1/yudisium/documents/${doc.id}/download`, {
         responseType: "blob",
@@ -144,14 +149,14 @@ export default function DocumentsPage() {
       const url = window.URL.createObjectURL(new Blob([res.data]));
       const link = document.createElement("a");
       link.href = url;
-      const prefix = (DOC_TYPE_LABEL[doc.type] || "Dokumen").replace(/[.\s]+/g, "_");
+      const prefix = docTypeLabel(doc.type).replace(/[.\s]+/g, "_");
       link.setAttribute("download", `${prefix}_${doc.verification_code.slice(0, 8)}.pdf`);
       document.body.appendChild(link);
       link.click();
       link.parentNode?.removeChild(link);
-      toast.success("Dokumen diunduh.", { id: "doc-dl" });
+      toast.success(t("downloaded"), { id: "doc-dl" });
     } catch {
-      toast.error("Gagal mengunduh dokumen.", { id: "doc-dl" });
+      toast.error(t("downloadError"), { id: "doc-dl" });
     }
   };
 
@@ -159,9 +164,9 @@ export default function DocumentsPage() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Dokumen Resmi</h1>
+          <h1 className="text-3xl font-bold tracking-tight">{t("title")}</h1>
           <p className="text-muted-foreground mt-1">
-            Transkrip resmi ber-QR yang keasliannya dapat diverifikasi publik.
+            {t("subtitle")}
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -171,9 +176,9 @@ export default function DocumentsPage() {
             className="bg-blue-900 hover:bg-blue-800 text-white"
           >
             {generating === "transcript" ? (
-              <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Memulai...</>
+              <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> {t("starting")}</>
             ) : (
-              <><FileCheck2 className="w-4 h-4 mr-2" /> Transkrip Resmi</>
+              <><FileCheck2 className="w-4 h-4 mr-2" /> {t("btnTranscript")}</>
             )}
           </Button>
           <Button
@@ -182,9 +187,9 @@ export default function DocumentsPage() {
             disabled={generating !== null}
           >
             {generating === "logbook" ? (
-              <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Memulai...</>
+              <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> {t("starting")}</>
             ) : (
-              <><BookOpen className="w-4 h-4 mr-2" /> Buku Logbook</>
+              <><BookOpen className="w-4 h-4 mr-2" /> {t("btnLogbook")}</>
             )}
           </Button>
           <Button
@@ -195,9 +200,9 @@ export default function DocumentsPage() {
             disabled={generating !== null}
           >
             {generating === "letter" ? (
-              <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Memulai...</>
+              <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> {t("starting")}</>
             ) : (
-              <><FileBadge className="w-4 h-4 mr-2" /> Surat Ket. Aktif</>
+              <><FileBadge className="w-4 h-4 mr-2" /> {t("btnLetterActive")}</>
             )}
           </Button>
           <Button
@@ -208,9 +213,9 @@ export default function DocumentsPage() {
             disabled={generating !== null}
           >
             {generating === "letter-grad" ? (
-              <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Memulai...</>
+              <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> {t("starting")}</>
             ) : (
-              <><FileBadge className="w-4 h-4 mr-2" /> Surat Ket. Lulus</>
+              <><FileBadge className="w-4 h-4 mr-2" /> {t("btnLetterGraduated")}</>
             )}
           </Button>
         </div>
@@ -222,11 +227,11 @@ export default function DocumentsPage() {
           <CardHeader className="pb-2">
             <CardTitle className="text-base flex items-center gap-2">
               <ClipboardCheck className={`w-5 h-5 ${eligibility.eligible ? "text-emerald-600" : "text-amber-500"}`} />
-              Kelayakan Yudisium:{" "}
-              {eligibility.eligible ? "SEMUA SYARAT TERPENUHI" : "Belum memenuhi seluruh syarat"}
+              {t("eligibilityTitle")}:{" "}
+              {eligibility.eligible ? t("eligibilityMet") : t("eligibilityNotMet")}
             </CardTitle>
             <CardDescription>
-              Syarat kelulusan dicek otomatis dari data nyata sistem (nilai, logbook, kompetensi, penilaian, presensi).
+              {t("eligibilityDesc")}
             </CardDescription>
           </CardHeader>
           <CardContent className="pt-0">
@@ -252,11 +257,10 @@ export default function DocumentsPage() {
       <Card className="clean-card border-l-4 border-l-blue-900">
         <CardHeader className="pb-2">
           <CardTitle className="text-base flex items-center gap-2">
-            <ShieldCheck className="w-5 h-5 text-blue-900" /> Bagaimana verifikasi bekerja?
+            <ShieldCheck className="w-5 h-5 text-blue-900" /> {t("verifyTitle")}
           </CardTitle>
           <CardDescription>
-            Setiap PDF memuat QR code unik. Siapa pun (rumah sakit, institusi lain) dapat memindainya
-            untuk memastikan dokumen asli diterbitkan oleh sistem ACMS FK UMS — tanpa perlu login.
+            {t("verifyDesc")}
           </CardDescription>
         </CardHeader>
       </Card>
@@ -265,18 +269,18 @@ export default function DocumentsPage() {
         <Table className="min-w-[640px]">
           <TableHeader>
             <TableRow>
-              <TableHead>Tanggal Dibuat</TableHead>
-              <TableHead>Jenis</TableHead>
-              <TableHead>Ringkasan</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead className="text-right">Aksi</TableHead>
+              <TableHead>{t("colCreatedAt")}</TableHead>
+              <TableHead>{t("colType")}</TableHead>
+              <TableHead>{t("colSummary")}</TableHead>
+              <TableHead>{tc("status")}</TableHead>
+              <TableHead className="text-right">{tc("actions")}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {isLoading ? (
               <TableRow>
                 <TableCell colSpan={5} className="text-center text-slate-500 py-10">
-                  Memuat...
+                  {tc("loading")}
                 </TableCell>
               </TableRow>
             ) : docs.length === 0 ? (
@@ -286,10 +290,10 @@ export default function DocumentsPage() {
                     <FileCheck2 className="w-10 h-10 text-slate-300" />
                     <div>
                       <p className="font-medium text-slate-700 dark:text-slate-200">
-                        Belum ada dokumen resmi
+                        {t("emptyTitle")}
                       </p>
                       <p className="text-sm text-slate-500">
-                        Klik &ldquo;Buat Transkrip Resmi&rdquo; — dokumen diproses di latar belakang (±1 menit).
+                        {t("emptyDesc")}
                       </p>
                     </div>
                   </div>
@@ -305,18 +309,18 @@ export default function DocumentsPage() {
                         day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit",
                       })}
                     </TableCell>
-                    <TableCell className="whitespace-nowrap">{DOC_TYPE_LABEL[doc.type] || doc.type}</TableCell>
+                    <TableCell className="whitespace-nowrap">{docTypeLabel(doc.type)}</TableCell>
                     <TableCell className="text-sm text-muted-foreground">{docSummary(doc)}</TableCell>
                     <TableCell>
                       <Badge className={badge.cls}>
                         {doc.status === "processing" && <Loader2 className="w-3 h-3 mr-1 animate-spin" />}
-                        {badge.label}
+                        {t(badge.labelKey)}
                       </Badge>
                     </TableCell>
                     <TableCell className="text-right whitespace-nowrap">
                       {doc.status === "ready" && (
                         <Button variant="outline" size="sm" onClick={() => handleDownload(doc)}>
-                          <Download className="w-4 h-4 mr-1" /> Unduh
+                          <Download className="w-4 h-4 mr-1" /> {tc("download")}
                         </Button>
                       )}
                       {doc.status === "failed" && (
@@ -335,7 +339,7 @@ export default function DocumentsPage() {
                             }
                           }}
                         >
-                          <RefreshCw className="w-4 h-4 mr-1" /> Coba Lagi
+                          <RefreshCw className="w-4 h-4 mr-1" /> {t("retry")}
                         </Button>
                       )}
                     </TableCell>
