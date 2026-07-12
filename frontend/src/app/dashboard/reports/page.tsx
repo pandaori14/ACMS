@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import api from "@/lib/api";
 import { useAuthStore } from "@/store/useAuthStore";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -18,9 +19,20 @@ interface StudentOption { id: string; user?: { name?: string; identity_number?: 
 const selectClass =
   "flex h-9 w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm ring-offset-background";
 
-/** Unduh blob generik + toast */
-async function downloadBlob(url: string, params: Record<string, string | number | boolean | undefined>, filename: string) {
-  toast.loading("Menyiapkan laporan...", { id: "report-dl" });
+interface DownloadMsgs {
+  preparing: string;
+  downloaded: string;
+  error: string;
+}
+
+/** Unduh blob generik + toast (pesan dari i18n via parameter — fungsi non-hook) */
+async function downloadBlob(
+  url: string,
+  params: Record<string, string | number | boolean | undefined>,
+  filename: string,
+  msgs: DownloadMsgs
+) {
+  toast.loading(msgs.preparing, { id: "report-dl" });
   try {
     const res = await api.get(url, { params, responseType: "blob" });
     const objectUrl = window.URL.createObjectURL(new Blob([res.data]));
@@ -31,15 +43,21 @@ async function downloadBlob(url: string, params: Record<string, string | number 
     link.click();
     link.parentNode?.removeChild(link);
     window.URL.revokeObjectURL(objectUrl);
-    toast.success("Laporan diunduh.", { id: "report-dl" });
+    toast.success(msgs.downloaded, { id: "report-dl" });
   } catch {
-    toast.error("Gagal mengunduh laporan (cek hak akses/parameter).", { id: "report-dl" });
+    toast.error(msgs.error, { id: "report-dl" });
   }
 }
 
 export default function ReportsPage() {
+  const t = useTranslations("reportsPage");
   const user = useAuthStore((state) => state.user);
   const perms = user?.permissions || [];
+  const dlMsgs: DownloadMsgs = {
+    preparing: t("preparing"),
+    downloaded: t("downloaded"),
+    error: t("downloadError"),
+  };
   const isStudent = user?.roles?.includes("Mahasiswa");
   const has = (p: string) => perms.includes(p);
 
@@ -86,15 +104,15 @@ export default function ReportsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">Pusat Laporan</h1>
+        <h1 className="text-3xl font-bold tracking-tight">{t("title")}</h1>
         <p className="text-muted-foreground mt-1">
-          Semua unduhan laporan resmi dalam satu tempat — sesuai hak akses Anda.
+          {t("subtitle")}
         </p>
       </div>
 
       {!canSeeAnything && (
         <p className="text-center text-muted-foreground py-16 border-2 border-dashed rounded-xl">
-          Tidak ada laporan yang tersedia untuk peran Anda.
+          {t("noneAvailable")}
         </p>
       )}
 
@@ -104,16 +122,16 @@ export default function ReportsPage() {
           <Card className="clean-card">
             <CardHeader className="pb-2">
               <CardTitle className="text-base flex items-center gap-2">
-                <MapPin className="w-4 h-4 text-blue-900" /> Rekap Presensi
+                <MapPin className="w-4 h-4 text-blue-900" /> {t("attendanceRecap")}
               </CardTitle>
-              <CardDescription>Excel — sesuai cakupan Anda (RS/bimbingan/semua)</CardDescription>
+              <CardDescription>{t("attendanceRecapSub")}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-2">
               <div className="flex flex-wrap items-center gap-2">
                 <Input type="date" className="h-9 w-40" value={attDate} onChange={(e) => setAttDate(e.target.value)} />
                 <label className="flex items-center gap-1.5 text-sm">
                   <input type="checkbox" checked={attFlagged} onChange={(e) => setAttFlagged(e.target.checked)} />
-                  Hanya yang ditandai
+                  {t("flaggedOnly")}
                 </label>
               </div>
               <Button
@@ -121,9 +139,9 @@ export default function ReportsPage() {
                 onClick={() => downloadBlob("/api/v1/clinical/attendance/recap/export", {
                   date: attDate || undefined,
                   flagged_only: attFlagged || undefined,
-                }, "Rekap_Presensi.xlsx")}
+                }, "Rekap_Presensi.xlsx", dlMsgs)}
               >
-                <FileSpreadsheet className="w-4 h-4 mr-1" /> Unduh Excel
+                <FileSpreadsheet className="w-4 h-4 mr-1" /> {t("downloadExcel")}
               </Button>
             </CardContent>
           </Card>
@@ -134,13 +152,13 @@ export default function ReportsPage() {
           <Card className="clean-card">
             <CardHeader className="pb-2">
               <CardTitle className="text-base flex items-center gap-2">
-                <GraduationCap className="w-4 h-4 text-blue-900" /> Rekap Nilai Angkatan
+                <GraduationCap className="w-4 h-4 text-blue-900" /> {t("cohortGrades")}
               </CardTitle>
-              <CardDescription>Excel — semua nilai stase satu angkatan</CardDescription>
+              <CardDescription>{t("cohortGradesSub")}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-2">
               <select className={selectClass} value={cohortId} onChange={(e) => setCohortId(e.target.value)}>
-                <option value="">Pilih Angkatan</option>
+                <option value="">{t("pickCohort")}</option>
                 {cohorts.map((c) => (
                   <option key={c.id} value={c.id}>{c.name}</option>
                 ))}
@@ -149,16 +167,16 @@ export default function ReportsPage() {
                 <Button
                   size="sm"
                   disabled={!cohortId}
-                  onClick={() => downloadBlob("/api/v1/grades/export-cohort", { cohort_id: cohortId }, "Rekap_Nilai_Angkatan.xlsx")}
+                  onClick={() => downloadBlob("/api/v1/grades/export-cohort", { cohort_id: cohortId }, "Rekap_Nilai_Angkatan.xlsx", dlMsgs)}
                 >
-                  <FileSpreadsheet className="w-4 h-4 mr-1" /> Unduh Excel
+                  <FileSpreadsheet className="w-4 h-4 mr-1" /> {t("downloadExcel")}
                 </Button>
                 <Button
                   size="sm"
                   variant="outline"
-                  onClick={() => downloadBlob("/api/v1/grades/export", {}, "Export_SIAKAD.csv")}
+                  onClick={() => downloadBlob("/api/v1/grades/export", {}, "Export_SIAKAD.csv", dlMsgs)}
                 >
-                  <Download className="w-4 h-4 mr-1" /> CSV SIAKAD
+                  <Download className="w-4 h-4 mr-1" /> {t("siakadCsv")}
                 </Button>
               </div>
             </CardContent>
@@ -170,25 +188,25 @@ export default function ReportsPage() {
           <Card className="clean-card">
             <CardHeader className="pb-2">
               <CardTitle className="text-base flex items-center gap-2">
-                <BarChart2 className="w-4 h-4 text-blue-900" /> Laporan Evaluasi Klinis
+                <BarChart2 className="w-4 h-4 text-blue-900" /> {t("evaluationReport")}
               </CardTitle>
-              <CardDescription>PDF — agregat anonim preceptor & RS</CardDescription>
+              <CardDescription>{t("evaluationReportSub")}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-2">
               <div className="flex items-center gap-2 text-sm">
-                Ambang anonimitas
+                {t("anonymityThreshold")}
                 <Input
                   type="number" className="h-9 w-20" min={1} max={10}
                   value={evalMin}
                   onChange={(e) => setEvalMin(Math.max(1, Math.min(10, Number(e.target.value) || 1)))}
                 />
-                responden
+                {t("respondents")}
               </div>
               <Button
                 size="sm"
-                onClick={() => downloadBlob("/api/v1/clinical/evaluations/report/export", { min_responses: evalMin }, "Laporan_Evaluasi.pdf")}
+                onClick={() => downloadBlob("/api/v1/clinical/evaluations/report/export", { min_responses: evalMin }, "Laporan_Evaluasi.pdf", dlMsgs)}
               >
-                <FileText className="w-4 h-4 mr-1" /> Unduh PDF
+                <FileText className="w-4 h-4 mr-1" /> {t("downloadPdf")}
               </Button>
             </CardContent>
           </Card>
@@ -199,16 +217,16 @@ export default function ReportsPage() {
           <Card className="clean-card">
             <CardHeader className="pb-2">
               <CardTitle className="text-base flex items-center gap-2">
-                <ShieldAlert className="w-4 h-4 text-blue-900" /> Statistik Insiden
+                <ShieldAlert className="w-4 h-4 text-blue-900" /> {t("incidentStats")}
               </CardTitle>
-              <CardDescription>PDF — status, jenis, keparahan, tren 30 hari</CardDescription>
+              <CardDescription>{t("incidentStatsSub")}</CardDescription>
             </CardHeader>
             <CardContent>
               <Button
                 size="sm"
-                onClick={() => downloadBlob("/api/v1/incidents/statistics/export", {}, "Statistik_Insiden.pdf")}
+                onClick={() => downloadBlob("/api/v1/incidents/statistics/export", {}, "Statistik_Insiden.pdf", dlMsgs)}
               >
-                <FileText className="w-4 h-4 mr-1" /> Unduh PDF
+                <FileText className="w-4 h-4 mr-1" /> {t("downloadPdf")}
               </Button>
             </CardContent>
           </Card>
@@ -219,10 +237,10 @@ export default function ReportsPage() {
           <Card className="clean-card">
             <CardHeader className="pb-2">
               <CardTitle className="text-base flex items-center gap-2">
-                <ClipboardList className="w-4 h-4 text-blue-900" /> Buku Rekap Logbook
+                <ClipboardList className="w-4 h-4 text-blue-900" /> {t("logbookBook")}
               </CardTitle>
               <CardDescription>
-                PDF — seluruh entri logbook {isStudent ? "Anda" : "satu mahasiswa"}
+                {isStudent ? t("logbookBookSubSelf") : t("logbookBookSubOther")}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-2">
@@ -232,7 +250,7 @@ export default function ReportsPage() {
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                     <Input
                       className="pl-9 h-9"
-                      placeholder="Cari mahasiswa (nama/NIM)..."
+                      placeholder={t("searchStudent")}
                       value={studentSearch}
                       onChange={(e) => setStudentSearch(e.target.value)}
                     />
@@ -258,9 +276,9 @@ export default function ReportsPage() {
                 size="sm"
                 disabled={!isStudent && !studentId}
                 onClick={() => downloadBlob("/api/v1/clinical/logbooks/export",
-                  isStudent ? {} : { student_id: studentId }, "Rekap_Logbook.pdf")}
+                  isStudent ? {} : { student_id: studentId }, "Rekap_Logbook.pdf", dlMsgs)}
               >
-                <FileText className="w-4 h-4 mr-1" /> Unduh PDF
+                <FileText className="w-4 h-4 mr-1" /> {t("downloadPdf")}
               </Button>
             </CardContent>
           </Card>
@@ -271,23 +289,23 @@ export default function ReportsPage() {
           <Card className="clean-card">
             <CardHeader className="pb-2">
               <CardTitle className="text-base flex items-center gap-2">
-                <Building2 className="w-4 h-4 text-blue-900" /> Tagihan Rumah Sakit
+                <Building2 className="w-4 h-4 text-blue-900" /> {t("hospitalBilling")}
               </CardTitle>
-              <CardDescription>Excel — daftar tagihan per periode</CardDescription>
+              <CardDescription>{t("hospitalBillingSub")}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-2">
               <Input
                 className="h-9 w-44"
-                placeholder="Periode (mis. Q1-2026)"
+                placeholder={t("periodPlaceholder")}
                 value={billingPeriod}
                 onChange={(e) => setBillingPeriod(e.target.value)}
               />
               <Button
                 size="sm"
                 disabled={!billingPeriod}
-                onClick={() => downloadBlob("/api/export/billings", { period: billingPeriod }, "Tagihan_RS.xlsx")}
+                onClick={() => downloadBlob("/api/export/billings", { period: billingPeriod }, "Tagihan_RS.xlsx", dlMsgs)}
               >
-                <FileSpreadsheet className="w-4 h-4 mr-1" /> Unduh Excel
+                <FileSpreadsheet className="w-4 h-4 mr-1" /> {t("downloadExcel")}
               </Button>
             </CardContent>
           </Card>
