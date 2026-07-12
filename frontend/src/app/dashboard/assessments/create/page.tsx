@@ -54,7 +54,7 @@ export default function CreateAssessmentPage() {
     fetchReferenceData();
   }, [fetchReferenceData]);
 
-  const selectedTemplate = templates.find((t) => t.id === formData.assessment_template_id);
+  const selectedTemplate = templates.find((tpl) => tpl.id === formData.assessment_template_id);
   const selectedAssignment = assignments.find((a) => a.id === formData.rotation_assignment_id);
 
   // Automatically update student_id when assignment changes
@@ -72,7 +72,7 @@ export default function CreateAssessmentPage() {
   const handleSubmit = async (status: "draft" | "submitted") => {
     setError(null);
     if (!formData.rotation_assignment_id || !formData.assessment_template_id || !formData.assessment_date) {
-      setError("Mohon lengkapi penugasan, template, dan tanggal penilaian.");
+      setError(t("errorRequired"));
       return;
     }
     
@@ -85,7 +85,7 @@ export default function CreateAssessmentPage() {
       });
       router.push("/dashboard/assessments");
     } catch (err) {
-      setError(getApiErrorMessage(err, "Gagal menyimpan penilaian."));
+      setError(getApiErrorMessage(err, t("saveError")));
       console.error(err);
     } finally {
       setSubmitting(false);
@@ -157,9 +157,9 @@ export default function CreateAssessmentPage() {
               <SelectValue placeholder="Pilih instrumen (Mini-CEX, DOPS, CBD)..." />
             </SelectTrigger>
             <SelectContent>
-              {templates.map((t) => (
-                <SelectItem key={t.id} value={t.id}>
-                  {t.name}
+              {templates.map((tpl) => (
+                <SelectItem key={tpl.id} value={tpl.id}>
+                  {tpl.name}
                 </SelectItem>
               ))}
             </SelectContent>
