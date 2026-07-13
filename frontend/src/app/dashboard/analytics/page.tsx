@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/store/useAuthStore";
 import api from "@/lib/api";
@@ -24,6 +25,7 @@ import {
 } from "recharts";
 
 export default function AnalyticsPage() {
+  const t = useTranslations("analyticsOverview");
   const user = useAuthStore((state) => state.user);
   const router = useRouter();
   
@@ -55,19 +57,19 @@ export default function AnalyticsPage() {
         setData(res.data);
       } catch (err) {
         console.error("Failed to load analytics", err);
-        setError(getApiErrorMessage(err, "Gagal memuat data analitik."));
+        setError(getApiErrorMessage(err, t("loadError")));
       } finally {
         setLoading(false);
       }
     };
-    
+
     fetchAnalytics();
-  }, [user, router]);
+  }, [user, router, t]);
 
   if (loading) {
     return (
       <div className="space-y-6">
-        <h1 className="text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-50">Analytics & Reports</h1>
+        <h1 className="text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-50">{t("title")}</h1>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <Skeleton className="h-[400px] rounded-xl" />
           <Skeleton className="h-[400px] rounded-xl" />
@@ -81,7 +83,7 @@ export default function AnalyticsPage() {
     return (
       <div className="flex items-center justify-center h-96">
         <div className="text-center">
-          <h2 className="text-xl font-semibold text-slate-900 dark:text-slate-50 mb-2">Akses Ditolak</h2>
+          <h2 className="text-xl font-semibold text-slate-900 dark:text-slate-50 mb-2">{t("accessDenied")}</h2>
           <p className="text-slate-500">{error}</p>
         </div>
       </div>
@@ -92,10 +94,10 @@ export default function AnalyticsPage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-semibold tracking-tight text-slate-900 dark:text-slate-50">
-          Analytics & Reports
+          {t("title")}
         </h1>
         <p className="text-slate-500 dark:text-slate-400 mt-1">
-          Wawasan mendalam mengenai tren kelulusan, performa stase, dan logbook mahasiswa.
+          {t("subtitle")}
         </p>
       </div>
 
@@ -103,12 +105,12 @@ export default function AnalyticsPage() {
         {/* GRADE DISTRIBUTION CHART */}
         <Card className="clean-card">
           <CardHeader>
-            <CardTitle className="text-base font-semibold">Distribusi Kelulusan (Huruf Mutu)</CardTitle>
-            <CardDescription className="text-xs">Komparasi jumlah mahasiswa berdasarkan nilai akhir</CardDescription>
+            <CardTitle className="text-base font-semibold">{t("gradeDistTitle")}</CardTitle>
+            <CardDescription className="text-xs">{t("gradeDistDesc")}</CardDescription>
           </CardHeader>
           <CardContent className="h-[300px]">
             {data?.grade_distribution?.length === 0 ? (
-              <div className="flex h-full items-center justify-center text-slate-500 text-sm">Tidak ada data kelulusan</div>
+              <div className="flex h-full items-center justify-center text-slate-500 text-sm">{t("noGradeData")}</div>
             ) : (
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={data?.grade_distribution} margin={{ top: 20, right: 30, left: 0, bottom: 5 }}>
@@ -134,7 +136,7 @@ export default function AnalyticsPage() {
                     dataKey="count" 
                     fill="#0f172a" 
                     radius={[4, 4, 0, 0]}
-                    name="Jumlah Mahasiswa"
+                    name={t("studentCount")}
                     animationDuration={1000}
                   />
                 </BarChart>
@@ -146,12 +148,12 @@ export default function AnalyticsPage() {
         {/* LOGBOOK COMPLETION PIE CHART */}
         <Card className="clean-card">
           <CardHeader>
-            <CardTitle className="text-base font-semibold">Tingkat Kepatuhan Logbook</CardTitle>
-            <CardDescription className="text-xs">Status penyelesaian buku log klinis secara global</CardDescription>
+            <CardTitle className="text-base font-semibold">{t("logbookComplianceTitle")}</CardTitle>
+            <CardDescription className="text-xs">{t("logbookComplianceDesc")}</CardDescription>
           </CardHeader>
           <CardContent className="h-[300px]">
              {data?.logbook_completion?.every((i) => i.value === 0) ? (
-              <div className="flex h-full items-center justify-center text-slate-500 text-sm">Tidak ada data logbook</div>
+              <div className="flex h-full items-center justify-center text-slate-500 text-sm">{t("noLogbookData")}</div>
             ) : (
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
@@ -182,12 +184,12 @@ export default function AnalyticsPage() {
         {/* STASE PERFORMANCE LINE CHART */}
         <Card className="clean-card lg:col-span-2">
           <CardHeader>
-            <CardTitle className="text-base font-semibold">Performa Rata-rata per Stase</CardTitle>
-            <CardDescription className="text-xs">Tren akumulasi skor penilaian dari seluruh mahasiswa per departemen</CardDescription>
+            <CardTitle className="text-base font-semibold">{t("stasePerfTitle")}</CardTitle>
+            <CardDescription className="text-xs">{t("stasePerfDesc")}</CardDescription>
           </CardHeader>
           <CardContent className="h-[350px]">
             {data?.stase_performance?.length === 0 ? (
-              <div className="flex h-full items-center justify-center text-slate-500 text-sm">Tidak ada data performa stase</div>
+              <div className="flex h-full items-center justify-center text-slate-500 text-sm">{t("noStaseData")}</div>
             ) : (
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={data?.stase_performance} margin={{ top: 20, right: 30, left: 0, bottom: 25 }}>
@@ -218,7 +220,7 @@ export default function AnalyticsPage() {
                     strokeWidth={3}
                     dot={{ r: 4, fill: '#0f172a', strokeWidth: 0 }}
                     activeDot={{ r: 6, fill: '#3b82f6', stroke: '#fff', strokeWidth: 2 }}
-                    name="Rata-rata Skor"
+                    name={t("avgScore")}
                     animationDuration={1500}
                   />
                 </LineChart>

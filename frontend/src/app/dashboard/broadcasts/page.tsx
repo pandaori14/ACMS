@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import api from "@/lib/api";
 import { getApiErrorMessage } from "@/lib/api-helpers";
 import { Cohort } from "@/lib/types";
@@ -37,12 +38,7 @@ interface HospitalOption {
 
 const ROLES = ["Mahasiswa", "Dodiknis", "Admin RS", "Dosen", "Keuangan", "Admin Prodi", "Kaprodi"];
 
-const TARGET_LABEL: Record<string, string> = {
-  all: "Semua pengguna",
-  role: "Per peran",
-  cohort: "Per angkatan",
-  hospital: "Per rumah sakit",
-};
+const TARGET_TYPES = ["all", "role", "cohort", "hospital"] as const;
 
 const selectClass =
   "flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background";
@@ -52,6 +48,8 @@ const selectClass =
  * terkirim bila Settings `enable_email_broadcasts` aktif.
  */
 export default function BroadcastsPage() {
+  const t = useTranslations("analyticsBroadcasts");
+  const tc = useTranslations("common");
   const [history, setHistory] = useState<BroadcastRow[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -69,11 +67,11 @@ export default function BroadcastsPage() {
       const res = await api.get("/api/v1/broadcasts");
       setHistory(res.data.data || []);
     } catch (err) {
-      toast.error(getApiErrorMessage(err, "Gagal memuat riwayat broadcast."));
+      toast.error(getApiErrorMessage(err, t("loadError")));
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     fetchHistory();
@@ -96,61 +94,63 @@ export default function BroadcastsPage() {
       setBody("");
       fetchHistory();
     } catch (err) {
-      toast.error(getApiErrorMessage(err, "Gagal mengirim broadcast."));
+      toast.error(getApiErrorMessage(err, t("sendError")));
     } finally {
       setIsSending(false);
     }
   };
 
   const targetSummary = (row: BroadcastRow) => {
-    if (row.target_type === "role") return `Peran: ${row.target_id}`;
+    if (row.target_type === "role") return t("summaryRole", { role: row.target_id ?? "-" });
     if (row.target_type === "cohort") {
-      return `Angkatan: ${cohorts.find((c) => c.id === row.target_id)?.name || row.target_id}`;
+      return t("summaryCohort", { name: cohorts.find((c) => c.id === row.target_id)?.name || row.target_id || "-" });
     }
     if (row.target_type === "hospital") {
-      return `RS: ${hospitals.find((h) => h.id === row.target_id)?.name || row.target_id}`;
+      return t("summaryHospital", { name: hospitals.find((h) => h.id === row.target_id)?.name || row.target_id || "-" });
     }
-    return TARGET_LABEL[row.target_type] || row.target_type;
+    return (TARGET_TYPES as readonly string[]).includes(row.target_type)
+      ? t(`targets.${row.target_type}`)
+      : row.target_type;
   };
 
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">Broadcast Pesan</h1>
+        <h1 className="text-3xl font-bold tracking-tight">{t("title")}</h1>
         <p className="text-muted-foreground mt-1">
-          Kirim pengumuman massal ke lonceng notifikasi pengguna (plus email bila diaktifkan di Settings).
+          {t("subtitle")}
         </p>
       </div>
 
       <Card className="clean-card">
         <CardHeader className="pb-3">
           <CardTitle className="text-base flex items-center gap-2">
-            <Megaphone className="w-5 h-5 text-blue-900 dark:text-blue-300" /> Buat Pengumuman
+            <Megaphone className="w-5 h-5 text-blue-900 dark:text-blue-300" /> {t("createTitle")}
           </CardTitle>
-          <CardDescription>Maks. 2000 penerima per kiriman · 5 broadcast per jam.</CardDescription>
+          <CardDescription>{t("createDesc")}</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={send} className="space-y-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <label className="text-sm font-medium">Target</label>
+                <label className="text-sm font-medium">{t("target")}</label>
                 <select
                   className={selectClass}
                   value={targetType}
                   onChange={(e) => { setTargetType(e.target.value); setTargetId(""); }}
                 >
-                  {Object.entries(TARGET_LABEL).map(([value, label]) => (
-                    <option key={value} value={value}>{label}</option>
+                  {TARGET_TYPES.map((value) => (
+                    <option key={value} value={value}>{t(`targets.${value}`)}</option>
                   ))}
                 </select>
               </div>
               {targetType !== "all" && (
                 <div className="space-y-2">
                   <label className="text-sm font-medium">
-                    {targetType === "role" ? "Peran" : targetType === "cohort" ? "Angkatan" : "Rumah Sakit"}
+                    {targetType === "role" ? t("fieldRole") : targetType === "cohort" ? t("fieldCohort") : t("fieldHospital")}
                   </label>
                   <select className={selectClass} required value={targetId} onChange={(e) => setTargetId(e.target.value)}>
-                    <option value="">Pilih...</option>
+                    <option value="">{t("selectPlaceholder")}</option>
                     {targetType === "role" && ROLES.map((r) => <option key={r} value={r}>{r}</option>)}
                     {targetType === "cohort" && cohorts.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
                     {targetType === "hospital" && hospitals.map((h) => <option key={h.id} value={h.id}>{h.name}</option>)}
@@ -159,11 +159,11 @@ export default function BroadcastsPage() {
               )}
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-medium">Judul</label>
+              <label className="text-sm font-medium">{t("subject")}</label>
               <Input required maxLength={255} value={subject} onChange={(e) => setSubject(e.target.value)} />
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-medium">Isi Pesan</label>
+              <label className="text-sm font-medium">{t("body")}</label>
               <textarea
                 className="flex min-h-[100px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                 required
@@ -173,7 +173,7 @@ export default function BroadcastsPage() {
               />
             </div>
             <Button type="submit" disabled={isSending} className="bg-blue-900 hover:bg-blue-800 text-white">
-              <Send className="w-4 h-4 mr-2" /> {isSending ? "Mengirim..." : "Kirim Broadcast"}
+              <Send className="w-4 h-4 mr-2" /> {isSending ? t("sending") : t("send")}
             </Button>
           </form>
         </CardContent>
@@ -183,22 +183,22 @@ export default function BroadcastsPage() {
         <Table className="min-w-[680px]">
           <TableHeader>
             <TableRow>
-              <TableHead>Tanggal</TableHead>
-              <TableHead>Judul</TableHead>
-              <TableHead>Target</TableHead>
-              <TableHead>Penerima</TableHead>
-              <TableHead>Pengirim</TableHead>
+              <TableHead>{t("colDate")}</TableHead>
+              <TableHead>{t("colSubject")}</TableHead>
+              <TableHead>{t("colTarget")}</TableHead>
+              <TableHead>{t("colRecipients")}</TableHead>
+              <TableHead>{t("colSender")}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {isLoading ? (
-              <TableRow><TableCell colSpan={5} className="text-center text-slate-500 py-10">Memuat...</TableCell></TableRow>
+              <TableRow><TableCell colSpan={5} className="text-center text-slate-500 py-10">{tc("loading")}</TableCell></TableRow>
             ) : history.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={5} className="py-12">
                   <div className="flex flex-col items-center gap-2 text-center">
                     <Megaphone className="w-10 h-10 text-slate-300" />
-                    <p className="text-sm text-slate-500">Belum ada broadcast terkirim.</p>
+                    <p className="text-sm text-slate-500">{t("empty")}</p>
                   </div>
                 </TableCell>
               </TableRow>
