@@ -1,12 +1,14 @@
+import { getTranslations } from "next-intl/server";
 import { CompetenciesClient } from "./CompetenciesClient";
 
-export default function CompetenciesPage() {
+export default async function CompetenciesPage() {
+  const t = await getTranslations("academicCompetencies");
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">Master Kompetensi (SKDI)</h1>
+        <h1 className="text-3xl font-bold tracking-tight">{t("pageTitle")}</h1>
         <p className="text-muted-foreground mt-2">
-          Kelola referensi daftar penyakit dan keterampilan klinis untuk rujukan Logbook.
+          {t("pageSubtitle")}
         </p>
       </div>
 

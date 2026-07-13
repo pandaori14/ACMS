@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import api from "@/lib/api";
 import { getApiErrorMessage } from "@/lib/api-helpers";
 import { toast } from "sonner";
@@ -26,6 +27,8 @@ interface StaseOption {
 }
 
 export function CompetenciesClient() {
+  const t = useTranslations("academicCompetencies");
+  const tc = useTranslations("common");
   const [competencies, setCompetencies] = useState<Competency[]>([]);
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
@@ -83,13 +86,13 @@ export function CompetenciesClient() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm("Apakah Anda yakin ingin menghapus kompetensi ini?")) return;
+    if (!confirm(t("deleteConfirm"))) return;
     try {
       await api.delete(`/api/v1/academic/competencies/${id}`);
-      toast.success("Kompetensi dihapus.");
+      toast.success(t("deleted"));
       fetchCompetencies();
     } catch (err) {
-      toast.error(getApiErrorMessage(err, "Gagal menghapus kompetensi."));
+      toast.error(getApiErrorMessage(err, t("deleteError")));
     }
   };
 
@@ -103,10 +106,10 @@ export function CompetenciesClient() {
         await api.post("/api/v1/academic/competencies", form);
       }
       setOpen(false);
-      toast.success(editingId ? "Kompetensi diperbarui." : "Kompetensi ditambahkan.");
+      toast.success(editingId ? t("updated") : t("created"));
       fetchCompetencies();
     } catch (err) {
-      toast.error(getApiErrorMessage(err, "Gagal menyimpan kompetensi."));
+      toast.error(getApiErrorMessage(err, t("saveError")));
     } finally {
       setSaving(false);
     }
@@ -119,7 +122,7 @@ export function CompetenciesClient() {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
           <input 
             type="text"
-            placeholder="Cari kompetensi..."
+            placeholder={t("searchPlaceholder")}
             className="w-full pl-9 pr-4 py-2 text-sm border rounded-md focus:outline-none focus:ring-2 focus:ring-primary/50"
           />
         </div>
@@ -129,7 +132,7 @@ export function CompetenciesClient() {
           className="inline-flex items-center gap-2 bg-primary text-white px-4 py-2 rounded-md hover:bg-primary/90 text-sm font-medium transition-colors"
         >
           <Plus className="w-4 h-4" />
-          Tambah Kompetensi
+          {t("addCompetency")}
         </button>
       </div>
 
@@ -137,10 +140,10 @@ export function CompetenciesClient() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <ClipboardList className="w-5 h-5 text-slate-500" />
-            Katalog Kompetensi
+            {t("catalogTitle")}
           </CardTitle>
           <CardDescription>
-            Daftar kompetensi yang tersedia untuk referensi logbook mahasiswa.
+            {t("catalogDesc")}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -150,20 +153,20 @@ export function CompetenciesClient() {
             </div>
           ) : competencies.length === 0 ? (
             <div className="text-center p-8 text-slate-500 text-sm">
-              Belum ada data kompetensi.
+              {t("emptyData")}
             </div>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm text-left">
                 <thead className="bg-slate-50 text-slate-600 font-medium border-b">
                   <tr>
-                    <th className="py-3 px-4">Nama Kompetensi</th>
-                    <th className="py-3 px-4">Tipe</th>
-                    <th className="py-3 px-4">Kategori / Sistem</th>
-                    <th className="py-3 px-4">Tingkat Kemampuan</th>
-                    <th className="py-3 px-4">Stase</th>
-                    <th className="py-3 px-4">Target</th>
-                    <th className="py-3 px-4 text-right">Aksi</th>
+                    <th className="py-3 px-4">{t("competencyName")}</th>
+                    <th className="py-3 px-4">{t("type")}</th>
+                    <th className="py-3 px-4">{t("categorySystem")}</th>
+                    <th className="py-3 px-4">{t("competencyLevel")}</th>
+                    <th className="py-3 px-4">{t("stase")}</th>
+                    <th className="py-3 px-4">{t("target")}</th>
+                    <th className="py-3 px-4 text-right">{tc("actions")}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y">
@@ -172,19 +175,19 @@ export function CompetenciesClient() {
                       <td className="py-3 px-4 font-medium text-slate-900">{comp.name}</td>
                       <td className="py-3 px-4">
                         <span className={`px-2 py-1 rounded-full text-xs font-medium ${comp.type === 'disease' ? 'bg-blue-50 text-blue-700' : 'bg-emerald-50 text-emerald-700'}`}>
-                          {comp.type === 'disease' ? 'Penyakit (SKDI)' : 'Keterampilan Klinis'}
+                          {comp.type === 'disease' ? t("typeDisease") : t("typeSkill")}
                         </span>
                       </td>
                       <td className="py-3 px-4">{comp.category || '-'}</td>
                       <td className="py-3 px-4">
                         {comp.level ? (
                           <span className="px-2 py-1 bg-slate-100 text-slate-700 rounded-md text-xs font-semibold">
-                            Level {comp.level}
+                            {t("levelBadge", { level: comp.level })}
                           </span>
                         ) : '-'}
                       </td>
                       <td className="py-3 px-4 text-xs">{comp.stase?.name || '-'}</td>
-                      <td className="py-3 px-4 text-xs font-medium">{comp.min_cases ?? 1} kasus</td>
+                      <td className="py-3 px-4 text-xs font-medium">{t("cases", { count: comp.min_cases ?? 1 })}</td>
                       <td className="py-3 px-4 text-right">
                         <div className="flex justify-end gap-2">
                           <button onClick={() => handleOpenEdit(comp)} className="p-1.5 text-slate-400 hover:text-blue-600 rounded-md hover:bg-blue-50 transition-colors">
@@ -207,55 +210,55 @@ export function CompetenciesClient() {
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
-            <DialogTitle>{editingId ? "Edit Kompetensi" : "Tambah Kompetensi Baru"}</DialogTitle>
+            <DialogTitle>{editingId ? t("editCompetency") : t("addCompetencyNew")}</DialogTitle>
             <DialogDescription>
-              {editingId ? "Perbarui informasi kompetensi di bawah ini." : "Masukkan detail kompetensi yang akan ditambahkan ke sistem."}
+              {editingId ? t("editDesc") : t("createDesc")}
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleSave} className="space-y-4 py-4">
             <div className="space-y-2">
-              <label className="text-sm font-medium">Tipe Kompetensi</label>
+              <label className="text-sm font-medium">{t("competencyType")}</label>
               <select 
                 required
                 className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary/50 text-sm"
                 value={form.type}
                 onChange={e => setForm({...form, type: e.target.value})}
               >
-                <option value="disease">Penyakit (SKDI)</option>
-                <option value="skill">Keterampilan Klinis (Skill)</option>
-                <option value="other">Lainnya</option>
+                <option value="disease">{t("typeDisease")}</option>
+                <option value="skill">{t("typeSkillOption")}</option>
+                <option value="other">{t("typeOther")}</option>
               </select>
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-medium">Nama Kompetensi</label>
+              <label className="text-sm font-medium">{t("competencyName")}</label>
               <input 
                 required
                 type="text"
                 className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary/50 text-sm"
                 value={form.name}
                 onChange={e => setForm({...form, name: e.target.value})}
-                placeholder="Contoh: Asma Bronkial"
+                placeholder={t("namePlaceholder")}
               />
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <label className="text-sm font-medium">Kategori / Sistem</label>
+                <label className="text-sm font-medium">{t("categorySystem")}</label>
                 <input 
                   type="text"
                   className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary/50 text-sm"
                   value={form.category || ""}
                   onChange={e => setForm({...form, category: e.target.value})}
-                  placeholder="Contoh: Sistem Respirasi"
+                  placeholder={t("categoryPlaceholder")}
                 />
               </div>
               <div className="space-y-2">
-                <label className="text-sm font-medium">Level Kompetensi</label>
+                <label className="text-sm font-medium">{t("competencyLevelLabel")}</label>
                 <select 
                   className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary/50 text-sm"
                   value={form.level || ""}
                   onChange={e => setForm({...form, level: e.target.value})}
                 >
-                  <option value="">-- Pilih Level --</option>
+                  <option value="">{t("selectLevel")}</option>
                   <option value="1">Level 1</option>
                   <option value="2">Level 2</option>
                   <option value="3A">Level 3A</option>
@@ -266,20 +269,20 @@ export function CompetenciesClient() {
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <label className="text-sm font-medium">Stase (untuk target progres)</label>
+                <label className="text-sm font-medium">{t("staseForTarget")}</label>
                 <select
                   className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary/50 text-sm"
                   value={form.stase_id || ""}
                   onChange={e => setForm({...form, stase_id: e.target.value})}
                 >
-                  <option value="">-- Tanpa stase (umum) --</option>
+                  <option value="">{t("noStase")}</option>
                   {stases.map((s) => (
                     <option key={s.id} value={s.id}>{s.name}</option>
                   ))}
                 </select>
               </div>
               <div className="space-y-2">
-                <label className="text-sm font-medium">Target Minimal Kasus</label>
+                <label className="text-sm font-medium">{t("minCasesTarget")}</label>
                 <input
                   type="number"
                   min={1}
@@ -288,16 +291,16 @@ export function CompetenciesClient() {
                   value={form.min_cases ?? 1}
                   onChange={e => setForm({...form, min_cases: Number(e.target.value)})}
                 />
-                <p className="text-xs text-slate-500">Dihitung dari logbook terverifikasi mahasiswa.</p>
+                <p className="text-xs text-slate-500">{t("minCasesHint")}</p>
               </div>
             </div>
             <DialogFooter className="pt-4">
               <button type="button" onClick={() => setOpen(false)} className="px-4 py-2 text-sm font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-md transition-colors">
-                Batal
+                {tc("cancel")}
               </button>
               <button type="submit" disabled={saving} className="px-4 py-2 text-sm font-medium text-white bg-primary hover:bg-primary/90 rounded-md transition-colors inline-flex items-center gap-2">
                 {saving && <Loader2 className="w-4 h-4 animate-spin" />}
-                Simpan
+                {tc("save")}
               </button>
             </DialogFooter>
           </form>
