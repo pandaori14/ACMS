@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import api from "@/lib/api";
 import { getApiErrorMessage } from "@/lib/api-helpers";
 import { useAuthStore } from "@/store/useAuthStore";
@@ -40,6 +41,7 @@ interface StudentOption {
 }
 
 export default function CompetencyProgressPage() {
+  const t = useTranslations("clinicalCompetencyProgress");
   const user = useAuthStore((state) => state.user);
   const isStudent = user?.roles?.includes("Mahasiswa");
 
@@ -61,11 +63,11 @@ export default function CompetencyProgressPage() {
       setData(res.data.data);
     } catch (err) {
       setData(null);
-      toast.error(getApiErrorMessage(err, "Gagal memuat progres kompetensi."));
+      toast.error(getApiErrorMessage(err, t("errLoad")));
     } finally {
       setIsLoading(false);
     }
-  }, [isStudent]);
+  }, [isStudent, t]);
 
   useEffect(() => {
     if (isStudent) fetchProgress();
@@ -90,9 +92,9 @@ export default function CompetencyProgressPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">Progres Kompetensi</h1>
+        <h1 className="text-3xl font-bold tracking-tight">{t("title")}</h1>
         <p className="text-muted-foreground mt-1">
-          Target kompetensi per stase vs capaian nyata dari logbook terverifikasi.
+          {t("subtitle")}
         </p>
       </div>
 
@@ -103,7 +105,7 @@ export default function CompetencyProgressPage() {
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
               <Input
                 className="pl-9"
-                placeholder="Cari mahasiswa (nama / NIM)..."
+                placeholder={t("searchStudent")}
                 value={studentSearch}
                 onChange={(e) => setStudentSearch(e.target.value)}
               />
@@ -139,7 +141,7 @@ export default function CompetencyProgressPage() {
         !isStudent && (
           <div className="py-12 text-center text-muted-foreground border-2 border-dashed rounded-xl">
             <Target className="mx-auto h-12 w-12 text-gray-300 mb-3" />
-            <p>Pilih mahasiswa untuk melihat progres kompetensinya.</p>
+            <p>{t("selectStudentPrompt")}</p>
           </div>
         )
       ) : (
@@ -157,7 +159,7 @@ export default function CompetencyProgressPage() {
                     : "bg-blue-100 text-blue-700"
                 }`}
               >
-                {data.overall.fulfilled}/{data.overall.targets} target tercapai ({data.overall.percent}%)
+                {t("targetsAchieved", { fulfilled: data.overall.fulfilled, targets: data.overall.targets, percent: data.overall.percent })}
               </Badge>
             )}
           </div>
@@ -165,9 +167,9 @@ export default function CompetencyProgressPage() {
           {data.stases.length === 0 ? (
             <div className="py-12 text-center text-muted-foreground border-2 border-dashed rounded-xl">
               <Target className="mx-auto h-12 w-12 text-gray-300 mb-3" />
-              <p>Belum ada target kompetensi untuk stase yang dijalani.</p>
+              <p>{t("noTargets")}</p>
               <p className="text-xs mt-1">
-                Admin dapat menambahkan target di menu Master Kompetensi (pilih stase + minimal kasus).
+                {t("noTargetsHint")}
               </p>
             </div>
           ) : (
@@ -189,7 +191,7 @@ export default function CompetencyProgressPage() {
                             )}
                             <span className="truncate">
                               {c.name}
-                              {c.level ? <span className="text-xs text-muted-foreground"> · SKDI {c.level}</span> : null}
+                              {c.level ? <span className="text-xs text-muted-foreground">{t("skdiSuffix", { level: c.level })}</span> : null}
                             </span>
                           </span>
                           <span className={`shrink-0 text-xs font-medium ${c.fulfilled ? "text-emerald-600" : "text-slate-500"}`}>

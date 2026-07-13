@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import api from "@/lib/api";
 import { getApiErrorMessage } from "@/lib/api-helpers";
 import { useAuthStore } from "@/store/useAuthStore";
@@ -51,6 +52,8 @@ const selectClass =
  * - Dodiknis/penilai (create-assessments): pilih mahasiswa → isi level observasi.
  */
 export default function SkillChecklistPage() {
+  const t = useTranslations("clinicalSkills");
+  const tc = useTranslations("common");
   const user = useAuthStore((state) => state.user);
   const isStudent = user?.roles?.includes("Mahasiswa") ?? false;
   const canAssess = user?.permissions?.includes("create-assessments") ?? false;
@@ -67,7 +70,7 @@ export default function SkillChecklistPage() {
   const [savingItem, setSavingItem] = useState<string | null>(null);
 
   const levelLabel = (value: string | null) =>
-    value ? levels.find((l) => l.value === value)?.name || value : "Belum diobservasi";
+    value ? levels.find((l) => l.value === value)?.name || value : t("notObserved");
 
   const fetchProgress = useCallback(async (studentId?: string) => {
     setIsLoading(true);
@@ -78,19 +81,20 @@ export default function SkillChecklistPage() {
       setStases(res.data.data.stases || []);
       setStudentName(res.data.data.student?.name || "");
     } catch (err) {
-      toast.error(getApiErrorMessage(err, "Gagal memuat progres skill."));
+      toast.error(getApiErrorMessage(err, t("errLoadProgress")));
       setStases([]);
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     api
       .get("/api/references/skill_levels")
       .then((res) => setLevels(res.data.data || []))
-      .catch(() => toast.error("Gagal memuat level skill."));
+      .catch(() => toast.error(t("errLoadLevels")));
     if (isStudent) fetchProgress();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- sekali saat mount per peran
   }, [isStudent, fetchProgress]);
 
   const searchStudents = async () => {
@@ -100,7 +104,7 @@ export default function SkillChecklistPage() {
       });
       setCandidates(res.data.data || []);
     } catch (err) {
-      toast.error(getApiErrorMessage(err, "Gagal mencari mahasiswa."));
+      toast.error(getApiErrorMessage(err, t("errSearch")));
     }
   };
 
@@ -113,10 +117,10 @@ export default function SkillChecklistPage() {
         skill_checklist_item_id: itemId,
         level,
       });
-      toast.success("Observasi tersimpan.");
+      toast.success(t("successSave"));
       fetchProgress(selectedId);
     } catch (err) {
-      toast.error(getApiErrorMessage(err, "Gagal menyimpan observasi."));
+      toast.error(getApiErrorMessage(err, t("errSave")));
     } finally {
       setSavingItem(null);
     }
@@ -125,28 +129,26 @@ export default function SkillChecklistPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">Skill Checklist</h1>
+        <h1 className="text-3xl font-bold tracking-tight">{t("title")}</h1>
         <p className="text-muted-foreground mt-1">
-          {isStudent
-            ? "Progres observasi keterampilan klinis Anda per stase — dinilai oleh pembimbing."
-            : "Observasi keterampilan klinis mahasiswa per stase (level terakhir yang berlaku)."}
+          {isStudent ? t("subtitleStudent") : t("subtitleAssessor")}
         </p>
       </div>
 
       {!isStudent && (
         <Card className="clean-card">
           <CardHeader className="pb-3">
-            <CardTitle className="text-base">Pilih Mahasiswa</CardTitle>
+            <CardTitle className="text-base">{t("selectStudentTitle")}</CardTitle>
             <div className="flex flex-col sm:flex-row gap-2 pt-1">
               <Input
-                placeholder="Cari nama / NIM..."
+                placeholder={t("searchPlaceholder")}
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && searchStudents()}
                 className="sm:w-72"
               />
               <Button variant="outline" onClick={searchStudents}>
-                <Search className="w-4 h-4 mr-1" /> Cari
+                <Search className="w-4 h-4 mr-1" /> {tc("search")}
               </Button>
               {candidates.length > 0 && (
                 <select
@@ -157,7 +159,7 @@ export default function SkillChecklistPage() {
                     if (e.target.value) fetchProgress(e.target.value);
                   }}
                 >
-                  <option value="">Pilih mahasiswa...</option>
+                  <option value="">{t("selectStudent")}</option>
                   {candidates.map((s) => (
                     <option key={s.id} value={s.id}>
                       {s.user?.name} ({s.user?.identity_number})
@@ -179,9 +181,7 @@ export default function SkillChecklistPage() {
           <CardContent className="py-12 text-center">
             <ClipboardCheck className="w-10 h-10 text-slate-300 mx-auto mb-3" />
             <p className="text-sm text-slate-500">
-              {isStudent
-                ? "Stase yang Anda jalani belum memiliki skill checklist."
-                : "Pilih mahasiswa untuk melihat/mengisi skill checklist-nya."}
+              {isStudent ? t("emptyStudent") : t("emptyAssessor")}
             </p>
           </CardContent>
         </Card>
@@ -189,7 +189,10 @@ export default function SkillChecklistPage() {
         <>
           {studentName && !isStudent && (
             <p className="text-sm text-muted-foreground">
-              Menampilkan skill checklist: <span className="font-semibold text-foreground">{studentName}</span>
+              {t.rich("showingFor", {
+                name: studentName,
+                b: (c) => <span className="font-semibold text-foreground">{c}</span>,
+              })}
             </p>
           )}
           {stases.map((group) => (
@@ -204,7 +207,7 @@ export default function SkillChecklistPage() {
                         : "bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300"
                     }
                   >
-                    {group.assessed}/{group.total} terobservasi
+                    {t("observed", { assessed: group.assessed, total: group.total })}
                   </Badge>
                 </CardTitle>
               </CardHeader>
@@ -219,7 +222,7 @@ export default function SkillChecklistPage() {
                         )}
                         {item.assessed_by && (
                           <p className="text-xs text-slate-400">
-                            oleh {item.assessed_by}
+                            {t("assessedBy", { name: item.assessed_by })}
                             {item.assessed_at
                               ? ` — ${new Date(item.assessed_at).toLocaleDateString("id-ID")}`
                               : ""}
@@ -237,7 +240,7 @@ export default function SkillChecklistPage() {
                             value=""
                             onChange={(e) => e.target.value && assess(item.item_id, e.target.value)}
                           >
-                            <option value="">Set level...</option>
+                            <option value="">{t("setLevel")}</option>
                             {levels.map((l) => (
                               <option key={l.id} value={l.value}>{l.name}</option>
                             ))}
