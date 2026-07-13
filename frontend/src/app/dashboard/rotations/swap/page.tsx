@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import api from "@/lib/api";
 import { getApiErrorMessage } from "@/lib/api-helpers";
 import { useAuthStore } from "@/store/useAuthStore";
@@ -54,11 +55,11 @@ interface PeriodOption {
   name: string;
 }
 
-const STATUS_BADGE: Record<string, { label: string; cls: string }> = {
-  submitted: { label: "Menunggu", cls: "bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300" },
-  approved: { label: "Disetujui", cls: "bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300" },
-  rejected: { label: "Ditolak", cls: "bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300" },
-  cancelled: { label: "Dibatalkan", cls: "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300" },
+const STATUS_CLS: Record<string, string> = {
+  submitted: "bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300",
+  approved: "bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300",
+  rejected: "bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300",
+  cancelled: "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300",
 };
 
 const selectClass =
@@ -75,6 +76,8 @@ const pairLabel = (a?: AssignmentInfo | null) =>
  *   ditukar otomatis dan kedua mahasiswa diberi tahu.
  */
 export default function RotationSwapPage() {
+  const t = useTranslations("rotationSwap");
+  const tc = useTranslations("common");
   const user = useAuthStore((state) => state.user);
   const isStudent = user?.roles?.includes("Mahasiswa") ?? false;
   const canDecide = user?.permissions?.includes("manage-rotations") ?? false;
@@ -102,11 +105,11 @@ export default function RotationSwapPage() {
       const res = await api.get("/api/v1/rotation/swaps");
       setSwaps(res.data.data || []);
     } catch (err) {
-      toast.error(getApiErrorMessage(err, "Gagal memuat permintaan tukar."));
+      toast.error(getApiErrorMessage(err, t("loadError")));
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     fetchSwaps();
@@ -125,7 +128,7 @@ export default function RotationSwapPage() {
       });
       setCandidates(res.data.data || []);
     } catch (err) {
-      toast.error(getApiErrorMessage(err, "Gagal memuat kandidat tukar."));
+      toast.error(getApiErrorMessage(err, t("candidatesError")));
     }
   };
 
@@ -142,7 +145,7 @@ export default function RotationSwapPage() {
       setReason("");
       fetchSwaps();
     } catch (err) {
-      toast.error(getApiErrorMessage(err, "Gagal mengajukan tukar."));
+      toast.error(getApiErrorMessage(err, t("submitError")));
     } finally {
       setIsSaving(false);
     }
@@ -151,10 +154,10 @@ export default function RotationSwapPage() {
   const cancelSwap = async (swap: SwapRow) => {
     try {
       await api.patch(`/api/v1/rotation/swaps/${swap.id}/cancel`);
-      toast.success("Permintaan dibatalkan.");
+      toast.success(t("cancelledToast"));
       fetchSwaps();
     } catch (err) {
-      toast.error(getApiErrorMessage(err, "Gagal membatalkan."));
+      toast.error(getApiErrorMessage(err, t("cancelError")));
     }
   };
 
@@ -170,7 +173,7 @@ export default function RotationSwapPage() {
       setDeciding(null);
       fetchSwaps();
     } catch (err) {
-      toast.error(getApiErrorMessage(err, "Gagal menyimpan keputusan."));
+      toast.error(getApiErrorMessage(err, t("decideError")));
     } finally {
       setIsDeciding(false);
     }
@@ -180,16 +183,14 @@ export default function RotationSwapPage() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Tukar Jadwal Rotasi</h1>
+          <h1 className="text-3xl font-bold tracking-tight">{t("title")}</h1>
           <p className="text-muted-foreground mt-1">
-            {isStudent
-              ? "Ajukan tukar slot stase+RS dengan mahasiswa lain pada periode yang sama — berlaku setelah disetujui admin."
-              : "Tinjau permintaan tukar slot antar mahasiswa. Persetujuan menukar slot kedua belah pihak secara otomatis."}
+            {isStudent ? t("subtitleStudent") : t("subtitleAdmin")}
           </p>
         </div>
         {isStudent && (
           <Button onClick={() => setIsFormOpen(true)} className="bg-blue-900 hover:bg-blue-800 text-white">
-            <ArrowLeftRight className="w-4 h-4 mr-2" /> Ajukan Tukar
+            <ArrowLeftRight className="w-4 h-4 mr-2" /> {t("requestSwap")}
           </Button>
         )}
       </div>
@@ -198,29 +199,28 @@ export default function RotationSwapPage() {
         <Table className="min-w-[820px]">
           <TableHeader>
             <TableRow>
-              <TableHead>Tanggal</TableHead>
-              <TableHead>Pemohon (slot saat ini)</TableHead>
-              <TableHead>Mitra Tukar (slot saat ini)</TableHead>
-              <TableHead>Alasan</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead className="text-right">Aksi</TableHead>
+              <TableHead>{tc("date")}</TableHead>
+              <TableHead>{t("colRequester")}</TableHead>
+              <TableHead>{t("colPartner")}</TableHead>
+              <TableHead>{t("colReason")}</TableHead>
+              <TableHead>{tc("status")}</TableHead>
+              <TableHead className="text-right">{tc("actions")}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {isLoading ? (
-              <TableRow><TableCell colSpan={6} className="text-center text-slate-500 py-10">Memuat...</TableCell></TableRow>
+              <TableRow><TableCell colSpan={6} className="text-center text-slate-500 py-10">{tc("loading")}</TableCell></TableRow>
             ) : swaps.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={6} className="py-12">
                   <div className="flex flex-col items-center gap-2 text-center">
                     <ArrowLeftRight className="w-10 h-10 text-slate-300" />
-                    <p className="text-sm text-slate-500">Belum ada permintaan tukar jadwal.</p>
+                    <p className="text-sm text-slate-500">{t("empty")}</p>
                   </div>
                 </TableCell>
               </TableRow>
             ) : (
               swaps.map((swap) => {
-                const badge = STATUS_BADGE[swap.status];
                 return (
                   <TableRow key={swap.id}>
                     <TableCell className="whitespace-nowrap text-sm">
@@ -233,10 +233,10 @@ export default function RotationSwapPage() {
                         {swap.reason}
                       </span>
                       {swap.decision_note && (
-                        <span className="block text-xs text-slate-400 mt-0.5">Catatan: {swap.decision_note}</span>
+                        <span className="block text-xs text-slate-400 mt-0.5">{t("noteLabel")}: {swap.decision_note}</span>
                       )}
                     </TableCell>
-                    <TableCell><Badge className={badge.cls}>{badge.label}</Badge></TableCell>
+                    <TableCell><Badge className={STATUS_CLS[swap.status]}>{t(`status.${swap.status}`)}</Badge></TableCell>
                     <TableCell className="text-right whitespace-nowrap">
                       {swap.status === "submitted" && canDecide && (
                         <Button
@@ -244,12 +244,12 @@ export default function RotationSwapPage() {
                           className="bg-blue-900 hover:bg-blue-800 text-white"
                           onClick={() => { setDeciding(swap); setDecisionNote(""); }}
                         >
-                          Tinjau
+                          {t("review")}
                         </Button>
                       )}
                       {swap.status === "submitted" && isStudent && (
                         <Button variant="outline" size="sm" onClick={() => cancelSwap(swap)}>
-                          Batalkan
+                          {t("cancelBtn")}
                         </Button>
                       )}
                     </TableCell>
@@ -265,20 +265,20 @@ export default function RotationSwapPage() {
       <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Ajukan Tukar Jadwal</DialogTitle>
+            <DialogTitle>{t("formTitle")}</DialogTitle>
           </DialogHeader>
           <form onSubmit={submitSwap} className="space-y-4 pt-2">
             <div className="space-y-2">
-              <label className="text-sm font-medium">Periode Rotasi</label>
+              <label className="text-sm font-medium">{t("periodLabel")}</label>
               <select className={selectClass} required value={periodId} onChange={(e) => loadCandidates(e.target.value)}>
-                <option value="">Pilih periode...</option>
+                <option value="">{t("selectPeriod")}</option>
                 {periods.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
               </select>
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-medium">Tukar dengan</label>
+              <label className="text-sm font-medium">{t("swapWith")}</label>
               <select className={selectClass} required value={targetId} onChange={(e) => setTargetId(e.target.value)} disabled={!periodId}>
-                <option value="">Pilih penempatan mahasiswa lain...</option>
+                <option value="">{t("selectTarget")}</option>
                 {candidates.map((c) => (
                   <option key={c.assignment_id} value={c.assignment_id}>
                     {c.student_name} — {c.stase} @ {c.hospital}
@@ -286,12 +286,11 @@ export default function RotationSwapPage() {
                 ))}
               </select>
               <p className="text-xs text-muted-foreground">
-                Anda akan mendapat slot mitra, dan mitra mendapat slot Anda. Sistem menolak bila
-                prasyarat stase/remedial salah satu pihak tidak terpenuhi.
+                {t("swapHint")}
               </p>
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-medium">Alasan (dibaca admin)</label>
+              <label className="text-sm font-medium">{t("reasonLabel")}</label>
               <textarea
                 className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                 required
@@ -299,11 +298,11 @@ export default function RotationSwapPage() {
                 maxLength={1000}
                 value={reason}
                 onChange={(e) => setReason(e.target.value)}
-                placeholder="Contoh: RS tujuan lebih dekat dengan domisili keluarga..."
+                placeholder={t("reasonPlaceholder")}
               />
             </div>
             <Button type="submit" className="w-full" disabled={isSaving || !targetId}>
-              {isSaving ? "Mengirim..." : "Kirim Permintaan"}
+              {isSaving ? t("sending") : t("sendRequest")}
             </Button>
           </form>
         </DialogContent>
@@ -313,7 +312,7 @@ export default function RotationSwapPage() {
       <Dialog open={!!deciding} onOpenChange={(open) => !open && setDeciding(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Tinjau Permintaan Tukar</DialogTitle>
+            <DialogTitle>{t("reviewTitle")}</DialogTitle>
           </DialogHeader>
           <Card className="border-dashed">
             <CardHeader className="py-3">
@@ -327,7 +326,7 @@ export default function RotationSwapPage() {
           </Card>
           <p className="text-sm text-slate-600 dark:text-slate-300">{deciding?.reason}</p>
           <div className="space-y-2">
-            <label className="text-sm font-medium">Catatan (opsional, dikirim ke kedua mahasiswa)</label>
+            <label className="text-sm font-medium">{t("decisionNoteLabel")}</label>
             <textarea
               className="flex min-h-[64px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
               maxLength={1000}
@@ -337,14 +336,14 @@ export default function RotationSwapPage() {
           </div>
           <div className="flex justify-end gap-2 pt-1">
             <Button variant="outline" disabled={isDeciding} onClick={() => decide("rejected")}>
-              Tolak
+              {t("reject")}
             </Button>
             <Button
               className="bg-emerald-600 hover:bg-emerald-700 text-white"
               disabled={isDeciding}
               onClick={() => decide("approved")}
             >
-              {isDeciding ? "Memproses..." : "Setujui & Tukar Slot"}
+              {isDeciding ? tc("processing") : t("approveSwap")}
             </Button>
           </div>
         </DialogContent>

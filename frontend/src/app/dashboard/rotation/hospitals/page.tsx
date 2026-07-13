@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useTranslations } from "next-intl";
 import api from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -59,6 +60,8 @@ interface PeriodOption {
 }
 
 export default function HospitalManagement() {
+  const t = useTranslations("rotationHospitals");
+  const tc = useTranslations("common");
   // Admin RS murni: tidak bisa tambah/hapus RS, hanya edit RS-nya (backend enforcer)
   const authUser = useAuthStore((state) => state.user);
   const isScopedAdminRS =
@@ -112,10 +115,10 @@ export default function HospitalManagement() {
       }
       setIsOpen(false);
       resetForm();
-      toast.success("Data rumah sakit disimpan.");
+      toast.success(t("saved"));
       fetchHospitals();
     } catch (err) {
-      toast.error(getApiErrorMessage(err, "Gagal menyimpan data rumah sakit."));
+      toast.error(getApiErrorMessage(err, t("saveError")));
     }
   };
 
@@ -134,7 +137,7 @@ export default function HospitalManagement() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm("Apakah Anda yakin ingin menghapus rumah sakit ini?")) return;
+    if (!confirm(t("deleteConfirm"))) return;
     try {
       await api.delete(`/api/v1/rotation/hospitals/${id}`);
       fetchHospitals();
@@ -170,7 +173,7 @@ export default function HospitalManagement() {
       setStases(staseRes.data.data || []);
       setPeriods(periodRes.data.data || []);
     } catch (err) {
-      toast.error(getApiErrorMessage(err, "Gagal memuat data kuota."));
+      toast.error(getApiErrorMessage(err, t("capLoadError")));
     } finally {
       setCapLoading(false);
     }
@@ -191,10 +194,10 @@ export default function HospitalManagement() {
         rotation_period_id: capForm.rotation_period_id || null,
         max_students: capForm.max_students,
       });
-      toast.success("Kuota disimpan.");
+      toast.success(t("capSaved"));
       refreshCapacities(capacityHospital.id);
     } catch (err) {
-      toast.error(getApiErrorMessage(err, "Gagal menyimpan kuota."));
+      toast.error(getApiErrorMessage(err, t("capSaveError")));
     }
   };
 
@@ -202,10 +205,10 @@ export default function HospitalManagement() {
     if (!capacityHospital) return;
     try {
       await api.delete(`/api/v1/rotation/capacities/${id}`);
-      toast.success("Kuota dihapus.");
+      toast.success(t("capDeleted"));
       refreshCapacities(capacityHospital.id);
     } catch (err) {
-      toast.error(getApiErrorMessage(err, "Gagal menghapus kuota."));
+      toast.error(getApiErrorMessage(err, t("capDeleteError")));
     }
   };
 
@@ -213,8 +216,8 @@ export default function HospitalManagement() {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Rumah Sakit</h1>
-          <p className="text-muted-foreground mt-1">Kelola data rumah sakit jejaring dan satelit.</p>
+          <h1 className="text-3xl font-bold tracking-tight">{t("title")}</h1>
+          <p className="text-muted-foreground mt-1">{t("subtitle")}</p>
         </div>
         
         <Dialog open={isOpen} onOpenChange={(open) => {
@@ -223,37 +226,37 @@ export default function HospitalManagement() {
         }}>
           {!isScopedAdminRS && (
             <DialogTrigger render={<Button className="gap-2" />}>
-              <Plus className="h-4 w-4" /> Tambah RS
+              <Plus className="h-4 w-4" /> {t("addHospital")}
             </DialogTrigger>
           )}
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>{editingId ? "Edit Rumah Sakit" : "Tambah Rumah Sakit"}</DialogTitle>
+              <DialogTitle>{editingId ? t("editTitle") : t("addTitle")}</DialogTitle>
             </DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
-                <Label>Kode RS</Label>
+                <Label>{t("code")}</Label>
                 <Input
                   value={formData.code}
                   onChange={(e) => setFormData({ ...formData, code: e.target.value })}
-                  placeholder="e.g. RSDM"
+                  placeholder={t("codePlaceholder")}
                   required
                 />
               </div>
               <div className="space-y-2">
-                <Label>Nama RS</Label>
+                <Label>{t("name")}</Label>
                 <Input
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  placeholder="e.g. RSUD Dr. Moewardi"
+                  placeholder={t("namePlaceholder")}
                   required
                 />
               </div>
               <div className="space-y-2">
-                <Label>Tipe RS</Label>
+                <Label>{t("type")}</Label>
                 <Select value={formData.type} onValueChange={(val) => setFormData({ ...formData, type: val ?? "" })}>
                   <SelectTrigger>
-                    <SelectValue placeholder="Pilih Tipe" />
+                    <SelectValue placeholder={t("selectType")} />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="Utama">Utama</SelectItem>
@@ -263,21 +266,21 @@ export default function HospitalManagement() {
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label>Alamat</Label>
+                <Label>{t("address")}</Label>
                 <Input
                   value={formData.address}
                   onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                  placeholder="Alamat lengkap"
+                  placeholder={t("addressPlaceholder")}
                 />
               </div>
 
               <div className="rounded-md border bg-slate-50/50 dark:bg-slate-900/30 p-3 space-y-3">
                 <p className="text-xs font-medium text-muted-foreground">
-                  Geofence Presensi (opsional) — koordinat & radius toleransi untuk validasi GPS check-in mahasiswa.
+                  {t("geofenceNote")}
                 </p>
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-2">
-                    <Label>Latitude</Label>
+                    <Label>{t("latitude")}</Label>
                     <Input
                       type="number"
                       step="any"
@@ -287,7 +290,7 @@ export default function HospitalManagement() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label>Longitude</Label>
+                    <Label>{t("longitude")}</Label>
                     <Input
                       type="number"
                       step="any"
@@ -298,20 +301,20 @@ export default function HospitalManagement() {
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <Label>Radius Toleransi (meter)</Label>
+                  <Label>{t("radius")}</Label>
                   <Input
                     type="number"
                     min={10}
                     max={5000}
                     value={formData.radius_tolerance_meters}
                     onChange={(e) => setFormData({ ...formData, radius_tolerance_meters: e.target.value })}
-                    placeholder="Kosongkan untuk default sistem (100 m)"
+                    placeholder={t("radiusPlaceholder")}
                   />
                 </div>
               </div>
 
               <DialogFooter>
-                <Button type="submit">Simpan</Button>
+                <Button type="submit">{tc("save")}</Button>
               </DialogFooter>
             </form>
           </DialogContent>
@@ -323,12 +326,12 @@ export default function HospitalManagement() {
           <table className="w-full text-sm text-left">
             <thead className="text-xs text-muted-foreground uppercase bg-slate-50 border-b">
               <tr>
-                <th className="px-6 py-4 font-medium">Kode</th>
-                <th className="px-6 py-4 font-medium">Nama Rumah Sakit</th>
-                <th className="px-6 py-4 font-medium">Tipe</th>
-                <th className="px-6 py-4 font-medium">Alamat</th>
-                <th className="px-6 py-4 font-medium">Geofence</th>
-                <th className="px-6 py-4 font-medium text-right">Aksi</th>
+                <th className="px-6 py-4 font-medium">{t("colCode")}</th>
+                <th className="px-6 py-4 font-medium">{t("colName")}</th>
+                <th className="px-6 py-4 font-medium">{t("colType")}</th>
+                <th className="px-6 py-4 font-medium">{t("colAddress")}</th>
+                <th className="px-6 py-4 font-medium">{t("colGeofence")}</th>
+                <th className="px-6 py-4 font-medium text-right">{tc("actions")}</th>
               </tr>
             </thead>
             <tbody className="divide-y">
@@ -346,7 +349,7 @@ export default function HospitalManagement() {
               ) : hospitals.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="px-6 py-8 text-center text-muted-foreground">
-                    Belum ada data rumah sakit.
+                    {t("emptyHospitals")}
                   </td>
                 </tr>
               ) : (
@@ -370,16 +373,16 @@ export default function HospitalManagement() {
                             {Number(hospital.latitude).toFixed(4)}, {Number(hospital.longitude).toFixed(4)}
                           </span>
                           <span className="text-muted-foreground">
-                            radius {hospital.radius_tolerance_meters ?? 100} m
+                            {t("radiusValue", { value: hospital.radius_tolerance_meters ?? 100 })}
                           </span>
                         </div>
                       ) : (
-                        <span className="text-xs text-amber-600">Belum diatur</span>
+                        <span className="text-xs text-amber-600">{t("notSet")}</span>
                       )}
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex justify-end gap-2">
-                        <Button variant="outline" size="sm" onClick={() => openCapacityDialog(hospital)} title="Kuota per stase">
+                        <Button variant="outline" size="sm" onClick={() => openCapacityDialog(hospital)} title={t("quotaPerStase")}>
                           <Users className="h-4 w-4" />
                         </Button>
                         <Button variant="outline" size="sm" onClick={() => handleEdit(hospital)}>
@@ -404,10 +407,10 @@ export default function HospitalManagement() {
       <Dialog open={!!capacityHospital} onOpenChange={(open) => !open && setCapacityHospital(null)}>
         <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-xl">
           <DialogHeader>
-            <DialogTitle>Kuota Mahasiswa — {capacityHospital?.name}</DialogTitle>
+            <DialogTitle>{t("capacityTitle", { name: capacityHospital?.name ?? "" })}</DialogTitle>
           </DialogHeader>
           <p className="text-sm text-muted-foreground -mt-2">
-            Batas jumlah mahasiswa per stase. Penempatan rotasi otomatis ditolak bila kuota penuh.
+            {t("capacityDesc")}
           </p>
 
           {capLoading ? (
@@ -416,7 +419,7 @@ export default function HospitalManagement() {
             <div className="space-y-2">
               {capacities.length === 0 ? (
                 <p className="text-sm text-muted-foreground border border-dashed rounded-md p-4 text-center">
-                  Belum ada kuota diatur — semua stase tidak dibatasi.
+                  {t("noQuota")}
                 </p>
               ) : (
                 capacities.map((c) => (
@@ -424,7 +427,7 @@ export default function HospitalManagement() {
                     <div>
                       <p className="font-medium">{c.stase?.name || "-"}</p>
                       <p className="text-xs text-muted-foreground">
-                        {c.rotation_period?.name || "Semua periode"} — terisi {c.occupied}/{c.max_students}
+                        {c.rotation_period?.name || t("allPeriods")} — {t("occupiedCount", { occupied: c.occupied, max: c.max_students })}
                       </p>
                     </div>
                     <Button
@@ -432,7 +435,7 @@ export default function HospitalManagement() {
                       size="sm"
                       className="text-red-600 hover:text-red-700"
                       onClick={() => deleteCapacity(c.id)}
-                      aria-label="Hapus kuota"
+                      aria-label={t("deleteQuota")}
                     >
                       <Trash2 className="h-4 w-4" />
                     </Button>
@@ -443,7 +446,7 @@ export default function HospitalManagement() {
           )}
 
           <form onSubmit={saveCapacity} className="space-y-3 border-t pt-4">
-            <p className="text-sm font-medium">Tambah / perbarui kuota</p>
+            <p className="text-sm font-medium">{t("addUpdateQuota")}</p>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <select
                 className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
@@ -451,7 +454,7 @@ export default function HospitalManagement() {
                 value={capForm.stase_id}
                 onChange={(e) => setCapForm({ ...capForm, stase_id: e.target.value })}
               >
-                <option value="">Pilih Stase</option>
+                <option value="">{t("selectStase")}</option>
                 {stases.map((s) => (
                   <option key={s.id} value={s.id}>{s.name}</option>
                 ))}
@@ -461,7 +464,7 @@ export default function HospitalManagement() {
                 value={capForm.rotation_period_id}
                 onChange={(e) => setCapForm({ ...capForm, rotation_period_id: e.target.value })}
               >
-                <option value="">Semua periode</option>
+                <option value="">{t("allPeriods")}</option>
                 {periods.map((p) => (
                   <option key={p.id} value={p.id}>{p.name}</option>
                 ))}
@@ -473,10 +476,10 @@ export default function HospitalManagement() {
                 required
                 value={capForm.max_students}
                 onChange={(e) => setCapForm({ ...capForm, max_students: Number(e.target.value) })}
-                placeholder="Maks mhs"
+                placeholder={t("maxStudents")}
               />
             </div>
-            <Button type="submit" className="w-full">Simpan Kuota</Button>
+            <Button type="submit" className="w-full">{t("saveQuota")}</Button>
           </form>
         </DialogContent>
       </Dialog>

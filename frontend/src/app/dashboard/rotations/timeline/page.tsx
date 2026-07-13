@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import api from "@/lib/api";
 import { getApiErrorMessage } from "@/lib/api-helpers";
 import { Cohort } from "@/lib/types";
@@ -41,6 +42,8 @@ const selectClass =
  * perjalanan stase satu angkatan (warna per stase, badge remedial).
  */
 export default function RotationTimelinePage() {
+  const t = useTranslations("rotationTimeline");
+  const tc = useTranslations("common");
   const [cohorts, setCohorts] = useState<Cohort[]>([]);
   const [cohortId, setCohortId] = useState("");
   const [periods, setPeriods] = useState<MatrixPeriod[]>([]);
@@ -71,7 +74,7 @@ export default function RotationTimelinePage() {
       setRows(res.data.data.rows || []);
       setLoaded(true);
     } catch (err) {
-      toast.error(getApiErrorMessage(err, "Gagal memuat timeline."));
+      toast.error(getApiErrorMessage(err, t("loadError")));
     } finally {
       setIsLoading(false);
     }
@@ -80,20 +83,19 @@ export default function RotationTimelinePage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">Timeline Rotasi</h1>
+        <h1 className="text-3xl font-bold tracking-tight">{t("title")}</h1>
         <p className="text-muted-foreground mt-1">
-          Peta perjalanan stase satu angkatan: baris mahasiswa, kolom periode. Warna = stase;
-          sel bertanda ↻ adalah remedial.
+          {t("subtitle")}
         </p>
       </div>
 
       <div className="flex flex-col sm:flex-row gap-2">
         <select className={selectClass} value={cohortId} onChange={(e) => setCohortId(e.target.value)}>
-          <option value="">Pilih Angkatan</option>
+          <option value="">{t("selectCohort")}</option>
           {cohorts.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
         </select>
         <Button onClick={load} disabled={!cohortId || isLoading} className="bg-blue-900 hover:bg-blue-800 text-white">
-          {isLoading ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Memuat...</> : <><Search className="w-4 h-4 mr-2" /> Tampilkan</>}
+          {isLoading ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> {tc("loading")}</> : <><Search className="w-4 h-4 mr-2" /> {t("show")}</>}
         </Button>
       </div>
 
@@ -101,7 +103,7 @@ export default function RotationTimelinePage() {
         periods.length === 0 ? (
           <div className="rounded-md border bg-white dark:bg-gray-900 py-12 text-center">
             <CalendarRange className="w-10 h-10 text-slate-300 mx-auto mb-2" />
-            <p className="text-sm text-slate-500">Angkatan ini belum memiliki penempatan rotasi.</p>
+            <p className="text-sm text-slate-500">{t("emptyCohort")}</p>
           </div>
         ) : (
           <div className="rounded-md border bg-white dark:bg-gray-900 overflow-x-auto">
@@ -109,7 +111,7 @@ export default function RotationTimelinePage() {
               <thead>
                 <tr>
                   <th className="sticky left-0 z-10 bg-slate-50 dark:bg-slate-900 border-b border-r px-3 py-2 text-left font-semibold min-w-[180px]">
-                    Mahasiswa
+                    {t("student")}
                   </th>
                   {periods.map((p) => (
                     <th key={p.id} className="border-b border-r px-3 py-2 text-left font-semibold min-w-[150px] bg-slate-50 dark:bg-slate-900">

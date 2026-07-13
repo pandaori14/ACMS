@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useTranslations } from "next-intl";
 import api from "@/lib/api";
 import { getApiErrorMessage } from "@/lib/api-helpers";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -31,6 +32,7 @@ const selectClass =
   "flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background";
 
 export default function HospitalStudentsPage() {
+  const t = useTranslations("rotationHospitalStudents");
   const [rows, setRows] = useState<AssignmentRow[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [filterPeriod, setFilterPeriod] = useState("");
@@ -40,8 +42,9 @@ export default function HospitalStudentsPage() {
     // Backend otomatis membatasi ke RS milik Admin RS
     api.get("/api/v1/rotation/assignments")
       .then((res) => setRows(res.data.data || []))
-      .catch((err) => toast.error(getApiErrorMessage(err, "Gagal memuat data mahasiswa.")))
+      .catch((err) => toast.error(getApiErrorMessage(err, t("loadError"))))
       .finally(() => setIsLoading(false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- sekali saat mount
   }, []);
 
   const periods = useMemo(() => {
@@ -66,11 +69,11 @@ export default function HospitalStudentsPage() {
   const grouped = useMemo(() => {
     const map = new Map<string, AssignmentRow[]>();
     filtered.forEach((r) => {
-      const key = r.stase?.name || "Tanpa Stase";
+      const key = r.stase?.name || t("noStase");
       map.set(key, [...(map.get(key) || []), r]);
     });
     return Array.from(map.entries()).sort((a, b) => a[0].localeCompare(b[0]));
-  }, [filtered]);
+  }, [filtered, t]);
 
   const hospitalNames = useMemo(
     () => Array.from(new Set(rows.map((r) => r.hospital?.name).filter(Boolean))),
@@ -80,28 +83,28 @@ export default function HospitalStudentsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">Mahasiswa di RS Saya</h1>
+        <h1 className="text-3xl font-bold tracking-tight">{t("title")}</h1>
         <p className="text-muted-foreground mt-1 flex items-center gap-2">
           <Building2 className="w-4 h-4" />
-          {hospitalNames.length > 0 ? hospitalNames.join(", ") : "Rumah sakit Anda"} — koass yang sedang/pernah dirotasi.
+          {hospitalNames.length > 0 ? hospitalNames.join(", ") : t("yourHospital")} — {t("subtitleSuffix")}
         </p>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
         <select className={selectClass} value={filterPeriod} onChange={(e) => setFilterPeriod(e.target.value)}>
-          <option value="">Semua Periode</option>
+          <option value="">{t("allPeriods")}</option>
           {periods.map(([id, name]) => (
             <option key={id} value={id}>{name}</option>
           ))}
         </select>
         <select className={selectClass} value={filterStase} onChange={(e) => setFilterStase(e.target.value)}>
-          <option value="">Semua Stase</option>
+          <option value="">{t("allStase")}</option>
           {staseOptions.map(([id, name]) => (
             <option key={id} value={id}>{name}</option>
           ))}
         </select>
         <div className="flex items-center text-sm text-muted-foreground">
-          <Users className="w-4 h-4 mr-2" /> {filtered.length} penempatan
+          <Users className="w-4 h-4 mr-2" /> {t("placementCount", { count: filtered.length })}
         </div>
       </div>
 
@@ -113,9 +116,9 @@ export default function HospitalStudentsPage() {
       ) : grouped.length === 0 ? (
         <div className="py-14 text-center text-muted-foreground border-2 border-dashed rounded-xl">
           <Users className="mx-auto h-12 w-12 text-gray-300 mb-3" />
-          <p>Belum ada mahasiswa yang dirotasi ke rumah sakit Anda.</p>
+          <p>{t("emptyTitle")}</p>
           <p className="text-xs mt-1">
-            Pastikan akun Anda tertaut ke rumah sakit (hubungi admin program studi).
+            {t("emptyDesc")}
           </p>
         </div>
       ) : (
@@ -125,7 +128,7 @@ export default function HospitalStudentsPage() {
               <CardHeader className="pb-2">
                 <CardTitle className="text-base flex items-center justify-between">
                   <span>{staseName}</span>
-                  <Badge variant="secondary">{list.length} mhs</Badge>
+                  <Badge variant="secondary">{t("studentCountShort", { count: list.length })}</Badge>
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-2">
@@ -136,7 +139,7 @@ export default function HospitalStudentsPage() {
                       <p className="text-xs text-muted-foreground truncate">
                         {r.student?.user?.identity_number || ""}
                         {r.rotation_period?.name ? ` — ${r.rotation_period.name}` : ""}
-                        {r.preceptor?.name ? ` — Pembimbing: ${r.preceptor.name}` : ""}
+                        {r.preceptor?.name ? ` — ${t("supervisorLabel")}: ${r.preceptor.name}` : ""}
                       </p>
                     </div>
                     <span className={`shrink-0 text-xs font-medium px-2 py-1 rounded-full ${STATUS_BADGE[r.status] || "bg-slate-100 text-slate-700"}`}>
