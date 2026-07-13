@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import api from "@/lib/api";
 import { getApiErrorMessage } from "@/lib/api-helpers";
 import { Cohort, Program } from "@/lib/types";
@@ -39,6 +40,8 @@ const EMPTY_FORM: CohortForm = {
 };
 
 export default function CohortManagement() {
+  const t = useTranslations("academicCohorts");
+  const tc = useTranslations("common");
   const [cohorts, setCohorts] = useState<Cohort[]>([]);
   const [programs, setPrograms] = useState<Program[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -59,7 +62,7 @@ export default function CohortManagement() {
       setCohorts(cohortRes.data.data || []);
       setPrograms(progRes.data.data || []);
     } catch (err) {
-      toast.error(getApiErrorMessage(err, "Gagal memuat data angkatan."));
+      toast.error(getApiErrorMessage(err, t("loadError")));
     } finally {
       setIsLoading(false);
     }
@@ -67,6 +70,7 @@ export default function CohortManagement() {
 
   useEffect(() => {
     fetchData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- sekali saat mount
   }, []);
 
   const openCreate = () => {
@@ -91,15 +95,15 @@ export default function CohortManagement() {
     try {
       if (editingId) {
         await api.put(`/api/v1/academic/cohorts/${editingId}`, form);
-        toast.success("Angkatan diperbarui.");
+        toast.success(t("updated"));
       } else {
         await api.post("/api/v1/academic/cohorts", form);
-        toast.success("Angkatan ditambahkan.");
+        toast.success(t("created"));
       }
       setIsFormOpen(false);
       fetchData();
     } catch (err) {
-      toast.error(getApiErrorMessage(err, "Gagal menyimpan angkatan."));
+      toast.error(getApiErrorMessage(err, t("saveError")));
     } finally {
       setIsSaving(false);
     }
@@ -109,11 +113,11 @@ export default function CohortManagement() {
     if (!deleting) return;
     try {
       await api.delete(`/api/v1/academic/cohorts/${deleting.id}`);
-      toast.success("Angkatan dihapus.");
+      toast.success(t("deleted"));
       setDeleting(null);
       fetchData();
     } catch (err) {
-      toast.error(getApiErrorMessage(err, "Gagal menghapus angkatan."));
+      toast.error(getApiErrorMessage(err, t("deleteError")));
       setDeleting(null);
     }
   };
@@ -123,14 +127,14 @@ export default function CohortManagement() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-3xl font-semibold tracking-tight text-slate-900 dark:text-slate-50">
-            Manajemen Angkatan
+            {t("title")}
           </h1>
           <p className="text-slate-500 dark:text-slate-400 mt-1">
-            Kelompok angkatan (kohort) mahasiswa per program studi.
+            {t("subtitle")}
           </p>
         </div>
         <Button onClick={openCreate} className="bg-blue-900 hover:bg-blue-800 text-white">
-          <Plus className="w-4 h-4 mr-2" /> Tambah Angkatan
+          <Plus className="w-4 h-4 mr-2" /> {t("addCohort")}
         </Button>
       </div>
 
@@ -138,18 +142,18 @@ export default function CohortManagement() {
         <Table className="min-w-[640px]">
           <TableHeader>
             <TableRow>
-              <TableHead>Nama Angkatan</TableHead>
-              <TableHead>Tahun</TableHead>
-              <TableHead>Program Studi</TableHead>
-              <TableHead>Jumlah Mahasiswa</TableHead>
-              <TableHead className="text-right">Aksi</TableHead>
+              <TableHead>{t("cohortName")}</TableHead>
+              <TableHead>{t("year")}</TableHead>
+              <TableHead>{t("programStudy")}</TableHead>
+              <TableHead>{t("studentCount")}</TableHead>
+              <TableHead className="text-right">{tc("actions")}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {isLoading ? (
               <TableRow>
                 <TableCell colSpan={5} className="text-center text-slate-500 py-10">
-                  Memuat data...
+                  {t("loadingData")}
                 </TableCell>
               </TableRow>
             ) : cohorts.length === 0 ? (
@@ -159,14 +163,14 @@ export default function CohortManagement() {
                     <CalendarDays className="w-10 h-10 text-slate-300" />
                     <div>
                       <p className="font-medium text-slate-700 dark:text-slate-200">
-                        Belum ada angkatan
+                        {t("emptyTitle")}
                       </p>
                       <p className="text-sm text-slate-500">
-                        Buat angkatan dulu sebelum menambahkan mahasiswa.
+                        {t("emptyDesc")}
                       </p>
                     </div>
                     <Button size="sm" onClick={openCreate}>
-                      <Plus className="w-4 h-4 mr-2" /> Tambah Angkatan
+                      <Plus className="w-4 h-4 mr-2" /> {t("addCohort")}
                     </Button>
                   </div>
                 </TableCell>
@@ -181,7 +185,7 @@ export default function CohortManagement() {
                   <TableCell className="whitespace-nowrap">{c.program?.name || "-"}</TableCell>
                   <TableCell>{c.students_count ?? 0}</TableCell>
                   <TableCell className="text-right whitespace-nowrap">
-                    <Button variant="ghost" size="sm" onClick={() => openEdit(c)} aria-label="Edit">
+                    <Button variant="ghost" size="sm" onClick={() => openEdit(c)} aria-label={tc("edit")}>
                       <Pencil className="w-4 h-4" />
                     </Button>
                     <Button
@@ -189,7 +193,7 @@ export default function CohortManagement() {
                       size="sm"
                       className="text-red-600 hover:text-red-700"
                       onClick={() => setDeleting(c)}
-                      aria-label="Hapus"
+                      aria-label={tc("delete")}
                     >
                       <Trash2 className="w-4 h-4" />
                     </Button>
@@ -205,34 +209,34 @@ export default function CohortManagement() {
       <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{editingId ? "Edit Angkatan" : "Tambah Angkatan"}</DialogTitle>
+            <DialogTitle>{editingId ? t("editCohort") : t("addCohort")}</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleSubmit} className="space-y-4 pt-2">
             <div className="space-y-2">
-              <label className="text-sm font-medium">Program Studi</label>
+              <label className="text-sm font-medium">{t("programStudy")}</label>
               <select
                 className={selectClass}
                 required
                 value={form.program_id}
                 onChange={(e) => setForm({ ...form, program_id: e.target.value })}
               >
-                <option value="">Pilih Program</option>
+                <option value="">{t("selectProgram")}</option>
                 {programs.map((p) => (
                   <option key={p.id} value={p.id}>{p.name}</option>
                 ))}
               </select>
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-medium">Nama Angkatan</label>
+              <label className="text-sm font-medium">{t("cohortName")}</label>
               <Input
                 required
                 value={form.name}
                 onChange={(e) => setForm({ ...form, name: e.target.value })}
-                placeholder="Contoh: Angkatan 2026"
+                placeholder={t("cohortNamePlaceholder")}
               />
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-medium">Tahun</label>
+              <label className="text-sm font-medium">{t("year")}</label>
               <Input
                 type="number"
                 required
@@ -243,7 +247,7 @@ export default function CohortManagement() {
               />
             </div>
             <Button type="submit" className="w-full" disabled={isSaving}>
-              {isSaving ? "Menyimpan..." : "Simpan"}
+              {isSaving ? tc("saving") : tc("save")}
             </Button>
           </form>
         </DialogContent>
@@ -253,16 +257,18 @@ export default function CohortManagement() {
       <Dialog open={!!deleting} onOpenChange={(open) => !open && setDeleting(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Hapus Angkatan?</DialogTitle>
+            <DialogTitle>{t("deleteTitle")}</DialogTitle>
           </DialogHeader>
           <p className="text-sm text-slate-600 dark:text-slate-300">
-            Angkatan <span className="font-semibold">{deleting?.name}</span> akan dihapus. Angkatan
-            yang masih memiliki mahasiswa tidak dapat dihapus.
+            {t.rich("deleteConfirm", {
+              name: deleting?.name ?? "",
+              b: (c) => <span className="font-semibold">{c}</span>,
+            })}
           </p>
           <div className="flex justify-end gap-2 pt-2">
-            <Button variant="outline" onClick={() => setDeleting(null)}>Batal</Button>
+            <Button variant="outline" onClick={() => setDeleting(null)}>{tc("cancel")}</Button>
             <Button className="bg-red-600 hover:bg-red-700 text-white" onClick={handleDelete}>
-              Hapus
+              {tc("delete")}
             </Button>
           </div>
         </DialogContent>
