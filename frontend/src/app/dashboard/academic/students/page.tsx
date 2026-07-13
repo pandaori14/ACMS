@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useTranslations } from "next-intl";
 import api from "@/lib/api";
 import { getApiErrorMessage } from "@/lib/api-helpers";
 import { Cohort, Program, Student } from "@/lib/types";
@@ -81,6 +82,8 @@ const selectClass =
   "flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background";
 
 export default function StudentManagement() {
+  const t = useTranslations("academicStudents");
+  const tc = useTranslations("common");
   const [students, setStudents] = useState<Student[]>([]);
   const [programs, setPrograms] = useState<Program[]>([]);
   const [cohorts, setCohorts] = useState<Cohort[]>([]);
@@ -139,11 +142,11 @@ export default function StudentManagement() {
         total: res.data.meta?.total ?? 0,
       });
     } catch (err) {
-      toast.error(getApiErrorMessage(err, "Gagal memuat data mahasiswa."));
+      toast.error(getApiErrorMessage(err, t("loadError")));
     } finally {
       setIsLoading(false);
     }
-  }, [page, debouncedSearch, filterProgram, filterCohort, filterStatus]);
+  }, [page, debouncedSearch, filterProgram, filterCohort, filterStatus, t]);
 
   useEffect(() => {
     fetchStudents();
@@ -206,15 +209,15 @@ export default function StudentManagement() {
 
       if (editingId) {
         await api.put(`/api/v1/academic/students/${editingId}`, payload);
-        toast.success("Data mahasiswa diperbarui.");
+        toast.success(t("updated"));
       } else {
         await api.post("/api/v1/academic/students", payload);
-        toast.success("Mahasiswa ditambahkan. Akun login dibuatkan otomatis.");
+        toast.success(t("created"));
       }
       setIsFormOpen(false);
       fetchStudents();
     } catch (err) {
-      toast.error(getApiErrorMessage(err, "Gagal menyimpan data mahasiswa."));
+      toast.error(getApiErrorMessage(err, t("saveError")));
     } finally {
       setIsSaving(false);
     }
@@ -229,11 +232,11 @@ export default function StudentManagement() {
         status: statusValue,
         reason: statusReason,
       });
-      toast.success("Status mahasiswa berhasil diubah.");
+      toast.success(t("statusChanged"));
       setStatusTarget(null);
       fetchStudents();
     } catch (err) {
-      toast.error(getApiErrorMessage(err, "Gagal mengubah status mahasiswa."));
+      toast.error(getApiErrorMessage(err, t("statusChangeError")));
     } finally {
       setIsChangingStatus(false);
     }
@@ -243,11 +246,11 @@ export default function StudentManagement() {
     if (!deleting) return;
     try {
       await api.delete(`/api/v1/academic/students/${deleting.id}`);
-      toast.success("Mahasiswa dihapus dan akunnya dinonaktifkan.");
+      toast.success(t("deleted"));
       setDeleting(null);
       fetchStudents();
     } catch (err) {
-      toast.error(getApiErrorMessage(err, "Gagal menghapus mahasiswa."));
+      toast.error(getApiErrorMessage(err, t("deleteError")));
       setDeleting(null);
     }
   };
@@ -269,7 +272,7 @@ export default function StudentManagement() {
       toast.success(res.data.message);
       fetchStudents();
     } catch (err) {
-      toast.error(getApiErrorMessage(err, "Import gagal diproses."));
+      toast.error(getApiErrorMessage(err, t("importError")));
     } finally {
       setIsImporting(false);
     }
@@ -287,7 +290,7 @@ export default function StudentManagement() {
       a.click();
       URL.revokeObjectURL(url);
     } catch (err) {
-      toast.error(getApiErrorMessage(err, "Gagal mengunduh template."));
+      toast.error(getApiErrorMessage(err, t("templateError")));
     }
   };
 
@@ -305,18 +308,18 @@ export default function StudentManagement() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-3xl font-semibold tracking-tight text-slate-900 dark:text-slate-50">
-            Manajemen Mahasiswa
+            {t("title")}
           </h1>
           <p className="text-slate-500 dark:text-slate-400 mt-1">
-            Data koass: akun, program studi, angkatan, dan status akademik.
+            {t("subtitle")}
           </p>
         </div>
         <div className="flex gap-2">
           <Button variant="outline" onClick={() => resetImportDialog(true)}>
-            <Upload className="w-4 h-4 mr-2" /> Import Excel
+            <Upload className="w-4 h-4 mr-2" /> {t("importExcel")}
           </Button>
           <Button onClick={openCreate} className="bg-blue-900 hover:bg-blue-800 text-white">
-            <Plus className="w-4 h-4 mr-2" /> Tambah Mahasiswa
+            <Plus className="w-4 h-4 mr-2" /> {t("addStudent")}
           </Button>
         </div>
       </div>
@@ -327,7 +330,7 @@ export default function StudentManagement() {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
           <Input
             className="pl-9"
-            placeholder="Cari nama / NIM..."
+            placeholder={t("searchPlaceholder")}
             value={search}
             onChange={(e) => {
               setSearch(e.target.value);
@@ -343,7 +346,7 @@ export default function StudentManagement() {
             setPage(1);
           }}
         >
-          <option value="">Semua Program Studi</option>
+          <option value="">{t("allPrograms")}</option>
           {programs.map((p) => (
             <option key={p.id} value={p.id}>{p.name}</option>
           ))}
@@ -356,7 +359,7 @@ export default function StudentManagement() {
             setPage(1);
           }}
         >
-          <option value="">Semua Angkatan</option>
+          <option value="">{t("allCohorts")}</option>
           {cohorts.map((c) => (
             <option key={c.id} value={c.id}>{c.name}</option>
           ))}
@@ -369,7 +372,7 @@ export default function StudentManagement() {
             setPage(1);
           }}
         >
-          <option value="">Semua Status</option>
+          <option value="">{t("allStatuses")}</option>
           {statuses.map((s) => (
             <option key={s.id} value={s.value}>{s.name}</option>
           ))}
@@ -380,20 +383,20 @@ export default function StudentManagement() {
         <Table className="min-w-[760px]">
           <TableHeader>
             <TableRow>
-              <TableHead>NIM</TableHead>
-              <TableHead>Nama</TableHead>
-              <TableHead>Email</TableHead>
-              <TableHead>Prodi</TableHead>
-              <TableHead>Angkatan</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead className="text-right">Aksi</TableHead>
+              <TableHead>{t("nim")}</TableHead>
+              <TableHead>{tc("name")}</TableHead>
+              <TableHead>{t("email")}</TableHead>
+              <TableHead>{t("program")}</TableHead>
+              <TableHead>{t("cohort")}</TableHead>
+              <TableHead>{tc("status")}</TableHead>
+              <TableHead className="text-right">{tc("actions")}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {isLoading ? (
               <TableRow>
                 <TableCell colSpan={7} className="text-center text-slate-500 py-10">
-                  Memuat data mahasiswa...
+                  {t("loadingStudents")}
                 </TableCell>
               </TableRow>
             ) : students.length === 0 ? (
@@ -403,18 +406,18 @@ export default function StudentManagement() {
                     <Users className="w-10 h-10 text-slate-300" />
                     <div>
                       <p className="font-medium text-slate-700 dark:text-slate-200">
-                        Belum ada mahasiswa
+                        {t("emptyTitle")}
                       </p>
                       <p className="text-sm text-slate-500">
-                        Tambah satu per satu, atau import massal dari file Excel/CSV.
+                        {t("emptyDesc")}
                       </p>
                     </div>
                     <div className="flex gap-2">
                       <Button size="sm" variant="outline" onClick={() => resetImportDialog(true)}>
-                        <Upload className="w-4 h-4 mr-2" /> Import Excel
+                        <Upload className="w-4 h-4 mr-2" /> {t("importExcel")}
                       </Button>
                       <Button size="sm" onClick={openCreate}>
-                        <Plus className="w-4 h-4 mr-2" /> Tambah Mahasiswa
+                        <Plus className="w-4 h-4 mr-2" /> {t("addStudent")}
                       </Button>
                     </div>
                   </div>
@@ -437,7 +440,7 @@ export default function StudentManagement() {
                   <TableCell>
                     <button
                       type="button"
-                      title="Ubah status (wajib alasan)"
+                      title={t("changeStatusTitle")}
                       onClick={() => {
                         setStatusTarget(s);
                         setStatusValue(s.status || "active");
@@ -451,7 +454,7 @@ export default function StudentManagement() {
                     </button>
                   </TableCell>
                   <TableCell className="text-right whitespace-nowrap">
-                    <Button variant="ghost" size="sm" onClick={() => openEdit(s)} aria-label="Edit">
+                    <Button variant="ghost" size="sm" onClick={() => openEdit(s)} aria-label={tc("edit")}>
                       <Pencil className="w-4 h-4" />
                     </Button>
                     <Button
@@ -459,7 +462,7 @@ export default function StudentManagement() {
                       size="sm"
                       className="text-red-600 hover:text-red-700"
                       onClick={() => setDeleting(s)}
-                      aria-label="Hapus"
+                      aria-label={tc("delete")}
                     >
                       <Trash2 className="w-4 h-4" />
                     </Button>
@@ -475,11 +478,11 @@ export default function StudentManagement() {
       {meta.total > 0 && (
         <div className="flex items-center justify-between text-sm text-slate-500">
           <span>
-            Total {meta.total} mahasiswa — halaman {page} dari {meta.last_page}
+            {t("paginationInfo", { total: meta.total, page, lastPage: meta.last_page })}
           </span>
           <div className="flex gap-2">
             <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage(page - 1)}>
-              Sebelumnya
+              {tc("previous")}
             </Button>
             <Button
               variant="outline"
@@ -487,7 +490,7 @@ export default function StudentManagement() {
               disabled={page >= meta.last_page}
               onClick={() => setPage(page + 1)}
             >
-              Berikutnya
+              {tc("next")}
             </Button>
           </div>
         </div>
@@ -497,59 +500,59 @@ export default function StudentManagement() {
       <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
         <DialogContent className="max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>{editingId ? "Edit Mahasiswa" : "Tambah Mahasiswa"}</DialogTitle>
+            <DialogTitle>{editingId ? t("editStudent") : t("addStudent")}</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleSubmit} className="space-y-4 pt-2">
             <div className="space-y-2">
-              <label className="text-sm font-medium">Nama Lengkap</label>
+              <label className="text-sm font-medium">{t("fullName")}</label>
               <Input required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <label className="text-sm font-medium">Email</label>
+                <label className="text-sm font-medium">{t("email")}</label>
                 <Input type="email" required value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
               </div>
               <div className="space-y-2">
-                <label className="text-sm font-medium">NIM</label>
+                <label className="text-sm font-medium">{t("nim")}</label>
                 <Input required value={form.identity_number} onChange={(e) => setForm({ ...form, identity_number: e.target.value })} />
               </div>
             </div>
             <div className="space-y-2">
               <label className="text-sm font-medium">
-                Password {editingId ? "(kosongkan bila tidak diubah)" : "(kosongkan = dibuat otomatis & dikirim via email)"}
+                {editingId ? t("passwordEdit") : t("passwordCreate")}
               </label>
               <Input
                 type="password"
                 minLength={8}
                 value={form.password}
                 onChange={(e) => setForm({ ...form, password: e.target.value })}
-                placeholder="Minimal 8 karakter"
+                placeholder={t("passwordPlaceholder")}
               />
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <label className="text-sm font-medium">Program Studi</label>
+                <label className="text-sm font-medium">{t("programStudy")}</label>
                 <select
                   className={selectClass}
                   required
                   value={form.program_id}
                   onChange={(e) => setForm({ ...form, program_id: e.target.value })}
                 >
-                  <option value="">Pilih Program</option>
+                  <option value="">{t("selectProgram")}</option>
                   {programs.map((p) => (
                     <option key={p.id} value={p.id}>{p.name}</option>
                   ))}
                 </select>
               </div>
               <div className="space-y-2">
-                <label className="text-sm font-medium">Angkatan</label>
+                <label className="text-sm font-medium">{t("cohort")}</label>
                 <select
                   className={selectClass}
                   required
                   value={form.cohort_id}
                   onChange={(e) => setForm({ ...form, cohort_id: e.target.value })}
                 >
-                  <option value="">Pilih Angkatan</option>
+                  <option value="">{t("selectCohort")}</option>
                   {cohorts
                     .filter((c) => !form.program_id || c.program_id === form.program_id)
                     .map((c) => (
@@ -561,7 +564,7 @@ export default function StudentManagement() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {!editingId ? (
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">Status Awal</label>
+                  <label className="text-sm font-medium">{t("initialStatus")}</label>
                   <select
                     className={selectClass}
                     required
@@ -575,14 +578,14 @@ export default function StudentManagement() {
                 </div>
               ) : (
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">Status</label>
+                  <label className="text-sm font-medium">{tc("status")}</label>
                   <p className="text-sm text-muted-foreground border rounded-md px-3 py-2.5">
-                    Ubah lewat klik badge status di tabel (wajib alasan &amp; tercatat audit).
+                    {t("statusEditHint")}
                   </p>
                 </div>
               )}
               <div className="space-y-2">
-                <label className="text-sm font-medium">Tanggal Masuk</label>
+                <label className="text-sm font-medium">{t("enrollmentDate")}</label>
                 <Input
                   type="date"
                   required
@@ -592,7 +595,7 @@ export default function StudentManagement() {
               </div>
             </div>
             <Button type="submit" className="w-full" disabled={isSaving}>
-              {isSaving ? "Menyimpan..." : "Simpan"}
+              {isSaving ? tc("saving") : tc("save")}
             </Button>
           </form>
         </DialogContent>
@@ -602,16 +605,19 @@ export default function StudentManagement() {
       <Dialog open={!!statusTarget} onOpenChange={(open) => !open && setStatusTarget(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Ubah Status Mahasiswa</DialogTitle>
+            <DialogTitle>{t("changeStatusDialogTitle")}</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleChangeStatus} className="space-y-4 pt-2">
             <p className="text-sm text-slate-600 dark:text-slate-300">
-              <span className="font-semibold">{statusTarget?.user?.name}</span> — status saat ini:{" "}
-              <span className="font-medium">{statusLabel(statusTarget?.status)}</span>.
-              Mahasiswa non-aktif otomatis ditolak saat penempatan rotasi.
+              {t.rich("statusCurrentInfo", {
+                name: statusTarget?.user?.name ?? "",
+                status: statusLabel(statusTarget?.status),
+                b: (c) => <span className="font-semibold">{c}</span>,
+                m: (c) => <span className="font-medium">{c}</span>,
+              })}
             </p>
             <div className="space-y-2">
-              <label className="text-sm font-medium">Status Baru</label>
+              <label className="text-sm font-medium">{t("newStatus")}</label>
               <select
                 className={selectClass}
                 required
@@ -624,7 +630,7 @@ export default function StudentManagement() {
               </select>
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-medium">Alasan (wajib, tercatat di audit)</label>
+              <label className="text-sm font-medium">{t("reasonLabel")}</label>
               <textarea
                 className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                 required
@@ -632,15 +638,15 @@ export default function StudentManagement() {
                 maxLength={1000}
                 value={statusReason}
                 onChange={(e) => setStatusReason(e.target.value)}
-                placeholder="Contoh: Cuti melahirkan satu semester sesuai SK Dekan No. ..."
+                placeholder={t("reasonPlaceholder")}
               />
             </div>
             <div className="flex justify-end gap-2">
               <Button type="button" variant="outline" onClick={() => setStatusTarget(null)}>
-                Batal
+                {tc("cancel")}
               </Button>
               <Button type="submit" disabled={isChangingStatus} className="bg-blue-900 hover:bg-blue-800 text-white">
-                {isChangingStatus ? "Menyimpan..." : "Ubah Status"}
+                {isChangingStatus ? tc("saving") : t("changeStatusButton")}
               </Button>
             </div>
           </form>
@@ -651,17 +657,18 @@ export default function StudentManagement() {
       <Dialog open={!!deleting} onOpenChange={(open) => !open && setDeleting(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Hapus Mahasiswa?</DialogTitle>
+            <DialogTitle>{t("deleteTitle")}</DialogTitle>
           </DialogHeader>
           <p className="text-sm text-slate-600 dark:text-slate-300">
-            <span className="font-semibold">{deleting?.user?.name}</span> akan dihapus dari daftar
-            mahasiswa dan akun loginnya dinonaktifkan. Mahasiswa dengan riwayat rotasi tidak dapat
-            dihapus — ubah statusnya saja.
+            {t.rich("deleteConfirm", {
+              name: deleting?.user?.name ?? "",
+              b: (c) => <span className="font-semibold">{c}</span>,
+            })}
           </p>
           <div className="flex justify-end gap-2 pt-2">
-            <Button variant="outline" onClick={() => setDeleting(null)}>Batal</Button>
+            <Button variant="outline" onClick={() => setDeleting(null)}>{tc("cancel")}</Button>
             <Button className="bg-red-600 hover:bg-red-700 text-white" onClick={handleDelete}>
-              Hapus
+              {tc("delete")}
             </Button>
           </div>
         </DialogContent>
@@ -671,45 +678,48 @@ export default function StudentManagement() {
       <Dialog open={isImportOpen} onOpenChange={resetImportDialog}>
         <DialogContent className="max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Import Mahasiswa dari Excel/CSV</DialogTitle>
+            <DialogTitle>{t("importTitle")}</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleImport} className="space-y-4 pt-2">
             <div className="rounded-md bg-blue-50 dark:bg-blue-950/40 p-3 text-sm text-blue-900 dark:text-blue-200">
               <p className="flex items-start gap-2">
                 <GraduationCap className="w-4 h-4 mt-0.5 shrink-0" />
                 <span>
-                  Kolom wajib: <b>nama, email, nim</b> (kolom <b>password</b> opsional — bila kosong
-                  dibuat otomatis dan dikirim ke email mahasiswa).{" "}
-                  <button type="button" onClick={downloadTemplate} className="underline font-medium">
-                    Unduh template
-                  </button>
+                  {t.rich("importInfo", {
+                    b: (c) => <b>{c}</b>,
+                    link: (c) => (
+                      <button type="button" onClick={downloadTemplate} className="underline font-medium">
+                        {c}
+                      </button>
+                    ),
+                  })}
                 </span>
               </p>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <label className="text-sm font-medium">Program Studi</label>
+                <label className="text-sm font-medium">{t("programStudy")}</label>
                 <select
                   className={selectClass}
                   required
                   value={importProgram}
                   onChange={(e) => setImportProgram(e.target.value)}
                 >
-                  <option value="">Pilih Program</option>
+                  <option value="">{t("selectProgram")}</option>
                   {programs.map((p) => (
                     <option key={p.id} value={p.id}>{p.name}</option>
                   ))}
                 </select>
               </div>
               <div className="space-y-2">
-                <label className="text-sm font-medium">Angkatan</label>
+                <label className="text-sm font-medium">{t("cohort")}</label>
                 <select
                   className={selectClass}
                   required
                   value={importCohort}
                   onChange={(e) => setImportCohort(e.target.value)}
                 >
-                  <option value="">Pilih Angkatan</option>
+                  <option value="">{t("selectCohort")}</option>
                   {cohorts
                     .filter((c) => !importProgram || c.program_id === importProgram)
                     .map((c) => (
@@ -719,7 +729,7 @@ export default function StudentManagement() {
               </div>
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-medium">File (.xlsx / .csv, maks 5MB)</label>
+              <label className="text-sm font-medium">{t("fileLabel")}</label>
               <Input
                 ref={fileInputRef}
                 type="file"
@@ -732,16 +742,16 @@ export default function StudentManagement() {
             {importResult && (
               <div className="rounded-md border p-3 text-sm space-y-2">
                 <p className="font-medium text-emerald-700 dark:text-emerald-400">
-                  ✓ {importResult.created} mahasiswa berhasil dibuat
+                  {t("importCreated", { count: importResult.created })}
                 </p>
                 {importResult.skipped.length > 0 && (
                   <div>
                     <p className="font-medium text-amber-700 dark:text-amber-400 mb-1">
-                      {importResult.skipped.length} baris dilewati:
+                      {t("importSkipped", { count: importResult.skipped.length })}
                     </p>
                     <ul className="list-disc pl-5 text-slate-600 dark:text-slate-300 max-h-40 overflow-y-auto">
                       {importResult.skipped.map((s, i) => (
-                        <li key={i}>Baris {s.row}: {s.reason}</li>
+                        <li key={i}>{t("importSkippedRow", { row: s.row, reason: s.reason })}</li>
                       ))}
                     </ul>
                   </div>
@@ -750,7 +760,7 @@ export default function StudentManagement() {
             )}
 
             <Button type="submit" className="w-full" disabled={isImporting || !importFile}>
-              {isImporting ? "Memproses import..." : "Mulai Import"}
+              {isImporting ? t("importing") : t("startImport")}
             </Button>
           </form>
         </DialogContent>
