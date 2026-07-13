@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import api from "@/lib/api";
 import { getApiErrorMessage } from "@/lib/api-helpers";
 import { Stase, Program } from "@/lib/types";
@@ -52,6 +53,8 @@ interface SkillItem {
 }
 
 export default function StaseManagement() {
+  const t = useTranslations("academicStase");
+  const tc = useTranslations("common");
   const [stases, setStases] = useState<Stase[]>([]);
   const [programs, setPrograms] = useState<Program[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -71,7 +74,7 @@ export default function StaseManagement() {
       setStases(staseRes.data.data || staseRes.data);
       setPrograms(progRes.data.data || progRes.data);
     } catch (err) {
-      toast.error(getApiErrorMessage(err, "Gagal memuat data stase."));
+      toast.error(getApiErrorMessage(err, t("loadError")));
     } finally {
       setIsLoading(false);
     }
@@ -79,6 +82,7 @@ export default function StaseManagement() {
 
   useEffect(() => {
     fetchData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- sekali saat mount
   }, []);
 
   const openCreate = () => {
@@ -131,7 +135,7 @@ export default function StaseManagement() {
       });
       setSkillItems(res.data.data || []);
     } catch (err) {
-      toast.error(getApiErrorMessage(err, "Gagal memuat skill checklist."));
+      toast.error(getApiErrorMessage(err, t("skillLoadError")));
     } finally {
       setIsSkillLoading(false);
     }
@@ -148,7 +152,7 @@ export default function StaseManagement() {
       setSkillItems((prev) => [...prev, res.data.data]);
       setNewSkillName("");
     } catch (err) {
-      toast.error(getApiErrorMessage(err, "Gagal menambah item skill."));
+      toast.error(getApiErrorMessage(err, t("skillAddError")));
     }
   };
 
@@ -158,7 +162,7 @@ export default function StaseManagement() {
       toast.success(res.data.message);
       setSkillItems((prev) => prev.filter((i) => i.id !== item.id));
     } catch (err) {
-      toast.error(getApiErrorMessage(err, "Gagal menghapus item skill."));
+      toast.error(getApiErrorMessage(err, t("skillDeleteError")));
     }
   };
 
@@ -167,15 +171,15 @@ export default function StaseManagement() {
     try {
       if (editingId) {
         await api.put(`/api/v1/academic/stase/${editingId}`, formData);
-        toast.success("Stase diperbarui.");
+        toast.success(t("updated"));
       } else {
         await api.post("/api/v1/academic/stase", formData);
-        toast.success("Stase ditambahkan.");
+        toast.success(t("created"));
       }
       setIsOpen(false);
       fetchData();
     } catch (err) {
-      toast.error(getApiErrorMessage(err, "Gagal menyimpan data stase."));
+      toast.error(getApiErrorMessage(err, t("saveError")));
     }
   };
 
@@ -183,10 +187,10 @@ export default function StaseManagement() {
     if (!deleting) return;
     try {
       await api.delete(`/api/v1/academic/stase/${deleting.id}`);
-      toast.success("Stase dihapus.");
+      toast.success(t("deleted"));
       fetchData();
     } catch (err) {
-      toast.error(getApiErrorMessage(err, "Gagal menghapus stase."));
+      toast.error(getApiErrorMessage(err, t("deleteError")));
     } finally {
       setDeleting(null);
     }
@@ -196,13 +200,13 @@ export default function StaseManagement() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Manajemen Stase</h1>
+          <h1 className="text-3xl font-bold tracking-tight">{t("title")}</h1>
           <p className="text-muted-foreground mt-1">
-            Departemen/bagian rotasi klinik beserta durasi dan nilai kelulusan.
+            {t("subtitle")}
           </p>
         </div>
         <Button onClick={openCreate} className="bg-blue-900 hover:bg-blue-800 text-white">
-          <Plus className="w-4 h-4 mr-2" /> Tambah Stase
+          <Plus className="w-4 h-4 mr-2" /> {t("addStase")}
         </Button>
       </div>
 
@@ -210,19 +214,19 @@ export default function StaseManagement() {
         <Table className="min-w-[680px]">
           <TableHeader>
             <TableRow>
-              <TableHead>Kode</TableHead>
-              <TableHead>Nama Stase</TableHead>
-              <TableHead>Program</TableHead>
-              <TableHead>Durasi</TableHead>
-              <TableHead>Nilai Lulus</TableHead>
-              <TableHead>Prasyarat</TableHead>
-              <TableHead className="text-right">Aksi</TableHead>
+              <TableHead>{t("code")}</TableHead>
+              <TableHead>{t("staseName")}</TableHead>
+              <TableHead>{t("program")}</TableHead>
+              <TableHead>{t("duration")}</TableHead>
+              <TableHead>{t("passingGrade")}</TableHead>
+              <TableHead>{t("prerequisite")}</TableHead>
+              <TableHead className="text-right">{tc("actions")}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {isLoading ? (
               <TableRow>
-                <TableCell colSpan={7} className="text-center text-slate-500 py-10">Memuat data...</TableCell>
+                <TableCell colSpan={7} className="text-center text-slate-500 py-10">{t("loadingData")}</TableCell>
               </TableRow>
             ) : stases.length === 0 ? (
               <TableRow>
@@ -230,13 +234,13 @@ export default function StaseManagement() {
                   <div className="flex flex-col items-center gap-3 text-center">
                     <GraduationCap className="w-10 h-10 text-slate-300" />
                     <div>
-                      <p className="font-medium text-slate-700 dark:text-slate-200">Belum ada stase</p>
+                      <p className="font-medium text-slate-700 dark:text-slate-200">{t("emptyTitle")}</p>
                       <p className="text-sm text-slate-500">
-                        Stase diperlukan sebelum membuat jadwal rotasi dan ujian.
+                        {t("emptyDesc")}
                       </p>
                     </div>
                     <Button size="sm" onClick={openCreate}>
-                      <Plus className="w-4 h-4 mr-2" /> Tambah Stase
+                      <Plus className="w-4 h-4 mr-2" /> {t("addStase")}
                     </Button>
                   </div>
                 </TableCell>
@@ -247,16 +251,16 @@ export default function StaseManagement() {
                   <TableCell className="font-medium whitespace-nowrap">{stase.code}</TableCell>
                   <TableCell className="whitespace-nowrap">{stase.name}</TableCell>
                   <TableCell className="whitespace-nowrap">{stase.program?.name}</TableCell>
-                  <TableCell className="whitespace-nowrap">{stase.duration_weeks} Minggu</TableCell>
+                  <TableCell className="whitespace-nowrap">{t("weeks", { count: stase.duration_weeks ?? 0 })}</TableCell>
                   <TableCell className="whitespace-nowrap">{stase.passing_grade}</TableCell>
                   <TableCell className="max-w-[220px] truncate text-sm text-slate-600 dark:text-slate-300" title={staseNames(stase.prerequisite_stase_ids)}>
                     {staseNames(stase.prerequisite_stase_ids) || <span className="text-slate-400">—</span>}
                   </TableCell>
                   <TableCell className="text-right whitespace-nowrap">
-                    <Button variant="ghost" size="sm" onClick={() => openSkills(stase)} aria-label="Skill Checklist" title="Kelola skill checklist">
+                    <Button variant="ghost" size="sm" onClick={() => openSkills(stase)} aria-label={t("skillChecklist")} title={t("manageSkillChecklist")}>
                       <ClipboardCheck className="w-4 h-4" />
                     </Button>
-                    <Button variant="ghost" size="sm" onClick={() => openEdit(stase)} aria-label="Edit">
+                    <Button variant="ghost" size="sm" onClick={() => openEdit(stase)} aria-label={tc("edit")}>
                       <Pencil className="w-4 h-4" />
                     </Button>
                     <Button
@@ -264,7 +268,7 @@ export default function StaseManagement() {
                       size="sm"
                       className="text-red-600 hover:text-red-700"
                       onClick={() => setDeleting(stase)}
-                      aria-label="Hapus"
+                      aria-label={tc("delete")}
                     >
                       <Trash2 className="w-4 h-4" />
                     </Button>
@@ -280,49 +284,49 @@ export default function StaseManagement() {
       <Dialog open={isOpen} onOpenChange={setIsOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{editingId ? "Edit Stase" : "Tambah Stase Baru"}</DialogTitle>
+            <DialogTitle>{editingId ? t("editStase") : t("addStaseNew")}</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleSubmit} className="space-y-4 pt-4">
             <div className="space-y-2">
-              <label className="text-sm font-medium">Program Studi</label>
+              <label className="text-sm font-medium">{t("programStudy")}</label>
               <select
                 className={selectClass}
                 value={formData.program_id}
                 onChange={(e) => setFormData({...formData, program_id: e.target.value})}
                 required
               >
-                <option value="">Pilih Program</option>
+                <option value="">{t("selectProgram")}</option>
                 {programs.map((p) => (
                   <option key={p.id} value={p.id}>{p.name}</option>
                 ))}
               </select>
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-medium">Kode</label>
+              <label className="text-sm font-medium">{t("code")}</label>
               <Input required value={formData.code} onChange={(e) => setFormData({...formData, code: e.target.value})} />
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-medium">Nama Stase</label>
+              <label className="text-sm font-medium">{t("staseName")}</label>
               <Input required value={formData.name} onChange={(e) => setFormData({...formData, name: e.target.value})} />
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <label className="text-sm font-medium">Durasi (Minggu)</label>
+                <label className="text-sm font-medium">{t("durationWeeks")}</label>
                 <Input type="number" required min={1} value={formData.duration_weeks} onChange={(e) => setFormData({...formData, duration_weeks: Number(e.target.value)})} />
               </div>
               <div className="space-y-2">
-                <label className="text-sm font-medium">Nilai Lulus</label>
+                <label className="text-sm font-medium">{t("passingGrade")}</label>
                 <Input type="number" step="0.01" required min={0} max={100} value={formData.passing_grade} onChange={(e) => setFormData({...formData, passing_grade: Number(e.target.value)})} />
               </div>
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-medium">Stase Prasyarat</label>
+              <label className="text-sm font-medium">{t("prerequisiteStase")}</label>
               <p className="text-xs text-muted-foreground">
-                Mahasiswa hanya bisa ditempatkan ke stase ini setelah menyelesaikan seluruh prasyarat.
+                {t("prerequisiteHint")}
               </p>
               <div className="max-h-40 overflow-y-auto rounded-md border p-2 space-y-1">
                 {stases.filter((s) => s.id !== editingId).length === 0 ? (
-                  <p className="text-sm text-slate-400 px-1">Belum ada stase lain.</p>
+                  <p className="text-sm text-slate-400 px-1">{t("noOtherStase")}</p>
                 ) : (
                   stases
                     .filter((s) => s.id !== editingId)
@@ -340,7 +344,7 @@ export default function StaseManagement() {
                 )}
               </div>
             </div>
-            <Button type="submit" className="w-full">Simpan</Button>
+            <Button type="submit" className="w-full">{tc("save")}</Button>
           </form>
         </DialogContent>
       </Dialog>
@@ -349,18 +353,17 @@ export default function StaseManagement() {
       <Dialog open={!!skillStase} onOpenChange={(open) => !open && setSkillStase(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Skill Checklist — {skillStase?.name}</DialogTitle>
+            <DialogTitle>{t("skillDialogTitle", { name: skillStase?.name ?? "" })}</DialogTitle>
           </DialogHeader>
           <p className="text-sm text-muted-foreground">
-            Keterampilan yang wajib diobservasi pembimbing selama stase ini. Item yang sudah
-            memiliki observasi akan dinonaktifkan (bukan dihapus) demi menjaga riwayat.
+            {t("skillDialogDesc")}
           </p>
           {isSkillLoading ? (
-            <p className="text-sm text-slate-500 py-4 text-center">Memuat...</p>
+            <p className="text-sm text-slate-500 py-4 text-center">{tc("loading")}</p>
           ) : (
             <ul className="max-h-56 overflow-y-auto divide-y divide-slate-100 dark:divide-slate-800 rounded-md border">
               {skillItems.length === 0 ? (
-                <li className="px-3 py-4 text-sm text-slate-400 text-center">Belum ada item skill.</li>
+                <li className="px-3 py-4 text-sm text-slate-400 text-center">{t("noSkillItems")}</li>
               ) : (
                 skillItems.map((item) => (
                   <li key={item.id} className="flex items-center justify-between px-3 py-2 text-sm">
@@ -370,7 +373,7 @@ export default function StaseManagement() {
                       size="sm"
                       className="text-red-600 hover:text-red-700"
                       onClick={() => removeSkill(item)}
-                      aria-label="Hapus item"
+                      aria-label={t("deleteItem")}
                     >
                       <Trash2 className="w-4 h-4" />
                     </Button>
@@ -381,13 +384,13 @@ export default function StaseManagement() {
           )}
           <form onSubmit={addSkill} className="flex gap-2">
             <Input
-              placeholder="Nama keterampilan, mis. Pungsi vena"
+              placeholder={t("skillNamePlaceholder")}
               value={newSkillName}
               onChange={(e) => setNewSkillName(e.target.value)}
               maxLength={255}
             />
             <Button type="submit" disabled={!newSkillName.trim()}>
-              <Plus className="w-4 h-4 mr-1" /> Tambah
+              <Plus className="w-4 h-4 mr-1" /> {tc("add")}
             </Button>
           </form>
         </DialogContent>
@@ -397,16 +400,18 @@ export default function StaseManagement() {
       <Dialog open={!!deleting} onOpenChange={(open) => !open && setDeleting(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Hapus Stase?</DialogTitle>
+            <DialogTitle>{t("deleteTitle")}</DialogTitle>
           </DialogHeader>
           <p className="text-sm text-slate-600 dark:text-slate-300">
-            Stase <span className="font-semibold">{deleting?.name}</span> akan dihapus.
-            Pastikan tidak ada rotasi/ujian aktif yang memakai stase ini.
+            {t.rich("deleteConfirm", {
+              name: deleting?.name ?? "",
+              b: (c) => <span className="font-semibold">{c}</span>,
+            })}
           </p>
           <div className="flex justify-end gap-2 pt-2">
-            <Button variant="outline" onClick={() => setDeleting(null)}>Batal</Button>
+            <Button variant="outline" onClick={() => setDeleting(null)}>{tc("cancel")}</Button>
             <Button className="bg-red-600 hover:bg-red-700 text-white" onClick={handleDelete}>
-              Hapus
+              {tc("delete")}
             </Button>
           </div>
         </DialogContent>

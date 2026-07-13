@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import api from "@/lib/api";
 import { getApiErrorMessage } from "@/lib/api-helpers";
 import { useAuthStore } from "@/store/useAuthStore";
@@ -64,13 +65,6 @@ const DAY_DOT: Record<string, string> = {
   academic_activity: "bg-blue-600",
 };
 
-const MONTHS = [
-  "Januari", "Februari", "Maret", "April", "Mei", "Juni",
-  "Juli", "Agustus", "September", "Oktober", "November", "Desember",
-];
-
-const DOW = ["Sen", "Sel", "Rab", "Kam", "Jum", "Sab", "Min"];
-
 const selectClass =
   "flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background";
 
@@ -78,8 +72,13 @@ const ymd = (d: Date) =>
   `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 
 export default function AcademicCalendarPage() {
+  const t = useTranslations("academicCalendar");
+  const tc = useTranslations("common");
   const user = useAuthStore((state) => state.user);
   const canManage = user?.permissions?.includes("manage-academic-master") ?? false;
+
+  const monthName = (m: number) => t(`months.${m}`);
+  const dowLabels = Array.from({ length: 7 }, (_, i) => t(`daysOfWeek.${i}`));
 
   const today = new Date();
   const [year, setYear] = useState(today.getFullYear());
@@ -102,11 +101,11 @@ export default function AcademicCalendarPage() {
       const res = await api.get("/api/v1/academic/calendar", { params: { from, to } });
       setEvents(res.data.data || []);
     } catch (err) {
-      toast.error(getApiErrorMessage(err, "Gagal memuat kalender akademik."));
+      toast.error(getApiErrorMessage(err, t("loadError")));
     } finally {
       setIsLoading(false);
     }
-  }, [year, month]);
+  }, [year, month, t]);
 
   useEffect(() => {
     fetchEvents();
@@ -116,10 +115,11 @@ export default function AcademicCalendarPage() {
     api
       .get("/api/references/academic_event_types")
       .then((res) => setTypes(res.data.data || []))
-      .catch(() => toast.error("Gagal memuat tipe event."));
+      .catch(() => toast.error(t("typeLoadError")));
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- sekali saat mount
   }, []);
 
-  const typeLabel = (value: string) => types.find((t) => t.value === value)?.name || value;
+  const typeLabel = (value: string) => types.find((ref) => ref.value === value)?.name || value;
 
   const prevMonth = () => {
     if (month === 0) { setMonth(11); setYear(year - 1); } else setMonth(month - 1);
@@ -170,15 +170,15 @@ export default function AcademicCalendarPage() {
     try {
       if (editingId) {
         await api.put(`/api/v1/academic/calendar/${editingId}`, form);
-        toast.success("Event kalender diperbarui.");
+        toast.success(t("updated"));
       } else {
         await api.post("/api/v1/academic/calendar", form);
-        toast.success("Event kalender ditambahkan.");
+        toast.success(t("created"));
       }
       setIsOpen(false);
       fetchEvents();
     } catch (err) {
-      toast.error(getApiErrorMessage(err, "Gagal menyimpan event."));
+      toast.error(getApiErrorMessage(err, t("saveError")));
     } finally {
       setIsSaving(false);
     }
@@ -188,10 +188,10 @@ export default function AcademicCalendarPage() {
     if (!deleting) return;
     try {
       await api.delete(`/api/v1/academic/calendar/${deleting.id}`);
-      toast.success("Event dihapus.");
+      toast.success(t("deleted"));
       fetchEvents();
     } catch (err) {
-      toast.error(getApiErrorMessage(err, "Gagal menghapus event."));
+      toast.error(getApiErrorMessage(err, t("deleteError")));
     } finally {
       setDeleting(null);
     }
@@ -201,28 +201,27 @@ export default function AcademicCalendarPage() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Kalender Akademik</h1>
+          <h1 className="text-3xl font-bold tracking-tight">{t("title")}</h1>
           <p className="text-muted-foreground mt-1">
-            Hari libur, periode blackout, ujian, dan kegiatan akademik. Event blackout
-            otomatis menolak penempatan rotasi yang tumpang tindih.
+            {t("subtitle")}
           </p>
         </div>
         {canManage && (
           <Button onClick={openCreate} className="bg-blue-900 hover:bg-blue-800 text-white">
-            <Plus className="w-4 h-4 mr-2" /> Tambah Event
+            <Plus className="w-4 h-4 mr-2" /> {t("addEvent")}
           </Button>
         )}
       </div>
 
       {/* Navigasi bulan */}
       <div className="flex items-center justify-between rounded-md border bg-white dark:bg-gray-900 px-4 py-3">
-        <Button variant="ghost" size="sm" onClick={prevMonth} aria-label="Bulan sebelumnya">
+        <Button variant="ghost" size="sm" onClick={prevMonth} aria-label={t("prevMonth")}>
           <ChevronLeft className="w-4 h-4" />
         </Button>
         <span className="font-semibold text-lg">
-          {MONTHS[month]} {year}
+          {monthName(month)} {year}
         </span>
-        <Button variant="ghost" size="sm" onClick={nextMonth} aria-label="Bulan berikutnya">
+        <Button variant="ghost" size="sm" onClick={nextMonth} aria-label={t("nextMonth")}>
           <ChevronRight className="w-4 h-4" />
         </Button>
       </div>
@@ -230,7 +229,7 @@ export default function AcademicCalendarPage() {
       {/* Grid bulan */}
       <div className="rounded-md border bg-white dark:bg-gray-900 p-3 overflow-x-auto">
         <div className="grid grid-cols-7 min-w-[560px]">
-          {DOW.map((d) => (
+          {dowLabels.map((d) => (
             <div key={d} className="text-center text-xs font-semibold text-slate-500 uppercase tracking-wide py-2">
               {d}
             </div>
@@ -263,7 +262,7 @@ export default function AcademicCalendarPage() {
                         </div>
                       ))}
                       {dayEvents.length > 2 && (
-                        <span className="text-[10px] text-slate-400">+{dayEvents.length - 2} lagi</span>
+                        <span className="text-[10px] text-slate-400">{t("moreEvents", { count: dayEvents.length - 2 })}</span>
                       )}
                     </div>
                   </>
@@ -277,14 +276,14 @@ export default function AcademicCalendarPage() {
       {/* Daftar event bulan ini */}
       <div className="rounded-md border bg-white dark:bg-gray-900">
         <div className="px-4 py-3 border-b font-semibold text-sm">
-          Event {MONTHS[month]} {year}
+          {t("monthEventsHeading", { month: monthName(month), year })}
         </div>
         {isLoading ? (
-          <p className="text-center text-slate-500 py-8 text-sm">Memuat...</p>
+          <p className="text-center text-slate-500 py-8 text-sm">{tc("loading")}</p>
         ) : events.length === 0 ? (
           <div className="flex flex-col items-center gap-2 py-10 text-center">
             <CalendarDays className="w-8 h-8 text-slate-300" />
-            <p className="text-sm text-slate-500">Tidak ada event pada bulan ini.</p>
+            <p className="text-sm text-slate-500">{t("noEvents")}</p>
           </div>
         ) : (
           <ul className="divide-y divide-slate-100 dark:divide-slate-800">
@@ -297,19 +296,19 @@ export default function AcademicCalendarPage() {
                   <p className="font-medium text-sm truncate flex items-center gap-1.5">
                     {ev.title}
                     {ev.blocks_rotation && (
-                      <span title="Memblokir penempatan rotasi">
+                      <span title={t("blocksRotationTitle")}>
                         <ShieldAlert className="w-3.5 h-3.5 text-red-500" />
                       </span>
                     )}
                   </p>
                   <p className="text-xs text-slate-500">
-                    {ev.start_date.slice(0, 10)} s/d {ev.end_date.slice(0, 10)}
+                    {t("dateRange", { start: ev.start_date.slice(0, 10), end: ev.end_date.slice(0, 10) })}
                     {ev.description ? ` — ${ev.description}` : ""}
                   </p>
                 </div>
                 {canManage && (
                   <div className="flex-none">
-                    <Button variant="ghost" size="sm" onClick={() => openEdit(ev)} aria-label="Edit">
+                    <Button variant="ghost" size="sm" onClick={() => openEdit(ev)} aria-label={tc("edit")}>
                       <Pencil className="w-4 h-4" />
                     </Button>
                     <Button
@@ -317,7 +316,7 @@ export default function AcademicCalendarPage() {
                       size="sm"
                       className="text-red-600 hover:text-red-700"
                       onClick={() => setDeleting(ev)}
-                      aria-label="Hapus"
+                      aria-label={tc("delete")}
                     >
                       <Trash2 className="w-4 h-4" />
                     </Button>
@@ -333,39 +332,39 @@ export default function AcademicCalendarPage() {
       <Dialog open={isOpen} onOpenChange={setIsOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{editingId ? "Edit Event" : "Tambah Event Kalender"}</DialogTitle>
+            <DialogTitle>{editingId ? t("editEvent") : t("addEventDialog")}</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleSubmit} className="space-y-4 pt-2">
             <div className="space-y-2">
-              <label className="text-sm font-medium">Judul</label>
+              <label className="text-sm font-medium">{t("eventTitle")}</label>
               <Input required maxLength={255} value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} />
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-medium">Tipe Event</label>
+              <label className="text-sm font-medium">{t("eventType")}</label>
               <select
                 className={selectClass}
                 required
                 value={form.event_type}
                 onChange={(e) => setForm({ ...form, event_type: e.target.value })}
               >
-                <option value="">Pilih Tipe</option>
-                {types.map((t) => (
-                  <option key={t.id} value={t.value}>{t.name}</option>
+                <option value="">{t("selectType")}</option>
+                {types.map((ref) => (
+                  <option key={ref.id} value={ref.value}>{ref.name}</option>
                 ))}
               </select>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <label className="text-sm font-medium">Mulai</label>
+                <label className="text-sm font-medium">{t("startDate")}</label>
                 <Input type="date" required value={form.start_date} onChange={(e) => setForm({ ...form, start_date: e.target.value })} />
               </div>
               <div className="space-y-2">
-                <label className="text-sm font-medium">Selesai</label>
+                <label className="text-sm font-medium">{t("endDate")}</label>
                 <Input type="date" required min={form.start_date} value={form.end_date} onChange={(e) => setForm({ ...form, end_date: e.target.value })} />
               </div>
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-medium">Deskripsi (opsional)</label>
+              <label className="text-sm font-medium">{t("descriptionOptional")}</label>
               <textarea
                 className="flex min-h-[64px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                 maxLength={2000}
@@ -381,14 +380,14 @@ export default function AcademicCalendarPage() {
                 onChange={(e) => setForm({ ...form, blocks_rotation: e.target.checked })}
               />
               <span>
-                <span className="font-medium">Blokir penempatan rotasi</span>
+                <span className="font-medium">{t("blockRotationLabel")}</span>
                 <span className="block text-xs text-muted-foreground">
-                  Penempatan pada periode rotasi yang tumpang tindih tanggal ini akan ditolak sistem.
+                  {t("blockRotationDesc")}
                 </span>
               </span>
             </label>
             <Button type="submit" className="w-full" disabled={isSaving}>
-              {isSaving ? "Menyimpan..." : "Simpan"}
+              {isSaving ? tc("saving") : tc("save")}
             </Button>
           </form>
         </DialogContent>
@@ -398,16 +397,19 @@ export default function AcademicCalendarPage() {
       <Dialog open={!!deleting} onOpenChange={(open) => !open && setDeleting(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Hapus Event?</DialogTitle>
+            <DialogTitle>{t("deleteTitle")}</DialogTitle>
           </DialogHeader>
           <p className="text-sm text-slate-600 dark:text-slate-300">
-            Event <span className="font-semibold">{deleting?.title}</span> akan dihapus dari kalender.
-            {deleting?.blocks_rotation && " Blokir rotasi pada rentang tanggal ini ikut hilang."}
+            {t.rich("deleteConfirm", {
+              title: deleting?.title ?? "",
+              b: (c) => <span className="font-semibold">{c}</span>,
+            })}
+            {deleting?.blocks_rotation && ` ${t("deleteBlockSuffix")}`}
           </p>
           <div className="flex justify-end gap-2 pt-2">
-            <Button variant="outline" onClick={() => setDeleting(null)}>Batal</Button>
+            <Button variant="outline" onClick={() => setDeleting(null)}>{tc("cancel")}</Button>
             <Button className="bg-red-600 hover:bg-red-700 text-white" onClick={handleDelete}>
-              Hapus
+              {tc("delete")}
             </Button>
           </div>
         </DialogContent>
