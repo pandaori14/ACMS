@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
+import { useTranslations } from "next-intl";
 import api from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -99,29 +100,24 @@ interface PaginationMeta {
 
 // ───────────────────────────── Constants ─────────────────────────────
 
-const ACTIVITY_TYPE_MAP: Record<string, { label: string; icon: typeof ClipboardList; color: string }> = {
-  case: { label: "Kasus Pasien", icon: Stethoscope, color: "text-blue-600 bg-blue-50" },
-  procedure: { label: "Tindakan", icon: Activity, color: "text-purple-600 bg-purple-50" },
-  duty: { label: "Jaga", icon: ShieldAlert, color: "text-orange-600 bg-orange-50" },
+const ACTIVITY_TYPE_MAP: Record<string, { icon: typeof ClipboardList; color: string }> = {
+  case: { icon: Stethoscope, color: "text-blue-600 bg-blue-50" },
+  procedure: { icon: Activity, color: "text-purple-600 bg-purple-50" },
+  duty: { icon: ShieldAlert, color: "text-orange-600 bg-orange-50" },
 };
 
-const COMPETENCY_LABELS: Record<string, string> = {
-  "1": "Level 1 — Observasi",
-  "2": "Level 2 — Asisten",
-  "3": "Level 3 — Supervisi",
-  "4": "Level 4 — Mandiri",
-};
-
-const STATUS_CONFIG: Record<string, { label: string; className: string; icon: typeof FileEdit }> = {
-  draft: { label: "Draf", className: "bg-gray-100 text-gray-700 ring-gray-300", icon: FileEdit },
-  submitted: { label: "Menunggu Verifikasi", className: "bg-amber-50 text-amber-700 ring-amber-300", icon: Send },
-  verified: { label: "Diverifikasi", className: "bg-emerald-50 text-emerald-700 ring-emerald-300", icon: CheckCircle2 },
-  rejected: { label: "Ditolak", className: "bg-red-50 text-red-700 ring-red-300", icon: XCircle },
+const STATUS_CONFIG: Record<string, { className: string; icon: typeof FileEdit }> = {
+  draft: { className: "bg-gray-100 text-gray-700 ring-gray-300", icon: FileEdit },
+  submitted: { className: "bg-amber-50 text-amber-700 ring-amber-300", icon: Send },
+  verified: { className: "bg-emerald-50 text-emerald-700 ring-emerald-300", icon: CheckCircle2 },
+  rejected: { className: "bg-red-50 text-red-700 ring-red-300", icon: XCircle },
 };
 
 // ───────────────────────────── Component ─────────────────────────────
 
 export default function LogbooksPage() {
+  const t = useTranslations("clinicalLogbooks");
+  const tc = useTranslations("common");
   // Data state
   const [entries, setEntries] = useState<LogbookEntry[]>([]);
   const [meta, setMeta] = useState<PaginationMeta | null>(null);
@@ -269,12 +265,12 @@ export default function LogbooksPage() {
 
     const allowed = ["image/jpeg", "image/png", "application/pdf"];
     if (!allowed.includes(file.type)) {
-      setFormError("Format file harus JPG, PNG, atau PDF.");
+      setFormError(t("errFileFormat"));
       e.target.value = "";
       return;
     }
     if (file.size > 5 * 1024 * 1024) {
-      setFormError("Ukuran file maksimal 5MB.");
+      setFormError(t("errFileSize"));
       e.target.value = "";
       return;
     }
@@ -284,11 +280,11 @@ export default function LogbooksPage() {
 
   const handleSubmit = async (status: "draft" | "submitted") => {
     if (!formData.rotation_assignment_id || !formData.activity_date || !formData.activity_type || !formData.description.trim()) {
-      setFormError("Harap isi semua field yang wajib diisi.");
+      setFormError(t("errRequired"));
       return;
     }
     if (formData.description.length > 2000) {
-      setFormError("Deskripsi maksimal 2000 karakter.");
+      setFormError(t("errDescMax"));
       return;
     }
 
@@ -320,14 +316,14 @@ export default function LogbooksPage() {
       fetchEntries(page);
     } catch (err: unknown) {
       const error = err as { response?: { data?: { message?: string } } };
-      setFormError(error.response?.data?.message || "Gagal menyimpan entry logbook.");
+      setFormError(error.response?.data?.message || t("errSave"));
     } finally {
       setSubmitting(false);
     }
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm("Apakah Anda yakin ingin menghapus entry ini?")) return;
+    if (!confirm(t("confirmDelete"))) return;
     try {
       await api.delete(`/api/v1/clinical/logbooks/${id}`);
       fetchEntries(page);
@@ -350,7 +346,7 @@ export default function LogbooksPage() {
     return (
       <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium ring-1 ring-inset ${config.className}`}>
         <config.icon className="h-3 w-3" />
-        {config.label}
+        {t(`status.${status}`)}
       </span>
     );
   };
@@ -362,17 +358,17 @@ export default function LogbooksPage() {
     return (
       <span className={`inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium ${config.color}`}>
         <Icon className="h-3.5 w-3.5" />
-        {config.label}
+        {t(`activityType.${type}`)}
       </span>
     );
   };
 
   // ─────────── Stats Cards ───────────
   const statsCards = [
-    { key: "draft", label: "Draf", icon: FileEdit, value: stats.draft, gradient: "from-gray-500 to-gray-600", bg: "bg-gray-50", border: "border-gray-200" },
-    { key: "submitted", label: "Menunggu", icon: Send, value: stats.submitted, gradient: "from-amber-500 to-amber-600", bg: "bg-amber-50", border: "border-amber-200" },
-    { key: "verified", label: "Diverifikasi", icon: CheckCircle2, value: stats.verified, gradient: "from-emerald-500 to-emerald-600", bg: "bg-emerald-50", border: "border-emerald-200" },
-    { key: "rejected", label: "Ditolak", icon: XCircle, value: stats.rejected, gradient: "from-red-500 to-red-600", bg: "bg-red-50", border: "border-red-200" },
+    { key: "draft", label: t("stats.draft"), icon: FileEdit, value: stats.draft, gradient: "from-gray-500 to-gray-600", bg: "bg-gray-50", border: "border-gray-200" },
+    { key: "submitted", label: t("stats.submitted"), icon: Send, value: stats.submitted, gradient: "from-amber-500 to-amber-600", bg: "bg-amber-50", border: "border-amber-200" },
+    { key: "verified", label: t("stats.verified"), icon: CheckCircle2, value: stats.verified, gradient: "from-emerald-500 to-emerald-600", bg: "bg-emerald-50", border: "border-emerald-200" },
+    { key: "rejected", label: t("stats.rejected"), icon: XCircle, value: stats.rejected, gradient: "from-red-500 to-red-600", bg: "bg-red-50", border: "border-red-200" },
   ];
 
   return (
@@ -386,8 +382,8 @@ export default function LogbooksPage() {
               <BookOpenText className="h-7 w-7" />
             </div>
             <div>
-              <h1 className="text-3xl font-bold tracking-tight">Logbook Klinis</h1>
-              <p className="mt-1 text-blue-100">Catat dan kelola aktivitas klinis Anda selama rotasi.</p>
+              <h1 className="text-3xl font-bold tracking-tight">{t("title")}</h1>
+              <p className="mt-1 text-blue-100">{t("subtitle")}</p>
             </div>
           </div>
           <Dialog open={isOpen} onOpenChange={(open) => { setIsOpen(open); if (!open) resetForm(); }}>
@@ -395,7 +391,7 @@ export default function LogbooksPage() {
               render={
                 <Button className="gap-2 bg-white text-blue-700 hover:bg-blue-50 font-semibold shadow-lg shadow-blue-900/20">
                   <Plus className="h-4 w-4" />
-                  Tambah Entry
+                  {t("addEntry")}
                 </Button>
               }
             />
@@ -404,7 +400,7 @@ export default function LogbooksPage() {
               <DialogHeader>
                 <DialogTitle className="flex items-center gap-2 text-lg">
                   <BookOpenText className="h-5 w-5 text-blue-600" />
-                  Tambah Entry Logbook
+                  {t("dialogTitle")}
                 </DialogTitle>
               </DialogHeader>
 
@@ -419,14 +415,14 @@ export default function LogbooksPage() {
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <div className="space-y-2">
                     <Label>
-                      Penugasan Rotasi <span className="text-red-500">*</span>
+                      {t("rotationAssignment")} <span className="text-red-500">*</span>
                     </Label>
                     <Select
                       value={formData.rotation_assignment_id}
                       onValueChange={(val) => setFormData({ ...formData, rotation_assignment_id: val ?? "" })}
                     >
                       <SelectTrigger className="w-full">
-                        <SelectValue placeholder="Pilih penugasan..." />
+                        <SelectValue placeholder={t("selectAssignment")} />
                       </SelectTrigger>
                       <SelectContent>
                         {assignments.map((a) => (
@@ -439,7 +435,7 @@ export default function LogbooksPage() {
                   </div>
                   <div className="space-y-2">
                     <Label>
-                      Tanggal Aktivitas <span className="text-red-500">*</span>
+                      {t("activityDate")} <span className="text-red-500">*</span>
                     </Label>
                     <Input
                       type="date"
@@ -453,27 +449,27 @@ export default function LogbooksPage() {
                 {/* Row 2: Activity Type */}
                 <div className="space-y-2">
                   <Label>
-                    Tipe Aktivitas <span className="text-red-500">*</span>
+                    {t("activityTypeLabel")} <span className="text-red-500">*</span>
                   </Label>
                   <Select
                     value={formData.activity_type}
                     onValueChange={(val) => setFormData({ ...formData, activity_type: (val ?? "") as "case" | "procedure" | "duty" })}
                   >
                     <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Pilih tipe aktivitas..." />
+                      <SelectValue placeholder={t("selectActivityType")} />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="case">
                         <Stethoscope className="h-4 w-4 text-blue-500" />
-                        Kasus Pasien
+                        {t("activityType.case")}
                       </SelectItem>
                       <SelectItem value="procedure">
                         <Activity className="h-4 w-4 text-purple-500" />
-                        Tindakan
+                        {t("activityType.procedure")}
                       </SelectItem>
                       <SelectItem value="duty">
                         <ShieldAlert className="h-4 w-4 text-orange-500" />
-                        Jaga
+                        {t("activityType.duty")}
                       </SelectItem>
                     </SelectContent>
                   </Select>
@@ -482,35 +478,35 @@ export default function LogbooksPage() {
                 {/* Row 3: Description */}
                 <div className="space-y-2">
                   <Label>
-                    Deskripsi <span className="text-red-500">*</span>
+                    {t("description")} <span className="text-red-500">*</span>
                   </Label>
                   <textarea
                     className="flex min-h-[100px] w-full rounded-lg border border-input bg-transparent px-3 py-2 text-sm transition-colors placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50 dark:bg-input/30"
-                    placeholder="Deskripsikan aktivitas klinis Anda secara detail..."
+                    placeholder={t("descriptionPlaceholder")}
                     value={formData.description}
                     onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                     maxLength={2000}
                   />
                   <p className="text-xs text-muted-foreground text-right">
-                    {formData.description.length}/2000 karakter
+                    {t("charCount", { count: formData.description.length })}
                   </p>
                 </div>
 
                 {/* Row 4: Patient info */}
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <div className="space-y-2">
-                    <Label>Inisial Pasien</Label>
+                    <Label>{t("patientInitials")}</Label>
                     <Input
-                      placeholder="cth. AB"
+                      placeholder={t("patientInitialsPlaceholder")}
                       value={formData.patient_initials}
                       onChange={(e) => setFormData({ ...formData, patient_initials: e.target.value })}
                       maxLength={10}
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label>No. Rekam Medis</Label>
+                    <Label>{t("medicalRecordNo")}</Label>
                     <Input
-                      placeholder="cth. RM-000123"
+                      placeholder={t("medicalRecordNoPlaceholder")}
                       value={formData.medical_record_no}
                       onChange={(e) => setFormData({ ...formData, medical_record_no: e.target.value })}
                       maxLength={50}
@@ -520,18 +516,18 @@ export default function LogbooksPage() {
 
                 {/* Row 5: Diagnosis search */}
                 <div className="space-y-2">
-                  <Label>Diagnosis (ICD)</Label>
+                  <Label>{t("diagnosisIcd")}</Label>
                   <div className="relative">
                     <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground pointer-events-none" />
                     <Input
                       className="pl-9"
-                      placeholder="Cari diagnosis... (min. 2 karakter)"
+                      placeholder={t("diagnosisSearchPlaceholder")}
                       value={diagnosisSearch}
                       onChange={(e) => handleDiagnosisSearchChange(e.target.value)}
                     />
                   </div>
                   {searchingDiagnosis && (
-                    <p className="text-xs text-muted-foreground animate-pulse">Mencari...</p>
+                    <p className="text-xs text-muted-foreground animate-pulse">{t("searching")}</p>
                   )}
                   {diagnoses.length > 0 && (
                     <div className="max-h-40 overflow-y-auto rounded-lg border bg-popover shadow-sm">
@@ -557,13 +553,13 @@ export default function LogbooksPage() {
                 {/* Row 6: Procedure + Competency */}
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <div className="space-y-2">
-                    <Label>Prosedur / Tindakan</Label>
+                    <Label>{t("procedure")}</Label>
                     <Select
                       value={formData.procedure_id}
                       onValueChange={(val) => setFormData({ ...formData, procedure_id: val ?? "" })}
                     >
                       <SelectTrigger className="w-full">
-                        <SelectValue placeholder="Pilih prosedur..." />
+                        <SelectValue placeholder={t("selectProcedure")} />
                       </SelectTrigger>
                       <SelectContent>
                         {procedures.map((p) => (
@@ -576,30 +572,30 @@ export default function LogbooksPage() {
                     </Select>
                   </div>
                   <div className="space-y-2">
-                    <Label>Tingkat Kompetensi</Label>
+                    <Label>{t("competencyLevelLabel")}</Label>
                     <Select
                       value={formData.competency_level}
                       onValueChange={(val) => setFormData({ ...formData, competency_level: (val ?? "") as "1" | "2" | "3" | "4" })}
                     >
                       <SelectTrigger className="w-full">
-                        <SelectValue placeholder="Pilih level..." />
+                        <SelectValue placeholder={t("selectLevel")} />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="1">
                           <Eye className="h-4 w-4 text-gray-500" />
-                          Level 1 — Observasi
+                          {t("competencyLevel.1")}
                         </SelectItem>
                         <SelectItem value="2">
                           <ClipboardList className="h-4 w-4 text-blue-500" />
-                          Level 2 — Asisten
+                          {t("competencyLevel.2")}
                         </SelectItem>
                         <SelectItem value="3">
                           <Stethoscope className="h-4 w-4 text-amber-500" />
-                          Level 3 — Supervisi
+                          {t("competencyLevel.3")}
                         </SelectItem>
                         <SelectItem value="4">
                           <CheckCircle2 className="h-4 w-4 text-emerald-500" />
-                          Level 4 — Mandiri
+                          {t("competencyLevel.4")}
                         </SelectItem>
                       </SelectContent>
                     </Select>
@@ -608,13 +604,13 @@ export default function LogbooksPage() {
 
                 {/* Row 6b: Target Kompetensi (opsional — dihitung ke progres) */}
                 <div className="space-y-2">
-                  <Label>Target Kompetensi (opsional)</Label>
+                  <Label>{t("competencyTarget")}</Label>
                   <Select
                     value={formData.competency_id}
                     onValueChange={(val) => setFormData({ ...formData, competency_id: val ?? "" })}
                   >
                     <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Kaitkan dengan target kompetensi stase..." />
+                      <SelectValue placeholder={t("competencyTargetPlaceholder")} />
                     </SelectTrigger>
                     <SelectContent>
                       {competencies
@@ -624,24 +620,24 @@ export default function LogbooksPage() {
                         })
                         .map((c) => (
                           <SelectItem key={c.id} value={c.id}>
-                            {c.name}{c.level ? ` (SKDI ${c.level})` : ""}
+                            {c.name}{c.level ? t("skdiLevel", { level: c.level }) : ""}
                           </SelectItem>
                         ))}
                     </SelectContent>
                   </Select>
                   <p className="text-xs text-muted-foreground">
-                    Entri terverifikasi dengan kompetensi terkait akan dihitung ke progres kompetensi Anda.
+                    {t("competencyTargetHint")}
                   </p>
                 </div>
 
                 {/* Row 7: File Upload */}
                 <div className="space-y-2">
-                  <Label>Lampiran</Label>
+                  <Label>{t("attachment")}</Label>
                   <div className="flex items-center gap-3">
                     <label className="flex-1 cursor-pointer">
                       <div className="flex items-center justify-center gap-2 rounded-lg border-2 border-dashed border-muted-foreground/25 bg-muted/30 px-4 py-6 text-sm text-muted-foreground transition-colors hover:border-blue-400 hover:bg-blue-50/50">
                         <Upload className="h-5 w-5" />
-                        <span>{attachment ? attachment.name : "Pilih file (JPG, PNG, PDF — maks 5MB)"}</span>
+                        <span>{attachment ? attachment.name : t("attachmentPlaceholder")}</span>
                       </div>
                       <input
                         ref={fileInputRef}
@@ -676,7 +672,7 @@ export default function LogbooksPage() {
                   disabled={submitting}
                 >
                   <FileEdit className="h-4 w-4" />
-                  Simpan Draf
+                  {t("saveDraft")}
                 </Button>
                 <Button
                   className="gap-2"
@@ -684,7 +680,7 @@ export default function LogbooksPage() {
                   disabled={submitting}
                 >
                   <Send className="h-4 w-4" />
-                  {submitting ? "Menyimpan..." : "Kirim untuk Verifikasi"}
+                  {submitting ? tc("saving") : t("submitForVerification")}
                 </Button>
               </DialogFooter>
             </DialogContent>
@@ -721,12 +717,12 @@ export default function LogbooksPage() {
         {/* ───── Entries Table ───── */}
         <div className="rounded-xl border bg-card shadow-sm">
           <div className="border-b px-6 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <h2 className="text-lg font-semibold">Daftar Entry Logbook</h2>
+            <h2 className="text-lg font-semibold">{t("entriesTitle")}</h2>
             <div className="relative max-w-sm w-full">
               <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input
                 type="search"
-                placeholder="Cari logbook..."
+                placeholder={t("searchPlaceholder")}
                 className="pl-9"
                 value={searchQuery}
                 onChange={(e) => {
@@ -736,7 +732,7 @@ export default function LogbooksPage() {
               />
             </div>
             <p className="text-sm text-muted-foreground">
-              {meta ? `${meta.total} entry ditemukan` : "Memuat data..."}
+              {meta ? t("entriesFound", { count: meta.total }) : t("loadingData")}
             </p>
           </div>
 
@@ -751,9 +747,9 @@ export default function LogbooksPage() {
               <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-blue-50 text-blue-500 mb-4">
                 <BookOpenText className="h-8 w-8" />
               </div>
-              <h3 className="text-lg font-semibold">Belum Ada Entry</h3>
+              <h3 className="text-lg font-semibold">{t("emptyTitle")}</h3>
               <p className="mt-1 max-w-sm text-sm text-muted-foreground">
-                Mulai catat aktivitas klinis Anda dengan menekan tombol &ldquo;Tambah Entry&rdquo; di atas.
+                {t("emptyDesc")}
               </p>
             </div>
           ) : (
@@ -762,13 +758,13 @@ export default function LogbooksPage() {
                 <Table className="min-w-[800px]">
                   <TableHeader>
                     <TableRow className="bg-muted/40 hover:bg-muted/40">
-                      <TableHead>Tanggal</TableHead>
-                      <TableHead>Tipe</TableHead>
-                      <TableHead className="min-w-[250px]">Deskripsi</TableHead>
-                      <TableHead>Stase</TableHead>
-                      <TableHead>RS</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead className="text-right">Aksi</TableHead>
+                      <TableHead>{tc("date")}</TableHead>
+                      <TableHead>{t("colType")}</TableHead>
+                      <TableHead className="min-w-[250px]">{t("colDescription")}</TableHead>
+                      <TableHead>{t("colStase")}</TableHead>
+                      <TableHead>{t("colHospital")}</TableHead>
+                      <TableHead>{tc("status")}</TableHead>
+                      <TableHead className="text-right">{tc("actions")}</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -791,7 +787,7 @@ export default function LogbooksPage() {
                             )}
                             {entry.competency_level && (
                               <p className="mt-0.5 text-xs text-muted-foreground">
-                                🎯 {COMPETENCY_LABELS[entry.competency_level]}
+                                🎯 {t(`competencyLevel.${entry.competency_level}`)}
                               </p>
                             )}
                           </div>
@@ -828,7 +824,7 @@ export default function LogbooksPage() {
                                 variant="destructive"
                                 size="icon-sm"
                                 onClick={() => handleDelete(entry.id)}
-                                title="Hapus entry"
+                                title={t("deleteTitle")}
                               >
                                 <Trash2 className="h-3.5 w-3.5" />
                               </Button>
@@ -841,7 +837,7 @@ export default function LogbooksPage() {
                                 variant="destructive"
                                 size="icon-sm"
                                 onClick={() => handleDelete(entry.id)}
-                                title="Hapus entry"
+                                title={t("deleteTitle")}
                               >
                                 <Trash2 className="h-3.5 w-3.5" />
                               </Button>
@@ -858,7 +854,7 @@ export default function LogbooksPage() {
               {meta && meta.last_page > 1 && (
                 <div className="flex items-center justify-between border-t px-6 py-4">
                   <p className="text-sm text-muted-foreground">
-                    Halaman {meta.current_page} dari {meta.last_page}
+                    {t("pageOf", { current: meta.current_page, last: meta.last_page })}
                   </p>
                   <div className="flex items-center gap-2">
                     <Button
@@ -869,7 +865,7 @@ export default function LogbooksPage() {
                       className="gap-1"
                     >
                       <ChevronLeft className="h-4 w-4" />
-                      Sebelumnya
+                      {tc("previous")}
                     </Button>
                     <Button
                       variant="outline"
@@ -878,7 +874,7 @@ export default function LogbooksPage() {
                       onClick={() => setPage((p) => p + 1)}
                       className="gap-1"
                     >
-                      Selanjutnya
+                      {tc("next")}
                       <ChevronRight className="h-4 w-4" />
                     </Button>
                   </div>

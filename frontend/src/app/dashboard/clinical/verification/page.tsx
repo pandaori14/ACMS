@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useTranslations } from "next-intl";
 import api from "@/lib/api";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -97,26 +98,13 @@ interface LogbookEntry {
 
 type TabKey = "pending" | "verified" | "rejected";
 
-const TABS: { key: TabKey; label: string; icon: React.ReactNode }[] = [
-  { key: "pending", label: "Menunggu Verifikasi", icon: <Clock className="size-4" /> },
-  { key: "verified", label: "Sudah Diverifikasi", icon: <CheckCircle2 className="size-4" /> },
-  { key: "rejected", label: "Ditolak", icon: <XCircle className="size-4" /> },
+const TABS: { key: TabKey; icon: React.ReactNode }[] = [
+  { key: "pending", icon: <Clock className="size-4" /> },
+  { key: "verified", icon: <CheckCircle2 className="size-4" /> },
+  { key: "rejected", icon: <XCircle className="size-4" /> },
 ];
 
-const COMPETENCY_LABELS: Record<number, string> = {
-  1: "Observasi (Level 1)",
-  2: "Melakukan di bawah supervisi (Level 2)",
-  3: "Melakukan secara mandiri (Level 3)",
-  4: "Mengajarkan (Level 4)",
-};
-
-const ACTIVITY_TYPE_LABELS: Record<string, string> = {
-  diagnosis: "Diagnosis",
-  procedure: "Tindakan",
-  consultation: "Konsultasi",
-  observation: "Observasi",
-  other: "Lainnya",
-};
+const ACTIVITY_TYPE_KEYS = ["diagnosis", "procedure", "consultation", "observation", "other"];
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -144,17 +132,18 @@ function statusBadgeClasses(status: string) {
   }
 }
 
-function statusLabel(status: string) {
+/** Key i18n untuk badge status (nilai status tetap apa adanya bila tak dikenal). */
+function statusLabelKey(status: string): "statusPending" | "statusVerified" | "statusRejected" | null {
   switch (status) {
     case "submitted":
     case "pending":
-      return "Menunggu";
+      return "statusPending";
     case "verified":
-      return "Diverifikasi";
+      return "statusVerified";
     case "rejected":
-      return "Ditolak";
+      return "statusRejected";
     default:
-      return status;
+      return null;
   }
 }
 
@@ -178,6 +167,8 @@ function competencyColor(level: number) {
 // ---------------------------------------------------------------------------
 
 export default function LogbookVerificationPage() {
+  const t = useTranslations("clinicalVerification");
+  const tc = useTranslations("common");
   const [activeTab, setActiveTab] = useState<TabKey>("pending");
   const [entries, setEntries] = useState<LogbookEntry[]>([]);
   const [loading, setLoading] = useState(true);
@@ -219,9 +210,9 @@ export default function LogbookVerificationPage() {
       });
       const { verified, skipped } = res.data.data;
       if (skipped.length > 0) {
-        toast.warning(`${verified} diverifikasi, ${skipped.length} dilewati (${skipped[0].reason})`);
+        toast.warning(t("batchPartial", { verified, skipped: skipped.length, reason: skipped[0].reason }));
       } else {
-        toast.success(`${verified} logbook berhasil diverifikasi.`);
+        toast.success(t("batchSuccess", { count: verified }));
       }
       setBatchDialogOpen(false);
       setSelectedIds([]);
@@ -229,7 +220,7 @@ export default function LogbookVerificationPage() {
       fetchEntries(activeTab);
       fetchStats();
     } catch {
-      toast.error("Gagal memverifikasi massal.");
+      toast.error(t("batchError"));
     } finally {
       setBatchLoading(false);
     }
@@ -320,7 +311,7 @@ export default function LogbookVerificationPage() {
   const handleReject = async () => {
     if (!rejectTarget) return;
     if (!rejectFeedback.trim()) {
-      setRejectError("Alasan penolakan wajib diisi.");
+      setRejectError(t("rejectRequired"));
       return;
     }
     setRejectLoading(true);
@@ -369,10 +360,10 @@ export default function LogbookVerificationPage() {
             </div>
             <div>
               <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">
-                Verifikasi Logbook
+                {t("title")}
               </h1>
               <p className="text-muted-foreground text-sm mt-0.5">
-                Tinjau dan verifikasi catatan logbook yang dikirimkan oleh mahasiswa.
+                {t("subtitle")}
               </p>
             </div>
           </div>
@@ -382,21 +373,21 @@ export default function LogbookVerificationPage() {
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <StatCard
             icon={<Clock className="size-5 text-amber-600" />}
-            label="Menunggu"
+            label={t("stats.pending")}
             count={stats.pending}
             bgClass="bg-amber-50 dark:bg-amber-950/20"
             textClass="text-amber-700 dark:text-amber-400"
           />
           <StatCard
             icon={<CheckCircle2 className="size-5 text-emerald-600" />}
-            label="Diverifikasi"
+            label={t("stats.verified")}
             count={stats.verified}
             bgClass="bg-emerald-50 dark:bg-emerald-950/20"
             textClass="text-emerald-700 dark:text-emerald-400"
           />
           <StatCard
             icon={<XCircle className="size-5 text-red-600" />}
-            label="Ditolak"
+            label={t("stats.rejected")}
             count={stats.rejected}
             bgClass="bg-red-50 dark:bg-red-950/20"
             textClass="text-red-700 dark:text-red-400"
@@ -420,14 +411,14 @@ export default function LogbookVerificationPage() {
                 `}
               >
                 {tab.icon}
-                <span className="hidden sm:inline">{tab.label}</span>
+                <span className="hidden sm:inline">{t(`tabs.${tab.key}`)}</span>
               </button>
             ))}
           </div>
           <div className="relative flex-1 max-w-xs">
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
             <Input
-              placeholder="Cari nama, diagnosa, prosedur..."
+              placeholder={t("searchPlaceholder")}
               className="pl-8"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
@@ -450,15 +441,13 @@ export default function LogbookVerificationPage() {
               </div>
               <h3 className="text-lg font-medium">
                 {activeTab === "pending"
-                  ? "Tidak ada logbook yang menunggu verifikasi"
+                  ? t("emptyPending")
                   : activeTab === "verified"
-                  ? "Belum ada logbook yang diverifikasi"
-                  : "Tidak ada logbook yang ditolak"}
+                  ? t("emptyVerified")
+                  : t("emptyRejected")}
               </h3>
               <p className="text-muted-foreground text-sm max-w-md">
-                {activeTab === "pending"
-                  ? "Semua logbook telah diproses. Cek kembali nanti untuk entri baru."
-                  : "Entri akan muncul di sini setelah diproses."}
+                {activeTab === "pending" ? t("emptyPendingSub") : t("emptyProcessedSub")}
               </p>
             </div>
           </div>
@@ -474,7 +463,7 @@ export default function LogbookVerificationPage() {
                     setSelectedIds(e.target.checked ? filteredEntries.map((x) => x.id) : [])
                   }
                 />
-                Pilih semua ({filteredEntries.length}) untuk verifikasi massal
+                {t("selectAll", { count: filteredEntries.length })}
               </label>
             )}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
@@ -483,7 +472,7 @@ export default function LogbookVerificationPage() {
                   {activeTab === "pending" && (
                     <label
                       className="absolute -top-2 -left-2 z-10 bg-white dark:bg-slate-900 border rounded-md p-1.5 shadow-sm cursor-pointer"
-                      title="Pilih untuk verifikasi massal"
+                      title={t("selectForBatch")}
                     >
                       <input
                         type="checkbox"
@@ -508,19 +497,19 @@ export default function LogbookVerificationPage() {
         {/* ---- Bulk bar verifikasi massal ---- */}
         {selectedIds.length > 0 && activeTab === "pending" && (
           <div className="fixed bottom-20 md:bottom-6 left-1/2 -translate-x-1/2 z-40 bg-blue-900 text-white rounded-full shadow-lg px-5 py-2.5 flex items-center gap-3">
-            <span className="text-sm font-medium">{selectedIds.length} dipilih</span>
+            <span className="text-sm font-medium">{t("selected", { count: selectedIds.length })}</span>
             <Button
               size="sm"
               className="bg-white text-blue-900 hover:bg-blue-50 rounded-full h-8"
               onClick={() => setBatchDialogOpen(true)}
             >
-              <ShieldCheck className="size-4 mr-1" /> Verifikasi Massal
+              <ShieldCheck className="size-4 mr-1" /> {t("batchVerify")}
             </Button>
             <button
               className="text-blue-200 hover:text-white text-sm"
               onClick={() => setSelectedIds([])}
             >
-              Batal
+              {tc("cancel")}
             </button>
           </div>
         )}
@@ -531,32 +520,31 @@ export default function LogbookVerificationPage() {
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
                 <ShieldCheck className="size-5 text-emerald-600" />
-                Verifikasi {selectedIds.length} Logbook Sekaligus
+                {t("batchDialogTitle", { count: selectedIds.length })}
               </DialogTitle>
               <DialogDescription>
-                Semua logbook terpilih akan diverifikasi atas nama Anda. Entri di luar
-                cakupan RS Anda otomatis dilewati dan dilaporkan.
+                {t("batchDialogDesc")}
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-2">
               <label className="text-sm font-medium">
-                Umpan Balik Massal <span className="text-muted-foreground font-normal">(opsional, berlaku ke semua)</span>
+                {t("batchFeedbackLabel")} <span className="text-muted-foreground font-normal">{t("batchFeedbackOptional")}</span>
               </label>
               <textarea
                 className="flex w-full rounded-lg border border-input bg-transparent px-3 py-2 text-sm outline-none placeholder:text-muted-foreground min-h-[80px] resize-y"
-                placeholder="Contoh: Kegiatan sesuai dan terdokumentasi baik."
+                placeholder={t("batchFeedbackPlaceholder")}
                 value={batchFeedback}
                 onChange={(e) => setBatchFeedback(e.target.value)}
               />
             </div>
             <DialogFooter>
-              <Button variant="outline" onClick={() => setBatchDialogOpen(false)}>Batal</Button>
+              <Button variant="outline" onClick={() => setBatchDialogOpen(false)}>{tc("cancel")}</Button>
               <Button
                 className="bg-emerald-600 hover:bg-emerald-700 text-white"
                 disabled={batchLoading}
                 onClick={handleBatchVerify}
               >
-                {batchLoading ? "Memproses..." : `Verifikasi ${selectedIds.length} Logbook`}
+                {batchLoading ? tc("processing") : t("batchConfirm", { count: selectedIds.length })}
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -568,24 +556,23 @@ export default function LogbookVerificationPage() {
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
                 <ShieldCheck className="size-5 text-emerald-600" />
-                Verifikasi Logbook
+                {t("verifyTitle")}
               </DialogTitle>
               <DialogDescription>
-                Anda akan menyetujui logbook milik{" "}
-                <span className="font-semibold text-foreground">
-                  {verifyTarget?.student.user.name}
-                </span>
-                . Tambahkan catatan umpan balik jika diperlukan.
+                {t.rich("verifyDesc", {
+                  name: verifyTarget?.student.user.name ?? "",
+                  b: (c) => <span className="font-semibold text-foreground">{c}</span>,
+                })}
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-2">
               <label className="text-sm font-medium">
-                Umpan Balik{" "}
-                <span className="text-muted-foreground font-normal">(opsional)</span>
+                {t("feedbackLabel")}{" "}
+                <span className="text-muted-foreground font-normal">{t("optional")}</span>
               </label>
               <textarea
                 className="flex w-full rounded-lg border border-input bg-transparent px-3 py-2 text-sm outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 min-h-[80px] resize-y"
-                placeholder="Tuliskan catatan untuk mahasiswa..."
+                placeholder={t("feedbackPlaceholder")}
                 value={verifyFeedback}
                 onChange={(e) => setVerifyFeedback(e.target.value)}
               />
@@ -596,7 +583,7 @@ export default function LogbookVerificationPage() {
                 onClick={() => setVerifyDialogOpen(false)}
                 disabled={verifyLoading}
               >
-                Batal
+                {tc("cancel")}
               </Button>
               <Button
                 className="bg-emerald-600 text-white hover:bg-emerald-700"
@@ -604,7 +591,7 @@ export default function LogbookVerificationPage() {
                 disabled={verifyLoading}
               >
                 {verifyLoading && <Loader2 className="size-4 animate-spin" />}
-                Verifikasi
+                {t("verify")}
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -616,20 +603,19 @@ export default function LogbookVerificationPage() {
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
                 <AlertTriangle className="size-5 text-red-600" />
-                Tolak Logbook
+                {t("rejectTitle")}
               </DialogTitle>
               <DialogDescription>
-                Anda akan menolak logbook milik{" "}
-                <span className="font-semibold text-foreground">
-                  {rejectTarget?.student.user.name}
-                </span>
-                . Alasan penolakan <span className="text-red-600 font-semibold">wajib</span>{" "}
-                diisi agar mahasiswa mengetahui hal yang perlu diperbaiki.
+                {t.rich("rejectDesc", {
+                  name: rejectTarget?.student.user.name ?? "",
+                  b: (c) => <span className="font-semibold text-foreground">{c}</span>,
+                  req: (c) => <span className="text-red-600 font-semibold">{c}</span>,
+                })}
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-2">
               <label className="text-sm font-medium">
-                Alasan Penolakan <span className="text-red-500">*</span>
+                {t("rejectReasonLabel")} <span className="text-red-500">*</span>
               </label>
               <textarea
                 className={`flex w-full rounded-lg border bg-transparent px-3 py-2 text-sm outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 min-h-[100px] resize-y ${
@@ -637,7 +623,7 @@ export default function LogbookVerificationPage() {
                     ? "border-red-500 ring-3 ring-red-500/20"
                     : "border-input"
                 }`}
-                placeholder="Jelaskan alasan penolakan..."
+                placeholder={t("rejectReasonPlaceholder")}
                 value={rejectFeedback}
                 onChange={(e) => {
                   setRejectFeedback(e.target.value);
@@ -657,7 +643,7 @@ export default function LogbookVerificationPage() {
                 onClick={() => setRejectDialogOpen(false)}
                 disabled={rejectLoading}
               >
-                Batal
+                {tc("cancel")}
               </Button>
               <Button
                 variant="destructive"
@@ -665,7 +651,7 @@ export default function LogbookVerificationPage() {
                 disabled={rejectLoading}
               >
                 {rejectLoading && <Loader2 className="size-4 animate-spin" />}
-                Tolak Logbook
+                {t("rejectTitle")}
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -716,7 +702,9 @@ function EntryCard({
   onVerify: () => void;
   onReject: () => void;
 }) {
+  const t = useTranslations("clinicalVerification");
   const staseColor = entry.rotation_assignment?.stase?.color_code || "#6366f1";
+  const statusKey = statusLabelKey(entry.status);
 
   return (
     <div className="group relative flex flex-col rounded-xl border bg-card text-card-foreground ring-1 ring-foreground/5 hover:shadow-lg hover:ring-foreground/10 transition-all duration-200">
@@ -757,7 +745,7 @@ function EntryCard({
               <Clock className="size-3" />
             )}
             {entry.status === "rejected" && <XCircle className="size-3" />}
-            {statusLabel(entry.status)}
+            {statusKey ? t(statusKey) : entry.status}
           </span>
         </div>
 
@@ -770,7 +758,7 @@ function EntryCard({
           {entry.is_late && (
             <span className="inline-flex items-center gap-1 rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700 dark:bg-red-950 dark:text-red-300">
               <Clock className="size-3" />
-              Telat submit {entry.late_days ?? "?"} hari
+              {t("lateSubmit", { days: entry.late_days ?? "?" })}
             </span>
           )}
           <span
@@ -793,12 +781,14 @@ function EntryCard({
         <div className="flex items-center gap-2">
           <span className="inline-flex items-center gap-1 rounded-md bg-muted px-2 py-0.5 text-xs font-medium text-foreground">
             <Activity className="size-3" />
-            {ACTIVITY_TYPE_LABELS[entry.activity_type] ?? entry.activity_type}
+            {ACTIVITY_TYPE_KEYS.includes(entry.activity_type)
+              ? t(`activityType.${entry.activity_type}`)
+              : entry.activity_type}
           </span>
           {entry.patient_initials && (
             <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
               <User className="size-3" />
-              Pasien: {entry.patient_initials}
+              {t("patient", { initials: entry.patient_initials })}
             </span>
           )}
         </div>
@@ -841,7 +831,9 @@ function EntryCard({
               {entry.competency_level}
             </TooltipTrigger>
             <TooltipContent>
-              {COMPETENCY_LABELS[entry.competency_level] ?? `Level ${entry.competency_level}`}
+              {[1, 2, 3, 4].includes(entry.competency_level)
+                ? t(`competency.${entry.competency_level}`)
+                : t("competencyFallback", { level: entry.competency_level })}
             </TooltipContent>
           </Tooltip>
 
@@ -853,7 +845,7 @@ function EntryCard({
               className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
             >
               <Paperclip className="size-3.5" />
-              Lampiran
+              {t("attachment")}
             </a>
           )}
         </div>
@@ -861,7 +853,7 @@ function EntryCard({
         {/* ---- Row 6: Feedback (for verified/rejected) ---- */}
         {entry.preceptor_feedback && activeTab !== "pending" && (
           <div className="rounded-lg bg-muted/60 p-3 text-xs text-muted-foreground border border-foreground/5">
-            <p className="font-medium text-foreground mb-1">Umpan Balik Dosen:</p>
+            <p className="font-medium text-foreground mb-1">{t("lecturerFeedback")}</p>
             <p className="leading-relaxed">{entry.preceptor_feedback}</p>
           </div>
         )}
@@ -876,7 +868,7 @@ function EntryCard({
             onClick={onVerify}
           >
             <CheckCircle2 className="size-4" />
-            Verifikasi
+            {t("verify")}
           </Button>
           <Button
             variant="destructive"
@@ -885,7 +877,7 @@ function EntryCard({
             onClick={onReject}
           >
             <XCircle className="size-4" />
-            Tolak
+            {t("reject")}
           </Button>
         </div>
       )}
