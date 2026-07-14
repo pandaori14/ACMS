@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useTranslations } from "next-intl";
 import {
   Table,
   TableBody,
@@ -67,6 +68,8 @@ function formatDate(value: string): string {
 }
 
 export default function RecapClient() {
+  const t = useTranslations("clinicalAttendanceRecap");
+  const tc = useTranslations("common");
   const [rows, setRows] = useState<RecapRow[]>([]);
   const [meta, setMeta] = useState<Pagination>({ current_page: 1, last_page: 1, total: 0 });
   const [isLoading, setIsLoading] = useState(true);
@@ -92,11 +95,11 @@ export default function RecapClient() {
       });
     } catch (error: unknown) {
       const status = (error as { response?: { status?: number } })?.response?.status;
-      toast.error(status === 403 ? "Anda tidak memiliki izin untuk rekap presensi." : "Gagal memuat rekap presensi.");
+      toast.error(status === 403 ? t("errForbidden") : t("errLoad"));
     } finally {
       setIsLoading(false);
     }
-  }, [page, date, flaggedOnly]);
+  }, [page, date, flaggedOnly, t]);
 
   useEffect(() => {
     fetchRecap();
@@ -121,11 +124,11 @@ export default function RecapClient() {
         status: correctForm.status,
         notes: correctForm.notes || undefined,
       });
-      toast.success("Kehadiran dikoreksi.");
+      toast.success(t("successCorrect"));
       setCorrecting(null);
       fetchRecap();
     } catch (err) {
-      toast.error(getApiErrorMessage(err, "Gagal mengoreksi kehadiran."));
+      toast.error(getApiErrorMessage(err, t("errCorrect")));
     } finally {
       setSavingCorrection(false);
     }
@@ -135,7 +138,7 @@ export default function RecapClient() {
     <div className="space-y-4">
       <div className="flex flex-wrap items-end gap-4">
         <div className="space-y-1">
-          <Label className="text-xs text-muted-foreground">Tanggal</Label>
+          <Label className="text-xs text-muted-foreground">{tc("date")}</Label>
           <Input
             type="date"
             value={date}
@@ -153,7 +156,7 @@ export default function RecapClient() {
               setFlaggedOnly(c === true);
             }}
           />
-          Hanya yang ditandai (anomali GPS)
+          {t("flaggedOnly")}
         </label>
       </div>
 
@@ -161,13 +164,13 @@ export default function RecapClient() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="w-[110px]">Tanggal</TableHead>
-              <TableHead>Mahasiswa</TableHead>
-              <TableHead>RS / Stase</TableHead>
-              <TableHead>Check-in</TableHead>
-              <TableHead>Check-out</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead className="text-right">Aksi</TableHead>
+              <TableHead className="w-[110px]">{tc("date")}</TableHead>
+              <TableHead>{t("student")}</TableHead>
+              <TableHead>{t("hospitalStase")}</TableHead>
+              <TableHead>{t("checkIn")}</TableHead>
+              <TableHead>{t("checkOut")}</TableHead>
+              <TableHead>{tc("status")}</TableHead>
+              <TableHead className="text-right">{tc("actions")}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -180,7 +183,7 @@ export default function RecapClient() {
             ) : rows.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={7} className="text-center h-32 text-muted-foreground">
-                  Tidak ada catatan presensi.
+                  {t("empty")}
                 </TableCell>
               </TableRow>
             ) : (
@@ -237,15 +240,15 @@ export default function RecapClient() {
                         {row.is_flagged && (
                           <span
                             className="flex items-center gap-1 text-xs text-rose-600 font-medium"
-                            title={row.flag_reason ?? "Anomali terdeteksi"}
+                            title={row.flag_reason ?? t("anomalyDetected")}
                           >
-                            <AlertTriangle className="w-3 h-3" /> Ditandai
+                            <AlertTriangle className="w-3 h-3" /> {t("flagged")}
                           </span>
                         )}
                       </div>
                     </TableCell>
                     <TableCell className="text-right">
-                      <Button variant="ghost" size="sm" onClick={() => openCorrect(row)} aria-label="Koreksi">
+                      <Button variant="ghost" size="sm" onClick={() => openCorrect(row)} aria-label={t("correct")}>
                         <Pencil className="w-4 h-4" />
                       </Button>
                     </TableCell>
@@ -259,7 +262,7 @@ export default function RecapClient() {
 
       <div className="flex items-center justify-between">
         <p className="text-xs text-muted-foreground">
-          Total {meta.total} catatan &middot; Halaman {meta.current_page} dari {meta.last_page}
+          {t("totalRecords", { total: meta.total, current: meta.current_page, last: meta.last_page })}
         </p>
         <div className="flex gap-2">
           <Button
@@ -268,7 +271,7 @@ export default function RecapClient() {
             disabled={meta.current_page <= 1 || isLoading}
             onClick={() => setPage((p) => Math.max(1, p - 1))}
           >
-            <ChevronLeft className="w-4 h-4" /> Sebelumnya
+            <ChevronLeft className="w-4 h-4" /> {tc("previous")}
           </Button>
           <Button
             variant="outline"
@@ -276,7 +279,7 @@ export default function RecapClient() {
             disabled={meta.current_page >= meta.last_page || isLoading}
             onClick={() => setPage((p) => p + 1)}
           >
-            Berikutnya <ChevronRight className="w-4 h-4" />
+            {tc("next")} <ChevronRight className="w-4 h-4" />
           </Button>
         </div>
       </div>
@@ -286,7 +289,7 @@ export default function RecapClient() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>
-              Koreksi Kehadiran — {correcting?.rotation_assignment?.student?.user?.name}
+              {t("correctTitle", { name: correcting?.rotation_assignment?.student?.user?.name ?? "" })}
             </DialogTitle>
           </DialogHeader>
           {correcting?.flag_reason && (
@@ -296,33 +299,33 @@ export default function RecapClient() {
           )}
           <form onSubmit={handleCorrect} className="space-y-4 pt-1">
             <div className="space-y-2">
-              <Label>Status Kehadiran</Label>
+              <Label>{t("attendanceStatus")}</Label>
               <select
                 className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                 value={correctForm.status}
                 onChange={(e) => setCorrectForm({ ...correctForm, status: e.target.value })}
               >
-                <option value="PRESENT">Hadir (PRESENT)</option>
-                <option value="LATE">Terlambat (LATE)</option>
-                <option value="ABSENT">Tidak Hadir (ABSENT)</option>
-                <option value="SICK">Sakit (SICK)</option>
-                <option value="LEAVE">Izin (LEAVE)</option>
+                <option value="PRESENT">{t("statusPresent")}</option>
+                <option value="LATE">{t("statusLate")}</option>
+                <option value="ABSENT">{t("statusAbsent")}</option>
+                <option value="SICK">{t("statusSick")}</option>
+                <option value="LEAVE">{t("statusLeave")}</option>
               </select>
             </div>
             <div className="space-y-2">
-              <Label>Catatan koreksi (opsional)</Label>
+              <Label>{t("correctionNotes")}</Label>
               <Textarea
                 rows={2}
-                placeholder="Contoh: Surat dokter diverifikasi valid."
+                placeholder={t("correctionNotesPlaceholder")}
                 value={correctForm.notes}
                 onChange={(e) => setCorrectForm({ ...correctForm, notes: e.target.value })}
               />
             </div>
             <p className="text-xs text-muted-foreground">
-              Koreksi menyelesaikan penandaan (flag) dan tercatat atas nama Anda.
+              {t("correctionHint")}
             </p>
             <Button type="submit" className="w-full" disabled={savingCorrection}>
-              {savingCorrection ? "Menyimpan..." : "Simpan Koreksi"}
+              {savingCorrection ? tc("saving") : t("saveCorrection")}
             </Button>
           </form>
         </DialogContent>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useTranslations } from "next-intl";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -11,6 +12,7 @@ import { getApiErrorMessage } from "@/lib/api-helpers";
 import { EvaluationQuestion, RotationAssignment } from "@/lib/types";
 
 export default function EvaluationsPage() {
+  const t = useTranslations("clinicalEvaluations");
   const [questions, setQuestions] = useState<EvaluationQuestion[]>([]);
   const [rotation, setRotation] = useState<RotationAssignment | null>(null);
   const [loading, setLoading] = useState(true);
@@ -46,13 +48,14 @@ export default function EvaluationsPage() {
           }
         }
       } catch {
-        toast.error("Gagal memuat data evaluasi.");
+        toast.error(t("errLoad"));
       } finally {
         setLoading(false);
       }
     };
-    
+
     fetchData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- sekali saat mount
   }, []);
 
   const handleRating = (questionId: string, rating: number) => {
@@ -73,7 +76,7 @@ export default function EvaluationsPage() {
     // Validasi
     const unanswered = Object.values(answers).some(a => a.rating === 0);
     if (unanswered) {
-      toast.error("Harap berikan rating (1-5) untuk semua pertanyaan.");
+      toast.error(t("errRatingRequired"));
       return;
     }
 
@@ -95,7 +98,7 @@ export default function EvaluationsPage() {
       toast.success(res.data.message);
       setIsSubmitted(true);
     } catch (err) {
-      toast.error(getApiErrorMessage(err, "Gagal mengirim evaluasi."));
+      toast.error(getApiErrorMessage(err, t("errSubmit")));
     } finally {
       setSubmitting(false);
     }
@@ -108,12 +111,12 @@ export default function EvaluationsPage() {
   if (!rotation) {
     return (
       <div className="max-w-3xl mx-auto space-y-6">
-        <h1 className="text-3xl font-bold tracking-tight">Kuesioner Evaluasi</h1>
+        <h1 className="text-3xl font-bold tracking-tight">{t("title")}</h1>
         <Card className="border-dashed bg-muted/50">
           <CardContent className="flex flex-col items-center justify-center p-12 text-center">
             <FileText className="h-12 w-12 text-muted-foreground mb-4 opacity-50" />
-            <h3 className="text-lg font-semibold">Tidak Ada Rotasi Aktif</h3>
-            <p className="text-muted-foreground">Anda belum dijadwalkan pada stase manapun hari ini.</p>
+            <h3 className="text-lg font-semibold">{t("noRotationTitle")}</h3>
+            <p className="text-muted-foreground">{t("noRotationDesc")}</p>
           </CardContent>
         </Card>
       </div>
@@ -123,13 +126,13 @@ export default function EvaluationsPage() {
   if (isSubmitted) {
     return (
       <div className="max-w-3xl mx-auto space-y-6">
-        <h1 className="text-3xl font-bold tracking-tight">Kuesioner Evaluasi</h1>
+        <h1 className="text-3xl font-bold tracking-tight">{t("title")}</h1>
         <Card className="border-green-200 bg-green-50/50 dark:bg-green-950/10">
           <CardContent className="flex flex-col items-center justify-center p-12 text-center">
             <CheckCircle2 className="h-16 w-16 text-green-500 mb-4" />
-            <h3 className="text-xl font-bold text-green-700 dark:text-green-400">Evaluasi Selesai</h3>
+            <h3 className="text-xl font-bold text-green-700 dark:text-green-400">{t("doneTitle")}</h3>
             <p className="text-muted-foreground mt-2">
-              Anda telah mengisi kuesioner evaluasi untuk stase di {rotation.hospital?.name}. Terima kasih atas partisipasi Anda dalam menjaga kualitas pendidikan klinis.
+              {t("doneDesc", { hospital: rotation.hospital?.name ?? "" })}
             </p>
           </CardContent>
         </Card>
@@ -140,22 +143,22 @@ export default function EvaluationsPage() {
   return (
     <div className="max-w-3xl mx-auto space-y-6 pb-12">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">Kuesioner Evaluasi Stase</h1>
+        <h1 className="text-3xl font-bold tracking-tight">{t("titleStase")}</h1>
         <p className="text-muted-foreground">
-          Berikan umpan balik Anda untuk meningkatkan kualitas pendidikan klinis. Evaluasi ini bersifat anonim bagi preceptor.
+          {t("subtitle")}
         </p>
       </div>
 
       <Card className="bg-primary/5 border-primary/20">
         <CardHeader>
-          <CardTitle>Stase Saat Ini</CardTitle>
+          <CardTitle>{t("currentStase")}</CardTitle>
           <CardDescription>{rotation.hospital?.name}</CardDescription>
         </CardHeader>
       </Card>
 
       <div className="space-y-6">
         {questions.length === 0 ? (
-          <div className="text-center p-8 text-muted-foreground">Belum ada pertanyaan evaluasi yang dikonfigurasi.</div>
+          <div className="text-center p-8 text-muted-foreground">{t("noQuestions")}</div>
         ) : (
           questions.map((q, idx) => (
             <Card key={q.id}>
@@ -167,7 +170,7 @@ export default function EvaluationsPage() {
                   {q.question_text}
                 </CardTitle>
                 <CardDescription>
-                  Evaluasi terhadap: {q.target_type === 'Modules\\Rotation\\Models\\Hospital' ? 'Rumah Sakit' : 'Dosen/Preceptor'}
+                  {t("evaluationOf", { target: q.target_type === 'Modules\\Rotation\\Models\\Hospital' ? t("targetHospital") : t("targetPreceptor") })}
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -183,12 +186,12 @@ export default function EvaluationsPage() {
                     </button>
                   ))}
                   <span className="ml-4 self-center text-sm font-medium text-muted-foreground">
-                    {answers[q.id]?.rating === 0 ? 'Belum dinilai' : `Nilai: ${answers[q.id].rating}/5`}
+                    {answers[q.id]?.rating === 0 ? t("notRated") : t("ratingValue", { rating: answers[q.id].rating })}
                   </span>
                 </div>
                 <div>
-                  <Textarea 
-                    placeholder="Komentar tambahan (opsional)..." 
+                  <Textarea
+                    placeholder={t("commentPlaceholder")}
                     className="resize-none"
                     value={answers[q.id]?.comment || ""}
                     onChange={(e) => handleComment(q.id, e.target.value)}
@@ -203,7 +206,7 @@ export default function EvaluationsPage() {
       {questions.length > 0 && (
         <div className="flex justify-end">
           <Button size="lg" onClick={handleSubmit} disabled={submitting}>
-            {submitting ? 'Menyimpan...' : 'Submit Evaluasi'}
+            {submitting ? t("submitting") : t("submitEvaluation")}
           </Button>
         </div>
       )}

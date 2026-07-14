@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useTranslations } from "next-intl";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -25,6 +26,8 @@ interface AttendanceStatus {
 }
 
 export default function AttendancePage() {
+  const t = useTranslations("clinicalAttendance");
+  const tc = useTranslations("common");
   const [status, setStatus] = useState<AttendanceStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState(false);
@@ -50,7 +53,7 @@ export default function AttendancePage() {
       setLeaveForm({ date: new Date().toISOString().slice(0, 10), type: "SICK", notes: "" });
       fetchStatus();
     } catch (err) {
-      toast.error(getApiErrorMessage(err, "Gagal mengirim pengajuan."));
+      toast.error(getApiErrorMessage(err, t("errSubmitLeave")));
     } finally {
       setSubmittingLeave(false);
     }
@@ -62,7 +65,7 @@ export default function AttendancePage() {
       const res = await api.get("/api/v1/clinical/attendance/status");
       setStatus(res.data);
     } catch {
-      toast.error("Gagal memuat status presensi.");
+      toast.error(t("errLoadStatus"));
     } finally {
       setLoading(false);
     }
@@ -70,12 +73,13 @@ export default function AttendancePage() {
 
   useEffect(() => {
     fetchStatus();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- sekali saat mount
   }, []);
 
   const getLocation = (): Promise<{lat: number, lng: number}> => {
     return new Promise((resolve, reject) => {
       if (!navigator.geolocation) {
-        reject("Geolocation tidak didukung oleh browser ini.");
+        reject(t("errGeoUnsupported"));
       } else {
         navigator.geolocation.getCurrentPosition(
           (position) => {
@@ -85,7 +89,7 @@ export default function AttendancePage() {
             });
           },
           () => {
-            reject("Gagal mendapatkan lokasi. Pastikan izin lokasi (GPS) diaktifkan.");
+            reject(t("errGeoFailed"));
           },
           { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
         );
@@ -117,10 +121,10 @@ export default function AttendancePage() {
         toast.error(err);
       } else {
         const e = err as { response?: { data?: { message?: string; distance_meters?: number; radius_meters?: number } } };
-        toast.error(e.response?.data?.message || `Gagal melakukan ${type}`);
+        toast.error(e.response?.data?.message || t("failAction", { action: type }));
         if (e.response?.data?.distance_meters) {
           const maxRadius = e.response.data.radius_meters ?? 100;
-          setLocationError(`Anda berada ${e.response.data.distance_meters} meter dari Rumah Sakit. Jarak maksimal adalah ${maxRadius} meter.`);
+          setLocationError(t("distanceError", { distance: e.response.data.distance_meters, radius: maxRadius }));
         }
       }
     } finally {
@@ -136,14 +140,14 @@ export default function AttendancePage() {
     <div className="max-w-3xl mx-auto space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Presensi Kehadiran</h1>
+          <h1 className="text-3xl font-bold tracking-tight">{t("title")}</h1>
           <p className="text-muted-foreground">
-            Catat kehadiran Anda di rumah sakit dengan verifikasi lokasi (GPS).
+            {t("subtitle")}
           </p>
         </div>
         {status?.rotation && (
           <Button variant="outline" onClick={() => setIsLeaveOpen(true)}>
-            <CalendarOff className="h-4 w-4 mr-2" /> Ajukan Izin / Sakit
+            <CalendarOff className="h-4 w-4 mr-2" /> {t("requestLeave")}
           </Button>
         )}
       </div>
@@ -152,8 +156,8 @@ export default function AttendancePage() {
         <Card className="border-dashed bg-muted/50">
           <CardContent className="flex flex-col items-center justify-center p-12 text-center">
             <MapPin className="h-12 w-12 text-muted-foreground mb-4 opacity-50" />
-            <h3 className="text-lg font-semibold">Tidak Ada Rotasi Aktif</h3>
-            <p className="text-muted-foreground">Anda belum dijadwalkan pada stase manapun hari ini.</p>
+            <h3 className="text-lg font-semibold">{t("noRotationTitle")}</h3>
+            <p className="text-muted-foreground">{t("noRotationDesc")}</p>
           </CardContent>
         </Card>
       ) : (
@@ -162,7 +166,7 @@ export default function AttendancePage() {
             <CardHeader className="pb-3">
               <div className="flex justify-between items-start">
                 <div>
-                  <CardDescription>Lokasi Rotasi Saat Ini</CardDescription>
+                  <CardDescription>{t("currentRotationLocation")}</CardDescription>
                   <CardTitle className="text-xl mt-1">{status.rotation?.hospital?.name}</CardTitle>
                 </div>
                 <Badge variant="outline" className="bg-primary/5 text-primary">
@@ -174,7 +178,7 @@ export default function AttendancePage() {
               <div className="flex items-center gap-2 text-sm text-muted-foreground bg-muted/30 p-3 rounded-lg border">
                 <MapPin className="h-4 w-4 shrink-0 text-primary" />
                 <span>
-                  Pastikan Anda berada di area Rumah Sakit (Radius {status.rotation?.hospital?.radius ?? 100}m). Sistem akan memverifikasi koordinat GPS perangkat Anda.
+                  {t("radiusHint", { radius: status.rotation?.hospital?.radius ?? 100 })}
                 </span>
               </div>
             </CardContent>
@@ -187,21 +191,21 @@ export default function AttendancePage() {
                   {status.attendance?.check_in_time ? <CheckCircle2 className="h-8 w-8" /> : <LogIn className="h-8 w-8" />}
                 </div>
                 <div>
-                  <h3 className="font-semibold text-lg">Check In</h3>
+                  <h3 className="font-semibold text-lg">{t("checkIn")}</h3>
                   <p className="text-sm text-muted-foreground">
-                    {status.attendance?.check_in_time 
-                      ? `Tercatat pada ${status.attendance.check_in_time}`
-                      : "Catat kehadiran kedatangan"}
+                    {status.attendance?.check_in_time
+                      ? t("recordedAt", { time: status.attendance.check_in_time })
+                      : t("checkInDesc")}
                   </p>
                 </div>
-                <Button 
-                  className="w-full" 
+                <Button
+                  className="w-full"
                   size="lg"
                   disabled={!status.can_check_in || processing}
                   onClick={() => handleAttendance('check-in')}
                   variant={status.can_check_in ? 'default' : 'secondary'}
                 >
-                  {processing && status.can_check_in ? 'Memproses Lokasi...' : 'Lakukan Check In'}
+                  {processing && status.can_check_in ? t("processingLocation") : t("doCheckIn")}
                 </Button>
               </CardContent>
             </Card>
@@ -212,21 +216,21 @@ export default function AttendancePage() {
                   {status.attendance?.check_out_time ? <CheckCircle2 className="h-8 w-8" /> : <LogOut className="h-8 w-8" />}
                 </div>
                 <div>
-                  <h3 className="font-semibold text-lg">Check Out</h3>
+                  <h3 className="font-semibold text-lg">{t("checkOut")}</h3>
                   <p className="text-sm text-muted-foreground">
-                    {status.attendance?.check_out_time 
-                      ? `Tercatat pada ${status.attendance.check_out_time}`
-                      : "Catat kepulangan rotasi"}
+                    {status.attendance?.check_out_time
+                      ? t("recordedAt", { time: status.attendance.check_out_time })
+                      : t("checkOutDesc")}
                   </p>
                 </div>
-                <Button 
-                  className="w-full" 
+                <Button
+                  className="w-full"
                   size="lg"
                   disabled={!status.can_check_out || processing}
                   onClick={() => handleAttendance('check-out')}
                   variant={status.can_check_out ? 'default' : 'secondary'}
                 >
-                  {processing && status.can_check_out ? 'Memproses Lokasi...' : 'Lakukan Check Out'}
+                  {processing && status.can_check_out ? t("processingLocation") : t("doCheckOut")}
                 </Button>
               </CardContent>
             </Card>
@@ -245,12 +249,12 @@ export default function AttendancePage() {
       <Dialog open={isLeaveOpen} onOpenChange={setIsLeaveOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Ajukan Izin / Sakit</DialogTitle>
+            <DialogTitle>{t("requestLeave")}</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleSubmitLeave} className="space-y-4 pt-2">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <label className="text-sm font-medium">Tanggal</label>
+                <label className="text-sm font-medium">{tc("date")}</label>
                 <Input
                   type="date"
                   required
@@ -259,33 +263,33 @@ export default function AttendancePage() {
                 />
               </div>
               <div className="space-y-2">
-                <label className="text-sm font-medium">Jenis</label>
+                <label className="text-sm font-medium">{t("type")}</label>
                 <select
                   className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                   value={leaveForm.type}
                   onChange={(e) => setLeaveForm({ ...leaveForm, type: e.target.value })}
                 >
-                  <option value="SICK">Sakit</option>
-                  <option value="LEAVE">Izin</option>
+                  <option value="SICK">{t("sick")}</option>
+                  <option value="LEAVE">{t("leave")}</option>
                 </select>
               </div>
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-medium">Alasan (wajib, min. 5 karakter)</label>
+              <label className="text-sm font-medium">{t("reasonLabel")}</label>
               <Textarea
                 required
                 minLength={5}
                 rows={3}
-                placeholder="Contoh: Demam tinggi, surat dokter menyusul."
+                placeholder={t("reasonPlaceholder")}
                 value={leaveForm.notes}
                 onChange={(e) => setLeaveForm({ ...leaveForm, notes: e.target.value })}
               />
             </div>
             <p className="text-xs text-muted-foreground">
-              Pengajuan akan ditandai untuk direview pembimbing/admin pada rekap presensi.
+              {t("leaveHint")}
             </p>
             <Button type="submit" className="w-full" disabled={submittingLeave}>
-              {submittingLeave ? "Mengirim..." : "Kirim Pengajuan"}
+              {submittingLeave ? t("submitting") : t("submitLeave")}
             </Button>
           </form>
         </DialogContent>

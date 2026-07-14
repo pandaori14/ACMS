@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import api from "@/lib/api";
 import { getApiErrorMessage } from "@/lib/api-helpers";
 import { useAuthStore } from "@/store/useAuthStore";
@@ -46,6 +47,8 @@ function ratingColor(avg: number): string {
 }
 
 export default function EvaluationReportPage() {
+  const t = useTranslations("clinicalEvaluationReport");
+  const tc = useTranslations("common");
   const user = useAuthStore((state) => state.user);
   const canManageQuestions = user?.permissions?.includes("manage-academic-master");
 
@@ -69,11 +72,11 @@ export default function EvaluationReportPage() {
       });
       setTargets(res.data.data || []);
     } catch (err) {
-      toast.error(getApiErrorMessage(err, "Gagal memuat laporan evaluasi."));
+      toast.error(getApiErrorMessage(err, t("errLoad")));
     } finally {
       setIsLoading(false);
     }
-  }, [filterType, minResponses]);
+  }, [filterType, minResponses, t]);
 
   useEffect(() => {
     fetchReport();
@@ -97,11 +100,11 @@ export default function EvaluationReportPage() {
     e.preventDefault();
     try {
       await api.post("/api/v1/clinical/evaluations/questions", qForm);
-      toast.success("Pertanyaan ditambahkan.");
+      toast.success(t("successAdd"));
       setQForm({ target_type: "PRECEPTOR", question_text: "" });
       fetchQuestions();
     } catch (err) {
-      toast.error(getApiErrorMessage(err, "Gagal menambah pertanyaan."));
+      toast.error(getApiErrorMessage(err, t("errAdd")));
     }
   };
 
@@ -110,7 +113,7 @@ export default function EvaluationReportPage() {
       await api.put(`/api/v1/clinical/evaluations/questions/${q.id}`, { is_active: !q.is_active });
       fetchQuestions();
     } catch (err) {
-      toast.error(getApiErrorMessage(err, "Gagal mengubah status pertanyaan."));
+      toast.error(getApiErrorMessage(err, t("errToggle")));
     }
   };
 
@@ -120,34 +123,34 @@ export default function EvaluationReportPage() {
       toast.success(res.data.message);
       fetchQuestions();
     } catch (err) {
-      toast.error(getApiErrorMessage(err, "Gagal menghapus pertanyaan."));
+      toast.error(getApiErrorMessage(err, t("errDelete")));
     }
   };
 
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">Laporan Evaluasi Klinis</h1>
+        <h1 className="text-3xl font-bold tracking-tight">{t("title")}</h1>
         <p className="text-muted-foreground mt-1">
-          Rekap anonim penilaian mahasiswa terhadap preceptor dan rumah sakit.
+          {t("subtitle")}
         </p>
       </div>
 
       <Tabs defaultValue="report" className="w-full">
         <TabsList>
-          <TabsTrigger value="report">Laporan Agregat</TabsTrigger>
-          {canManageQuestions && <TabsTrigger value="questions">Bank Pertanyaan</TabsTrigger>}
+          <TabsTrigger value="report">{t("tabReport")}</TabsTrigger>
+          {canManageQuestions && <TabsTrigger value="questions">{t("tabQuestions")}</TabsTrigger>}
         </TabsList>
 
         <TabsContent value="report" className="space-y-4 mt-4">
           <div className="flex flex-wrap items-center gap-3">
             <select className={`${selectClass} w-auto`} value={filterType} onChange={(e) => setFilterType(e.target.value)}>
-              <option value="">Semua Target</option>
-              <option value="PRECEPTOR">Preceptor (Dodiknis)</option>
-              <option value="HOSPITAL">Rumah Sakit</option>
+              <option value="">{t("allTargets")}</option>
+              <option value="PRECEPTOR">{t("preceptorDodiknis")}</option>
+              <option value="HOSPITAL">{t("hospital")}</option>
             </select>
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              Ambang anonimitas:
+              {t("anonymityThreshold")}
               <Input
                 type="number"
                 className="w-20"
@@ -156,7 +159,7 @@ export default function EvaluationReportPage() {
                 value={minResponses}
                 onChange={(e) => setMinResponses(Math.max(1, Math.min(10, Number(e.target.value) || 1)))}
               />
-              responden
+              {t("respondentsUnit")}
             </div>
           </div>
 
@@ -168,34 +171,34 @@ export default function EvaluationReportPage() {
           ) : targets.length === 0 ? (
             <div className="py-12 text-center text-muted-foreground border-2 border-dashed rounded-xl">
               <BarChart2 className="mx-auto h-12 w-12 text-gray-300 mb-3" />
-              <p>Belum ada data evaluasi yang memenuhi ambang anonimitas ({minResponses} responden).</p>
+              <p>{t("noData", { count: minResponses })}</p>
             </div>
           ) : (
             <div className="grid gap-4 md:grid-cols-2">
-              {targets.map((t, i) => (
+              {targets.map((report, i) => (
                 <Card key={i} className="clean-card">
                   <CardHeader className="pb-3">
                     <div className="flex justify-between items-start gap-2">
                       <div className="flex items-center gap-2 min-w-0">
-                        {t.target_type === "HOSPITAL" ? (
+                        {report.target_type === "HOSPITAL" ? (
                           <Building2 className="h-5 w-5 text-slate-500 shrink-0" />
                         ) : (
                           <Stethoscope className="h-5 w-5 text-slate-500 shrink-0" />
                         )}
-                        <CardTitle className="text-base truncate">{t.target_name}</CardTitle>
+                        <CardTitle className="text-base truncate">{report.target_name}</CardTitle>
                       </div>
-                      <Badge variant="secondary">{t.respondents} responden</Badge>
+                      <Badge variant="secondary">{t("respondents", { count: report.respondents })}</Badge>
                     </div>
                     <CardDescription className="flex items-center gap-1 mt-1">
-                      <Star className={`h-5 w-5 ${ratingColor(t.average_rating)} fill-current`} />
-                      <span className={`text-xl font-bold ${ratingColor(t.average_rating)}`}>
-                        {t.average_rating.toFixed(2)}
+                      <Star className={`h-5 w-5 ${ratingColor(report.average_rating)} fill-current`} />
+                      <span className={`text-xl font-bold ${ratingColor(report.average_rating)}`}>
+                        {report.average_rating.toFixed(2)}
                       </span>
-                      <span className="text-muted-foreground">/ 5.00</span>
+                      <span className="text-muted-foreground">{t("outOf5")}</span>
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-3">
-                    {t.per_question.map((q, qi) => (
+                    {report.per_question.map((q, qi) => (
                       <div key={qi} className="space-y-1">
                         <div className="flex justify-between text-xs">
                           <span className="text-muted-foreground truncate pr-2">{q.question}</span>
@@ -210,13 +213,13 @@ export default function EvaluationReportPage() {
                       </div>
                     ))}
 
-                    {t.comments.length > 0 && (
+                    {report.comments.length > 0 && (
                       <details className="pt-2">
                         <summary className="text-xs font-medium text-slate-600 dark:text-slate-300 cursor-pointer flex items-center gap-1">
-                          <MessageSquare className="h-3.5 w-3.5" /> {t.comments.length} komentar anonim
+                          <MessageSquare className="h-3.5 w-3.5" /> {t("anonymousComments", { count: report.comments.length })}
                         </summary>
                         <ul className="mt-2 space-y-1 max-h-36 overflow-y-auto">
-                          {t.comments.map((c, ci) => (
+                          {report.comments.map((c, ci) => (
                             <li key={ci} className="text-xs text-slate-600 dark:text-slate-300 bg-slate-50 dark:bg-slate-900 rounded p-2">
                               &ldquo;{c}&rdquo;
                             </li>
@@ -239,24 +242,24 @@ export default function EvaluationReportPage() {
                 value={qForm.target_type}
                 onChange={(e) => setQForm({ ...qForm, target_type: e.target.value })}
               >
-                <option value="PRECEPTOR">Untuk Preceptor</option>
-                <option value="HOSPITAL">Untuk Rumah Sakit</option>
+                <option value="PRECEPTOR">{t("forPreceptor")}</option>
+                <option value="HOSPITAL">{t("forHospital")}</option>
               </select>
               <Input
                 required
-                placeholder="Tulis pertanyaan evaluasi baru..."
+                placeholder={t("newQuestionPlaceholder")}
                 value={qForm.question_text}
                 onChange={(e) => setQForm({ ...qForm, question_text: e.target.value })}
               />
               <Button type="submit">
-                <Plus className="h-4 w-4 mr-1" /> Tambah
+                <Plus className="h-4 w-4 mr-1" /> {tc("add")}
               </Button>
             </form>
 
             <div className="space-y-2">
               {questions.length === 0 ? (
                 <p className="text-sm text-muted-foreground border border-dashed rounded-md p-6 text-center">
-                  Belum ada pertanyaan evaluasi.
+                  {t("noQuestions")}
                 </p>
               ) : (
                 questions.map((q) => (
@@ -266,19 +269,19 @@ export default function EvaluationReportPage() {
                         {q.question_text}
                       </p>
                       <p className="text-xs text-muted-foreground">
-                        {q.target_type === "HOSPITAL" ? "Rumah Sakit" : "Preceptor"} — {q.submissions_count ?? 0} jawaban
+                        {t("questionMeta", { target: q.target_type === "HOSPITAL" ? t("hospital") : t("preceptor"), count: q.submissions_count ?? 0 })}
                       </p>
                     </div>
                     <div className="flex items-center gap-1 shrink-0">
                       <Button variant="outline" size="sm" onClick={() => toggleQuestion(q)}>
-                        {q.is_active ? "Nonaktifkan" : "Aktifkan"}
+                        {q.is_active ? t("deactivate") : t("activate")}
                       </Button>
                       <Button
                         variant="ghost"
                         size="sm"
                         className="text-red-600 hover:text-red-700"
                         onClick={() => deleteQuestion(q)}
-                        aria-label="Hapus pertanyaan"
+                        aria-label={t("deleteQuestion")}
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>

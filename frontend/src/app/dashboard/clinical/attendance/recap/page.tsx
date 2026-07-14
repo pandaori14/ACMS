@@ -1,4 +1,5 @@
 import { Metadata } from "next";
+import { getTranslations } from "next-intl/server";
 import RecapClient from "./RecapClient";
 
 export const metadata: Metadata = {
@@ -6,14 +7,14 @@ export const metadata: Metadata = {
   description: "Rekap kehadiran mahasiswa dengan verifikasi geofence dan flag anomali GPS",
 };
 
-export default function AttendanceRecapPage() {
+export default async function AttendanceRecapPage() {
+  const t = await getTranslations("clinicalAttendanceRecap");
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-2">
-        <h1 className="text-3xl font-bold tracking-tight">Rekap Presensi</h1>
+        <h1 className="text-3xl font-bold tracking-tight">{t("title")}</h1>
         <p className="text-muted-foreground">
-          Rekapitulasi kehadiran mahasiswa beserta jarak GPS terhadap rumah sakit dan penandaan
-          anomali (perpindahan lokasi tidak wajar / dugaan titip absen) untuk ditinjau.
+          {t("subtitle")}
         </p>
       </div>
       <RecapClient />
