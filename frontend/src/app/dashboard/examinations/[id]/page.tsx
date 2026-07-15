@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 
 import api from "@/lib/api";
 import { getApiErrorMessage } from "@/lib/api-helpers";
@@ -47,6 +48,8 @@ const selectClass =
   "flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background";
 
 export default function ExaminationDetailPage() {
+  const t = useTranslations("examDetail");
+  const tc = useTranslations("common");
   const params = useParams();
   const router = useRouter();
   const authUser = useAuthStore((state) => state.user);
@@ -104,7 +107,7 @@ export default function ExaminationDetailPage() {
   // Cari mahasiswa (debounce) untuk dialog peserta
   useEffect(() => {
     if (!isParticipantOpen) return;
-    const t = setTimeout(async () => {
+    const timer = setTimeout(async () => {
       setSearchingStudents(true);
       try {
         const res = await api.get("/api/v1/academic/students", {
@@ -117,7 +120,7 @@ export default function ExaminationDetailPage() {
         setSearchingStudents(false);
       }
     }, 350);
-    return () => clearTimeout(t);
+    return () => clearTimeout(timer);
   }, [studentSearch, isParticipantOpen]);
 
   const openAssessorDialog = async () => {
@@ -132,7 +135,7 @@ export default function ExaminationDetailPage() {
       merge.forEach((u: AssessorOption) => unique.set(u.id, u));
       setAssessorOptions(Array.from(unique.values()));
     } catch {
-      toast.error("Gagal memuat daftar penguji.");
+      toast.error(t("loadAssessorsError"));
     }
   };
 
@@ -180,15 +183,15 @@ export default function ExaminationDetailPage() {
       const payload = { question_text: qText, points: qPoints, options: qOptions };
       if (editingQuestionId) {
         await api.put(`/api/v1/examinations/${params.id}/questions/${editingQuestionId}`, payload);
-        toast.success("Soal diperbarui.");
+        toast.success(t("questionUpdated"));
       } else {
         await api.post(`/api/v1/examinations/${params.id}/questions`, payload);
-        toast.success("Soal ditambahkan.");
+        toast.success(t("questionAdded"));
       }
       setIsQuestionOpen(false);
       fetchQuestions();
     } catch (err) {
-      toast.error(getApiErrorMessage(err, "Gagal menyimpan soal."));
+      toast.error(getApiErrorMessage(err, t("questionSaveError")));
     } finally {
       setSavingQuestion(false);
     }
@@ -197,10 +200,10 @@ export default function ExaminationDetailPage() {
   const deleteQuestion = async (questionId: string) => {
     try {
       await api.delete(`/api/v1/examinations/${params.id}/questions/${questionId}`);
-      toast.success("Soal dihapus.");
+      toast.success(t("questionDeleted"));
       fetchQuestions();
     } catch (err) {
-      toast.error(getApiErrorMessage(err, "Gagal menghapus soal."));
+      toast.error(getApiErrorMessage(err, t("questionDeleteError")));
     }
   };
 
@@ -221,7 +224,7 @@ export default function ExaminationDetailPage() {
       });
       setBankItems(res.data.data || []);
     } catch {
-      toast.error("Gagal memuat bank soal.");
+      toast.error(t("loadBankError"));
     }
   };
 
@@ -232,7 +235,7 @@ export default function ExaminationDetailPage() {
       });
       setBankItems(res.data.data || []);
     } catch {
-      toast.error("Gagal mencari bank soal.");
+      toast.error(t("searchBankError"));
     }
   };
 
@@ -247,7 +250,7 @@ export default function ExaminationDetailPage() {
       setIsBankOpen(false);
       fetchQuestions();
     } catch (err) {
-      toast.error(getApiErrorMessage(err, "Gagal menyalin soal dari bank."));
+      toast.error(getApiErrorMessage(err, t("copyBankError")));
     } finally {
       setIsCopying(false);
     }
@@ -267,20 +270,20 @@ export default function ExaminationDetailPage() {
   const addParticipant = async (userId: string) => {
     try {
       await api.post(`/api/v1/examinations/${params.id}/participants`, { student_id: userId });
-      toast.success("Peserta ditambahkan.");
+      toast.success(t("participantAdded"));
       fetchExamDetail();
     } catch (err) {
-      toast.error(getApiErrorMessage(err, "Gagal menambah peserta."));
+      toast.error(getApiErrorMessage(err, t("participantAddError")));
     }
   };
 
   const removeParticipant = async (participantId: string) => {
     try {
       await api.delete(`/api/v1/examinations/${params.id}/participants/${participantId}`);
-      toast.success("Peserta dikeluarkan.");
+      toast.success(t("participantRemoved"));
       fetchExamDetail();
     } catch (err) {
-      toast.error(getApiErrorMessage(err, "Gagal mengeluarkan peserta."));
+      toast.error(getApiErrorMessage(err, t("participantRemoveError")));
     }
   };
 
@@ -291,23 +294,23 @@ export default function ExaminationDetailPage() {
         assessor_id: assessorId,
         exam_station_id: assessorStationId || null,
       });
-      toast.success("Penguji ditugaskan.");
+      toast.success(t("assessorAssigned"));
       setIsAssessorOpen(false);
       setAssessorId("");
       setAssessorStationId("");
       fetchExamDetail();
     } catch (err) {
-      toast.error(getApiErrorMessage(err, "Gagal menugaskan penguji."));
+      toast.error(getApiErrorMessage(err, t("assessorAssignError")));
     }
   };
 
   const removeAssessor = async (assessorRowId: string) => {
     try {
       await api.delete(`/api/v1/examinations/${params.id}/assessors/${assessorRowId}`);
-      toast.success("Penguji dihapus dari ujian.");
+      toast.success(t("assessorRemoved"));
       fetchExamDetail();
     } catch (err) {
-      toast.error(getApiErrorMessage(err, "Gagal menghapus penguji."));
+      toast.error(getApiErrorMessage(err, t("assessorRemoveError")));
     }
   };
 
@@ -319,40 +322,41 @@ export default function ExaminationDetailPage() {
         description: stationForm.description || null,
         assessment_template_id: stationForm.assessment_template_id || null,
       });
-      toast.success("Stasiun ditambahkan.");
+      toast.success(t("stationAdded"));
       setIsStationOpen(false);
       fetchExamDetail();
     } catch (err) {
-      toast.error(getApiErrorMessage(err, "Gagal menambah stasiun."));
+      toast.error(getApiErrorMessage(err, t("stationAddError")));
     }
   };
 
   const removeStation = async (stationId: string) => {
     try {
       await api.delete(`/api/v1/examinations/${params.id}/stations/${stationId}`);
-      toast.success("Stasiun dihapus.");
+      toast.success(t("stationDeleted"));
       fetchExamDetail();
     } catch (err) {
-      toast.error(getApiErrorMessage(err, "Gagal menghapus stasiun."));
+      toast.error(getApiErrorMessage(err, t("stationDeleteError")));
     }
   };
 
   const handleDownloadPdf = () => {
-    toast.loading("Membuat PDF Berita Acara...", { id: "pdf-download" });
+    toast.loading(t("pdfLoading"), { id: "pdf-download" });
     api.get(`/api/v1/examinations/${params.id}/pdf`, { responseType: "blob" })
       .then((response) => {
         const _url = window.URL.createObjectURL(new Blob([response.data]));
         const _link = document.createElement("a");
         _link.href = _url;
-        _link.setAttribute("download", `Berita_Acara_Ujian_${(exam?.name ?? "Ujian").replace(/\s+/g, "_")}.pdf`);
+        const _prefix = t("pdfFilePrefix").replace(/\s+/g, "_");
+        _link.setAttribute("download", `${_prefix}_${(exam?.name ?? t("pdfFileFallback")).replace(/\s+/g, "_")}.pdf`);
         document.body.appendChild(_link);
         _link.click();
         _link.parentNode?.removeChild(_link);
-        toast.success("PDF berhasil diunduh!", { id: "pdf-download" });
+        toast.success(t("pdfSuccess"), { id: "pdf-download" });
       })
       .catch((error) => {
         console.error("PDF download failed", error);
-        toast.error("Gagal mengunduh PDF.", { id: "pdf-download" });
+        toast.error(t("pdfError"), { id: "pdf-download" });
       });
   };
 
@@ -361,7 +365,7 @@ export default function ExaminationDetailPage() {
   }
 
   if (!exam) {
-    return <div className="p-6 text-center text-red-500">Ujian tidak ditemukan.</div>;
+    return <div className="p-6 text-center text-red-500">{t("notFound")}</div>;
   }
 
   const participantIds = new Set((exam.participants || []).map((p) => p.student_id));
@@ -376,20 +380,23 @@ export default function ExaminationDetailPage() {
             <Badge variant="outline">{exam.status}</Badge>
           </div>
           <p className="text-muted-foreground">
-            Stase: {exam.stase?.name} • Tanggal: {new Date(exam.date).toLocaleDateString("id-ID")}
+            {t("subtitle", {
+              stase: exam.stase?.name ?? "-",
+              date: new Date(exam.date).toLocaleDateString("id-ID"),
+            })}
           </p>
         </div>
 
         <div className="flex items-center gap-2 flex-wrap">
           {exam.status !== "COMPLETED" && exam.type === "OSCE" && (
             <Button onClick={() => router.push(`/dashboard/examinations/${exam.id}/assess`)} className="gap-2">
-              <PlayCircle className="h-4 w-4" /> Mulai Penilaian
+              <PlayCircle className="h-4 w-4" /> {t("startAssessment")}
             </Button>
           )}
 
           {exam.status === "COMPLETED" && (
             <Button variant="outline" onClick={handleDownloadPdf} className="gap-2 text-primary border-primary hover:bg-primary/5">
-              <Download className="h-4 w-4" /> Unduh Berita Acara
+              <Download className="h-4 w-4" /> {t("downloadReport")}
             </Button>
           )}
         </div>
@@ -397,13 +404,13 @@ export default function ExaminationDetailPage() {
 
       <Tabs defaultValue="participants" className="w-full">
         <TabsList className="grid w-full grid-cols-3 mb-6">
-          <TabsTrigger value="participants">Peserta ({exam.participants?.length || 0})</TabsTrigger>
+          <TabsTrigger value="participants">{t("tabParticipants", { count: exam.participants?.length || 0 })}</TabsTrigger>
           {isCbtType ? (
-            <TabsTrigger value="questions">Bank Soal ({questions.length})</TabsTrigger>
+            <TabsTrigger value="questions">{t("tabQuestionBank", { count: questions.length })}</TabsTrigger>
           ) : (
-            <TabsTrigger value="stations">Stasiun OSCE ({exam.stations?.length || 0})</TabsTrigger>
+            <TabsTrigger value="stations">{t("tabStations", { count: exam.stations?.length || 0 })}</TabsTrigger>
           )}
-          <TabsTrigger value="assessors">Penguji ({exam.assessors?.length || 0})</TabsTrigger>
+          <TabsTrigger value="assessors">{t("tabAssessors", { count: exam.assessors?.length || 0 })}</TabsTrigger>
         </TabsList>
 
         {isCbtType && (
@@ -412,19 +419,19 @@ export default function ExaminationDetailPage() {
               <CardHeader>
                 <div className="flex justify-between items-center">
                   <div>
-                    <CardTitle>Bank Soal ({exam.type})</CardTitle>
+                    <CardTitle>{t("questionsCardTitle", { type: exam.type })}</CardTitle>
                     <CardDescription>
-                      {questions.length} soal — total {totalPoints} poin.
-                      {questionsLocked && " Terkunci: sudah ada peserta yang menjawab."}
+                      {t("questionsCardDesc", { count: questions.length, points: totalPoints })}
+                      {questionsLocked && t("questionsLockedNote")}
                     </CardDescription>
                   </div>
                   {canManage && !questionsLocked && exam.status !== "COMPLETED" && (
                     <div className="flex gap-2">
                       <Button variant="outline" size="sm" onClick={openBankPicker}>
-                        <ListChecks className="h-4 w-4 mr-1" /> Ambil dari Bank
+                        <ListChecks className="h-4 w-4 mr-1" /> {t("takeFromBank")}
                       </Button>
                       <Button variant="outline" size="sm" onClick={() => openQuestionForm()}>
-                        <PlusCircle className="h-4 w-4 mr-1" /> Tambah Soal
+                        <PlusCircle className="h-4 w-4 mr-1" /> {t("addQuestion")}
                       </Button>
                     </div>
                   )}
@@ -434,7 +441,7 @@ export default function ExaminationDetailPage() {
                 {questions.length === 0 ? (
                   <div className="text-center py-8 text-muted-foreground border border-dashed rounded-md">
                     <ListChecks className="mx-auto h-10 w-10 text-gray-300 mb-2" />
-                    Belum ada soal. Tambahkan soal sebelum ujian dibuka (ONGOING).
+                    {t("questionsEmpty")}
                   </div>
                 ) : (
                   <div className="space-y-3">
@@ -446,10 +453,10 @@ export default function ExaminationDetailPage() {
                             {q.question_text}
                           </p>
                           <div className="flex items-center gap-1 shrink-0">
-                            <Badge variant="secondary">{q.points} poin</Badge>
+                            <Badge variant="secondary">{t("points", { points: q.points })}</Badge>
                             {canManage && !questionsLocked && (
                               <>
-                                <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => openQuestionForm(q)} aria-label="Edit soal">
+                                <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => openQuestionForm(q)} aria-label={t("editQuestionAria")}>
                                   <Pencil className="h-3.5 w-3.5" />
                                 </Button>
                                 <Button
@@ -457,7 +464,7 @@ export default function ExaminationDetailPage() {
                                   size="sm"
                                   className="h-7 w-7 p-0 text-red-600 hover:text-red-700"
                                   onClick={() => deleteQuestion(q.id)}
-                                  aria-label="Hapus soal"
+                                  aria-label={t("deleteQuestionAria")}
                                 >
                                   <Trash2 className="h-3.5 w-3.5" />
                                 </Button>
@@ -493,19 +500,19 @@ export default function ExaminationDetailPage() {
             <CardHeader>
               <div className="flex justify-between items-center">
                 <div>
-                  <CardTitle>Daftar Peserta Ujian</CardTitle>
-                  <CardDescription>Mahasiswa yang akan mengikuti ujian ini.</CardDescription>
+                  <CardTitle>{t("participantsCardTitle")}</CardTitle>
+                  <CardDescription>{t("participantsCardDesc")}</CardDescription>
                 </div>
                 {canManage && exam.status !== "COMPLETED" && (
                   <Button variant="outline" size="sm" onClick={() => setIsParticipantOpen(true)}>
-                    <PlusCircle className="h-4 w-4 mr-1" /> Tambah Peserta
+                    <PlusCircle className="h-4 w-4 mr-1" /> {t("addParticipant")}
                   </Button>
                 )}
               </div>
             </CardHeader>
             <CardContent>
               {exam.participants?.length === 0 ? (
-                <div className="text-center py-6 text-muted-foreground border border-dashed rounded-md">Belum ada peserta terdaftar.</div>
+                <div className="text-center py-6 text-muted-foreground border border-dashed rounded-md">{t("participantsEmpty")}</div>
               ) : (
                 <div className="space-y-4">
                   {exam.participants?.map((p) => (
@@ -532,7 +539,7 @@ export default function ExaminationDetailPage() {
                             size="sm"
                             className="text-red-600 hover:text-red-700"
                             onClick={() => removeParticipant(p.id)}
-                            aria-label="Keluarkan peserta"
+                            aria-label={t("removeParticipantAria")}
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>
@@ -551,33 +558,33 @@ export default function ExaminationDetailPage() {
             <CardHeader>
               <div className="flex justify-between items-center">
                 <div>
-                  <CardTitle>Stasiun Ujian (Khusus OSCE)</CardTitle>
-                  <CardDescription>Manajemen rubrik atau stasiun ujian klinis objektif terstruktur.</CardDescription>
+                  <CardTitle>{t("stationsCardTitle")}</CardTitle>
+                  <CardDescription>{t("stationsCardDesc")}</CardDescription>
                 </div>
                 {canManage && exam.status !== "COMPLETED" && (
                   <Button variant="outline" size="sm" onClick={openStationDialog}>
-                    <PlusCircle className="h-4 w-4 mr-1" /> Tambah Stasiun
+                    <PlusCircle className="h-4 w-4 mr-1" /> {t("addStation")}
                   </Button>
                 )}
               </div>
             </CardHeader>
             <CardContent>
               {exam.stations?.length === 0 ? (
-                <div className="text-center py-6 text-muted-foreground border border-dashed rounded-md">Belum ada stasiun yang dibuat.</div>
+                <div className="text-center py-6 text-muted-foreground border border-dashed rounded-md">{t("stationsEmpty")}</div>
               ) : (
                 <div className="grid gap-4 md:grid-cols-2">
                   {exam.stations?.map((s) => (
                     <Card key={s.id} className="border bg-slate-50/50 dark:bg-slate-900/50">
                       <CardHeader className="pb-2">
                         <CardTitle className="text-base flex justify-between items-start gap-2">
-                          <span>Stasiun {s.order}: {s.name}</span>
+                          <span>{t("stationName", { order: s.order ?? "", name: s.name ?? "" })}</span>
                           {canManage && exam.status !== "COMPLETED" && (
                             <Button
                               variant="ghost"
                               size="sm"
                               className="h-7 w-7 p-0 text-red-600 hover:text-red-700 shrink-0"
                               onClick={() => removeStation(s.id)}
-                              aria-label="Hapus stasiun"
+                              aria-label={t("deleteStationAria")}
                             >
                               <Trash2 className="h-3.5 w-3.5" />
                             </Button>
@@ -585,10 +592,10 @@ export default function ExaminationDetailPage() {
                         </CardTitle>
                       </CardHeader>
                       <CardContent>
-                        <p className="text-sm text-muted-foreground">{s.description || "Tidak ada deskripsi/rubrik."}</p>
+                        <p className="text-sm text-muted-foreground">{s.description || t("noDescription")}</p>
                         {s.assessment_template && (
                           <Badge variant="secondary" className="mt-2">
-                            Rubrik: {s.assessment_template.name}
+                            {t("rubricLabel", { name: s.assessment_template.name ?? "" })}
                           </Badge>
                         )}
                       </CardContent>
@@ -605,19 +612,19 @@ export default function ExaminationDetailPage() {
             <CardHeader>
               <div className="flex justify-between items-center">
                 <div>
-                  <CardTitle>Daftar Penguji</CardTitle>
-                  <CardDescription>Dodiknis atau Dosen yang bertugas memberikan penilaian.</CardDescription>
+                  <CardTitle>{t("assessorsCardTitle")}</CardTitle>
+                  <CardDescription>{t("assessorsCardDesc")}</CardDescription>
                 </div>
                 {canManage && exam.status !== "COMPLETED" && (
                   <Button variant="outline" size="sm" onClick={openAssessorDialog}>
-                    <PlusCircle className="h-4 w-4 mr-1" /> Tugaskan Penguji
+                    <PlusCircle className="h-4 w-4 mr-1" /> {t("assignAssessor")}
                   </Button>
                 )}
               </div>
             </CardHeader>
             <CardContent>
               {exam.assessors?.length === 0 ? (
-                <div className="text-center py-6 text-muted-foreground border border-dashed rounded-md">Belum ada penguji ditugaskan.</div>
+                <div className="text-center py-6 text-muted-foreground border border-dashed rounded-md">{t("assessorsEmpty")}</div>
               ) : (
                 <div className="space-y-4">
                   {exam.assessors?.map((a) => (
@@ -628,7 +635,9 @@ export default function ExaminationDetailPage() {
                         </div>
                         <div>
                           <p className="font-medium">{a.assessor?.name}</p>
-                          <p className="text-sm text-muted-foreground">Stasiun: {a.exam_station?.name || "Semua"}</p>
+                          <p className="text-sm text-muted-foreground">
+                            {t("assessorStationLabel", { name: a.exam_station?.name || t("allStationsShort") })}
+                          </p>
                         </div>
                       </div>
                       {canManage && exam.status !== "COMPLETED" && (
@@ -637,7 +646,7 @@ export default function ExaminationDetailPage() {
                           size="sm"
                           className="text-red-600 hover:text-red-700"
                           onClick={() => removeAssessor(a.id)}
-                          aria-label="Hapus penguji"
+                          aria-label={t("deleteAssessorAria")}
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>
@@ -655,23 +664,23 @@ export default function ExaminationDetailPage() {
       <Dialog open={isParticipantOpen} onOpenChange={setIsParticipantOpen}>
         <DialogContent className="max-h-[85vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Tambah Peserta Ujian</DialogTitle>
+            <DialogTitle>{t("addParticipantTitle")}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 pt-2">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
               <Input
                 className="pl-9"
-                placeholder="Cari nama / NIM mahasiswa..."
+                placeholder={t("searchStudentPlaceholder")}
                 value={studentSearch}
                 onChange={(e) => setStudentSearch(e.target.value)}
               />
             </div>
             <div className="space-y-2 max-h-72 overflow-y-auto">
               {searchingStudents ? (
-                <p className="text-sm text-muted-foreground text-center py-4">Mencari...</p>
+                <p className="text-sm text-muted-foreground text-center py-4">{t("searching")}</p>
               ) : studentOptions.length === 0 ? (
-                <p className="text-sm text-muted-foreground text-center py-4">Tidak ada mahasiswa ditemukan.</p>
+                <p className="text-sm text-muted-foreground text-center py-4">{t("noStudentsFound")}</p>
               ) : (
                 studentOptions.map((s) => {
                   const alreadyIn = s.user_id ? participantIds.has(s.user_id) : false;
@@ -687,7 +696,7 @@ export default function ExaminationDetailPage() {
                         disabled={alreadyIn || !s.user_id}
                         onClick={() => s.user_id && addParticipant(s.user_id)}
                       >
-                        {alreadyIn ? "Sudah Terdaftar" : "Tambah"}
+                        {alreadyIn ? t("alreadyRegistered") : tc("add")}
                       </Button>
                     </div>
                   );
@@ -702,18 +711,18 @@ export default function ExaminationDetailPage() {
       <Dialog open={isAssessorOpen} onOpenChange={setIsAssessorOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Tugaskan Penguji</DialogTitle>
+            <DialogTitle>{t("assignAssessorTitle")}</DialogTitle>
           </DialogHeader>
           <form onSubmit={addAssessor} className="space-y-4 pt-2">
             <div className="space-y-2">
-              <label className="text-sm font-medium">Penguji (Dodiknis / Dosen)</label>
+              <label className="text-sm font-medium">{t("assessorLabel")}</label>
               <select
                 className={selectClass}
                 required
                 value={assessorId}
                 onChange={(e) => setAssessorId(e.target.value)}
               >
-                <option value="">Pilih Penguji</option>
+                <option value="">{t("selectAssessor")}</option>
                 {assessorOptions.map((u) => (
                   <option key={u.id} value={u.id}>{u.name}</option>
                 ))}
@@ -721,20 +730,20 @@ export default function ExaminationDetailPage() {
             </div>
             {exam.type === "OSCE" && (exam.stations?.length || 0) > 0 && (
               <div className="space-y-2">
-                <label className="text-sm font-medium">Stasiun (opsional)</label>
+                <label className="text-sm font-medium">{t("stationOptionalLabel")}</label>
                 <select
                   className={selectClass}
                   value={assessorStationId}
                   onChange={(e) => setAssessorStationId(e.target.value)}
                 >
-                  <option value="">Semua Stasiun</option>
+                  <option value="">{t("allStations")}</option>
                   {exam.stations?.map((s) => (
-                    <option key={s.id} value={s.id}>Stasiun {s.order}: {s.name}</option>
+                    <option key={s.id} value={s.id}>{t("stationName", { order: s.order ?? "", name: s.name ?? "" })}</option>
                   ))}
                 </select>
               </div>
             )}
-            <Button type="submit" className="w-full">Tugaskan</Button>
+            <Button type="submit" className="w-full">{t("assign")}</Button>
           </form>
         </DialogContent>
       </Dialog>
@@ -743,25 +752,24 @@ export default function ExaminationDetailPage() {
       <Dialog open={isBankOpen} onOpenChange={setIsBankOpen}>
         <DialogContent className="sm:max-w-xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Ambil Soal dari Bank</DialogTitle>
+            <DialogTitle>{t("takeFromBankTitle")}</DialogTitle>
           </DialogHeader>
           <div className="space-y-3 pt-2">
             <p className="text-sm text-muted-foreground">
-              Soal disalin ke ujian ini — perubahan bank setelahnya tidak memengaruhi ujian.
-              Daftar awal difilter otomatis ke stase ujian.
+              {t("takeFromBankDesc")}
             </p>
             <div className="flex gap-2">
               <Input
-                placeholder="Cari soal / topik di seluruh bank..."
+                placeholder={t("searchBankPlaceholder")}
                 value={bankSearch}
                 onChange={(e) => setBankSearch(e.target.value)}
                 onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); searchBank(); } }}
               />
-              <Button type="button" variant="outline" onClick={searchBank}>Cari</Button>
+              <Button type="button" variant="outline" onClick={searchBank}>{tc("search")}</Button>
             </div>
             <div className="max-h-72 overflow-y-auto rounded-md border divide-y divide-slate-100 dark:divide-slate-800">
               {bankItems.length === 0 ? (
-                <p className="text-sm text-slate-400 text-center py-6">Tidak ada soal di bank.</p>
+                <p className="text-sm text-slate-400 text-center py-6">{t("bankEmpty")}</p>
               ) : (
                 bankItems.map((item) => (
                   <label key={item.id} className="flex items-start gap-2 p-2.5 text-sm cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800">
@@ -778,7 +786,7 @@ export default function ExaminationDetailPage() {
                     <span className="min-w-0">
                       <span className="line-clamp-2">{item.question_text}</span>
                       <span className="text-xs text-slate-400">
-                        {item.points} poin{item.topic ? ` · ${item.topic}` : ""}
+                        {t("points", { points: item.points })}{item.topic ? ` · ${item.topic}` : ""}
                       </span>
                     </span>
                   </label>
@@ -786,13 +794,13 @@ export default function ExaminationDetailPage() {
               )}
             </div>
             <div className="flex justify-end gap-2">
-              <Button variant="outline" onClick={() => setIsBankOpen(false)}>Batal</Button>
+              <Button variant="outline" onClick={() => setIsBankOpen(false)}>{tc("cancel")}</Button>
               <Button
                 disabled={bankSelected.length === 0 || isCopying}
                 onClick={copyFromBank}
                 className="bg-blue-900 hover:bg-blue-800 text-white"
               >
-                {isCopying ? "Menyalin..." : `Salin ${bankSelected.length} Soal`}
+                {isCopying ? t("copying") : t("copyNQuestions", { count: bankSelected.length })}
               </Button>
             </div>
           </div>
@@ -803,21 +811,21 @@ export default function ExaminationDetailPage() {
       <Dialog open={isQuestionOpen} onOpenChange={setIsQuestionOpen}>
         <DialogContent className="sm:max-w-xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>{editingQuestionId ? "Edit Soal" : "Tambah Soal"}</DialogTitle>
+            <DialogTitle>{editingQuestionId ? t("editQuestionTitle") : t("addQuestionTitle")}</DialogTitle>
           </DialogHeader>
           <form onSubmit={saveQuestion} className="space-y-4 pt-2">
             <div className="space-y-2">
-              <label className="text-sm font-medium">Teks Soal</label>
+              <label className="text-sm font-medium">{t("questionTextLabel")}</label>
               <Textarea
                 required
                 rows={3}
                 value={qText}
                 onChange={(e) => setQText(e.target.value)}
-                placeholder="Tulis pertanyaan..."
+                placeholder={t("questionTextPlaceholder")}
               />
             </div>
             <div className="space-y-2 w-32">
-              <label className="text-sm font-medium">Poin</label>
+              <label className="text-sm font-medium">{t("pointsLabel")}</label>
               <Input
                 type="number"
                 min={1}
@@ -829,7 +837,7 @@ export default function ExaminationDetailPage() {
             </div>
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <label className="text-sm font-medium">Pilihan Jawaban (tandai yang benar)</label>
+                <label className="text-sm font-medium">{t("optionsLabel")}</label>
                 {qOptions.length < 6 && (
                   <Button
                     type="button"
@@ -837,7 +845,7 @@ export default function ExaminationDetailPage() {
                     size="sm"
                     onClick={() => setQOptions([...qOptions, { option_text: "", is_correct: false }])}
                   >
-                    <PlusCircle className="h-4 w-4 mr-1" /> Opsi
+                    <PlusCircle className="h-4 w-4 mr-1" /> {t("optionBtn")}
                   </Button>
                 )}
               </div>
@@ -851,11 +859,11 @@ export default function ExaminationDetailPage() {
                     onChange={() =>
                       setQOptions(qOptions.map((o, i) => ({ ...o, is_correct: i === idx })))
                     }
-                    aria-label={`Tandai opsi ${idx + 1} benar`}
+                    aria-label={t("markOptionCorrectAria", { n: idx + 1 })}
                   />
                   <Input
                     required
-                    placeholder={`Opsi ${String.fromCharCode(65 + idx)}`}
+                    placeholder={t("optionPlaceholder", { letter: String.fromCharCode(65 + idx) })}
                     value={opt.option_text}
                     onChange={(e) => {
                       const next = [...qOptions];
@@ -874,7 +882,7 @@ export default function ExaminationDetailPage() {
                         if (!next.some((o) => o.is_correct)) next[0].is_correct = true;
                         setQOptions(next);
                       }}
-                      aria-label="Hapus opsi"
+                      aria-label={t("deleteOptionAria")}
                     >
                       <X className="h-4 w-4" />
                     </Button>
@@ -882,11 +890,11 @@ export default function ExaminationDetailPage() {
                 </div>
               ))}
               <p className="text-xs text-muted-foreground">
-                Klik radio di kiri untuk menandai jawaban benar (tepat satu).
+                {t("optionsHint")}
               </p>
             </div>
             <Button type="submit" className="w-full" disabled={savingQuestion}>
-              {savingQuestion ? "Menyimpan..." : "Simpan Soal"}
+              {savingQuestion ? tc("saving") : t("saveQuestion")}
             </Button>
           </form>
         </DialogContent>
@@ -896,20 +904,20 @@ export default function ExaminationDetailPage() {
       <Dialog open={isStationOpen} onOpenChange={setIsStationOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Tambah Stasiun OSCE</DialogTitle>
+            <DialogTitle>{t("addStationTitle")}</DialogTitle>
           </DialogHeader>
           <form onSubmit={addStation} className="space-y-4 pt-2">
             <div className="space-y-2">
-              <label className="text-sm font-medium">Nama Stasiun</label>
+              <label className="text-sm font-medium">{t("stationNameLabel")}</label>
               <Input
                 required
                 value={stationForm.name}
                 onChange={(e) => setStationForm({ ...stationForm, name: e.target.value })}
-                placeholder="Contoh: Anamnesis & Pemeriksaan Fisik"
+                placeholder={t("stationNamePlaceholder")}
               />
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-medium">Deskripsi (opsional)</label>
+              <label className="text-sm font-medium">{t("descriptionLabel")}</label>
               <Textarea
                 rows={2}
                 value={stationForm.description}
@@ -917,19 +925,19 @@ export default function ExaminationDetailPage() {
               />
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-medium">Template Rubrik (opsional)</label>
+              <label className="text-sm font-medium">{t("rubricTemplateLabel")}</label>
               <select
                 className={selectClass}
                 value={stationForm.assessment_template_id}
                 onChange={(e) => setStationForm({ ...stationForm, assessment_template_id: e.target.value })}
               >
-                <option value="">Tanpa rubrik (nilai langsung)</option>
-                {templates.map((t) => (
-                  <option key={t.id} value={t.id}>{t.name}</option>
+                <option value="">{t("noRubric")}</option>
+                {templates.map((tpl) => (
+                  <option key={tpl.id} value={tpl.id}>{tpl.name}</option>
                 ))}
               </select>
             </div>
-            <Button type="submit" className="w-full">Tambah Stasiun</Button>
+            <Button type="submit" className="w-full">{t("addStation")}</Button>
           </form>
         </DialogContent>
       </Dialog>

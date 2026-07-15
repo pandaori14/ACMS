@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import api from "@/lib/api";
 import { getApiErrorMessage } from "@/lib/api-helpers";
 import { Button } from "@/components/ui/button";
@@ -49,6 +50,8 @@ function formatTime(total: number): string {
 }
 
 export default function TakeExamPage() {
+  const t = useTranslations("examTake");
+  const tc = useTranslations("common");
   const params = useParams();
   const router = useRouter();
   const examId = typeof params.id === "string" ? params.id : "";
@@ -74,11 +77,11 @@ export default function TakeExamPage() {
         remainingRef.current = data.remaining_seconds;
       }
     } catch (err) {
-      toast.error(getApiErrorMessage(err, "Gagal memuat ujian."));
+      toast.error(getApiErrorMessage(err, t("loadError")));
     } finally {
       setIsLoading(false);
     }
-  }, [examId]);
+  }, [examId, t]);
 
   useEffect(() => {
     loadState();
@@ -96,18 +99,18 @@ export default function TakeExamPage() {
   // Countdown lokal; saat habis → minta state (server auto-submit)
   useEffect(() => {
     if (attempt?.state !== "in_progress" || remaining == null) return;
-    const t = setInterval(() => {
+    const timerId = setInterval(() => {
       setRemaining((prev) => {
         const next = prev != null ? prev - 1 : null;
         remainingRef.current = next;
         if (next != null && next <= 0) {
-          clearInterval(t);
+          clearInterval(timerId);
           loadState(); // server akan auto-submit & kembalikan hasil
         }
         return next;
       });
     }, 1000);
-    return () => clearInterval(t);
+    return () => clearInterval(timerId);
   }, [attempt?.state, remaining != null, loadState]); // eslint-disable-line react-hooks/exhaustive-deps -- interval di-reset saat state berubah
 
   const handleStart = async () => {
@@ -119,7 +122,7 @@ export default function TakeExamPage() {
       if (data.answers) setAnswers(data.answers);
       if (data.remaining_seconds != null) setRemaining(data.remaining_seconds);
     } catch (err) {
-      toast.error(getApiErrorMessage(err, "Gagal memulai ujian."));
+      toast.error(getApiErrorMessage(err, t("startError")));
     } finally {
       setIsStarting(false);
     }
@@ -133,7 +136,7 @@ export default function TakeExamPage() {
         option_id: optionId,
       });
     } catch (err) {
-      toast.error(getApiErrorMessage(err, "Jawaban gagal tersimpan."));
+      toast.error(getApiErrorMessage(err, t("answerError")));
       loadState();
     }
   };
@@ -145,7 +148,7 @@ export default function TakeExamPage() {
       setAttempt(res.data.data);
       setConfirmSubmit(false);
     } catch (err) {
-      toast.error(getApiErrorMessage(err, "Gagal mengumpulkan ujian."));
+      toast.error(getApiErrorMessage(err, t("submitError")));
     } finally {
       setIsSubmitting(false);
     }
@@ -160,7 +163,7 @@ export default function TakeExamPage() {
   }
 
   if (!attempt) {
-    return <div className="p-6 text-center text-red-500">Ujian tidak dapat dimuat.</div>;
+    return <div className="p-6 text-center text-red-500">{t("cannotLoad")}</div>;
   }
 
   // ─────── Layar hasil ───────
@@ -178,19 +181,19 @@ export default function TakeExamPage() {
               )}
             </div>
             <div>
-              <p className="text-sm text-muted-foreground">Nilai Anda</p>
+              <p className="text-sm text-muted-foreground">{t("yourScore")}</p>
               <p className={`text-5xl font-bold ${passed ? "text-emerald-600" : "text-red-600"}`}>
                 {attempt.score}
               </p>
               <p className="text-sm text-muted-foreground mt-1">
-                Ambang lulus: {attempt.passing_score}
+                {t("passingThreshold", { score: attempt.passing_score ?? "-" })}
               </p>
             </div>
             <p className={`font-semibold ${passed ? "text-emerald-700" : "text-red-700"}`}>
-              {passed ? "SELAMAT — ANDA LULUS" : "BELUM LULUS"}
+              {passed ? t("passed") : t("notPassed")}
             </p>
             <Button variant="outline" onClick={() => router.push("/dashboard/examinations")}>
-              Kembali ke Daftar Ujian
+              {t("backToList")}
             </Button>
           </CardContent>
         </Card>
@@ -205,18 +208,18 @@ export default function TakeExamPage() {
         <Card className="clean-card text-center">
           <CardContent className="pt-10 pb-8 space-y-4">
             <Clock className="w-12 h-12 mx-auto text-blue-900" />
-            <h1 className="text-xl font-bold">Siap Mengerjakan Ujian?</h1>
+            <h1 className="text-xl font-bold">{t("readyTitle")}</h1>
             <p className="text-sm text-muted-foreground">
-              {attempt.question_count} soal
-              {attempt.duration_minutes ? ` — waktu ${attempt.duration_minutes} menit` : ""}.
-              Timer berjalan begitu Anda menekan Mulai dan tidak dapat dijeda.
+              {t("startQuestionCount", { count: attempt.question_count ?? 0 })}
+              {attempt.duration_minutes ? t("startDuration", { minutes: attempt.duration_minutes }) : ""}.{" "}
+              {t("startTimerNote")}
             </p>
             <Button
               className="w-full bg-blue-900 hover:bg-blue-800 text-white"
               disabled={isStarting}
               onClick={handleStart}
             >
-              {isStarting ? "Memulai..." : "Mulai Ujian"}
+              {isStarting ? t("starting") : t("startExam")}
             </Button>
           </CardContent>
         </Card>
@@ -234,7 +237,7 @@ export default function TakeExamPage() {
       {/* Header sticky: timer + progres */}
       <div className="sticky top-14 z-30 bg-white dark:bg-slate-900 border rounded-lg px-4 py-3 flex items-center justify-between shadow-sm">
         <span className="text-sm font-medium">
-          Terjawab {answeredCount}/{questions.length}
+          {t("answeredCount", { answered: answeredCount, total: questions.length })}
         </span>
         {remaining != null && (
           <span
@@ -250,7 +253,7 @@ export default function TakeExamPage() {
           className="bg-emerald-600 hover:bg-emerald-700 text-white"
           onClick={() => setConfirmSubmit(true)}
         >
-          <Send className="w-4 h-4 mr-1" /> Kumpulkan
+          <Send className="w-4 h-4 mr-1" /> {t("submit")}
         </Button>
       </div>
 
@@ -283,7 +286,7 @@ export default function TakeExamPage() {
                 {current.question_text}
               </p>
               <span className="shrink-0 text-xs bg-slate-100 dark:bg-slate-800 rounded px-2 py-1">
-                {current.points} poin
+                {t("pointsBadge", { points: current.points })}
               </span>
             </div>
 
@@ -320,7 +323,7 @@ export default function TakeExamPage() {
                 disabled={currentIdx === 0}
                 onClick={() => setCurrentIdx(currentIdx - 1)}
               >
-                Sebelumnya
+                {tc("previous")}
               </Button>
               <Button
                 variant="outline"
@@ -328,7 +331,7 @@ export default function TakeExamPage() {
                 disabled={currentIdx >= questions.length - 1}
                 onClick={() => setCurrentIdx(currentIdx + 1)}
               >
-                Berikutnya
+                {tc("next")}
               </Button>
             </div>
           </CardContent>
@@ -339,21 +342,25 @@ export default function TakeExamPage() {
       <Dialog open={confirmSubmit} onOpenChange={setConfirmSubmit}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Kumpulkan Ujian?</DialogTitle>
+            <DialogTitle>{t("submitConfirmTitle")}</DialogTitle>
           </DialogHeader>
           <p className="text-sm text-slate-600 dark:text-slate-300">
-            Anda telah menjawab <b>{answeredCount}</b> dari <b>{questions.length}</b> soal.
-            {answeredCount < questions.length && " Soal yang belum dijawab dinilai salah."}
-            {" "}Setelah dikumpulkan, jawaban tidak dapat diubah.
+            {t.rich("submitConfirmBody", {
+              answered: answeredCount,
+              total: questions.length,
+              b: (chunks) => <b>{chunks}</b>,
+            })}
+            {answeredCount < questions.length && ` ${t("submitUnanswered")}`}
+            {" "}{t("submitFinal")}
           </p>
           <div className="flex justify-end gap-2 pt-2">
-            <Button variant="outline" onClick={() => setConfirmSubmit(false)}>Kembali</Button>
+            <Button variant="outline" onClick={() => setConfirmSubmit(false)}>{tc("back")}</Button>
             <Button
               className="bg-emerald-600 hover:bg-emerald-700 text-white"
               disabled={isSubmitting}
               onClick={handleSubmit}
             >
-              {isSubmitting ? "Mengumpulkan..." : "Ya, Kumpulkan"}
+              {isSubmitting ? t("submitting") : t("submitConfirm")}
             </Button>
           </div>
         </DialogContent>

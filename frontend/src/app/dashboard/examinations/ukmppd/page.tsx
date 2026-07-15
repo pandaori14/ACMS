@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import api from "@/lib/api";
 import { getApiErrorMessage } from "@/lib/api-helpers";
 import { useAuthStore } from "@/store/useAuthStore";
@@ -53,6 +54,8 @@ const selectClass =
   "flex h-10 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background";
 
 export default function UkmppdPage() {
+  const t = useTranslations("examUkmppd");
+  const tc = useTranslations("common");
   const user = useAuthStore((state) => state.user);
   const isStudent = user?.roles?.includes("Mahasiswa") ?? false;
   const canManage = user?.permissions?.includes("manage-examinations") ?? false;
@@ -93,11 +96,11 @@ export default function UkmppdPage() {
       setRows(res.data.data || []);
       setMeta(res.data.meta || { total: 0, passed: 0, first_take_pass: 0, first_take_total: 0 });
     } catch (err) {
-      toast.error(getApiErrorMessage(err, "Gagal memuat data UKMPPD."));
+      toast.error(getApiErrorMessage(err, t("loadError")));
     } finally {
       setIsLoading(false);
     }
-  }, [filterCohort]);
+  }, [filterCohort, t]);
 
   useEffect(() => {
     if (isStudent) {
@@ -107,20 +110,20 @@ export default function UkmppdPage() {
           setMyAttempts(res.data.data.attempts || []);
           setReadiness(res.data.data.readiness || null);
         })
-        .catch(() => toast.error("Gagal memuat riwayat UKMPPD."))
+        .catch(() => toast.error(t("loadMyError")))
         .finally(() => setIsLoading(false));
     } else if (canManage) {
       fetchAdmin();
       api.get("/api/v1/academic/cohorts").then((res) => setCohorts(res.data.data || res.data)).catch(() => {});
     }
-  }, [isStudent, canManage, fetchAdmin]);
+  }, [isStudent, canManage, fetchAdmin, t]);
 
   const searchStudents = async () => {
     try {
       const res = await api.get("/api/v1/academic/students", { params: { search, per_page: 10 } });
       setCandidates(res.data.data || []);
     } catch {
-      toast.error("Gagal mencari mahasiswa.");
+      toast.error(t("searchStudentError"));
     }
   };
 
@@ -134,11 +137,11 @@ export default function UkmppdPage() {
         osce_score: form.osce_score === "" ? null : Number(form.osce_score),
         notes: form.notes || null,
       });
-      toast.success("Hasil UKMPPD tercatat.");
+      toast.success(t("recorded"));
       setIsOpen(false);
       fetchAdmin();
     } catch (err) {
-      toast.error(getApiErrorMessage(err, "Gagal menyimpan hasil."));
+      toast.error(getApiErrorMessage(err, t("saveError")));
     } finally {
       setIsSaving(false);
     }
@@ -148,10 +151,10 @@ export default function UkmppdPage() {
     if (!deleting) return;
     try {
       await api.delete(`/api/v1/examinations/ukmppd/${deleting.id}`);
-      toast.success("Hasil dihapus.");
+      toast.success(t("deleted"));
       fetchAdmin();
     } catch (err) {
-      toast.error(getApiErrorMessage(err, "Gagal menghapus hasil."));
+      toast.error(getApiErrorMessage(err, t("deleteError")));
     } finally {
       setDeleting(null);
     }
@@ -159,9 +162,9 @@ export default function UkmppdPage() {
 
   const statusBadge = (status: string) =>
     status === "passed" ? (
-      <Badge className="bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300">LULUS</Badge>
+      <Badge className="bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300">{t("passed")}</Badge>
     ) : (
-      <Badge className="bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300">TIDAK LULUS</Badge>
+      <Badge className="bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300">{t("failed")}</Badge>
     );
 
   // ─────────────── View Mahasiswa ───────────────
@@ -169,19 +172,19 @@ export default function UkmppdPage() {
     return (
       <div className="space-y-6">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">UKMPPD Saya</h1>
+          <h1 className="text-3xl font-bold tracking-tight">{t("myTitle")}</h1>
           <p className="text-muted-foreground mt-1">
-            Riwayat ujian nasional dan perkiraan kesiapan berdasarkan performa akademik Anda.
+            {t("mySubtitle")}
           </p>
         </div>
 
         <Card className="clean-card border-l-4 border-l-blue-900">
           <CardHeader className="pb-2">
             <CardTitle className="text-base flex items-center gap-2">
-              <Gauge className="w-5 h-5 text-blue-900 dark:text-blue-300" /> Readiness Score
+              <Gauge className="w-5 h-5 text-blue-900 dark:text-blue-300" /> {t("readinessScore")}
             </CardTitle>
             <CardDescription>
-              Gabungan rata-rata nilai stase terbit (60%) dan CBT internal (40%) — indikator, bukan jaminan.
+              {t("readinessDesc")}
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -198,7 +201,7 @@ export default function UkmppdPage() {
               </div>
             ) : (
               <p className="text-sm text-muted-foreground">
-                Belum ada data nilai stase / CBT internal untuk menghitung kesiapan.
+                {t("noReadinessData")}
               </p>
             )}
           </CardContent>
@@ -208,29 +211,29 @@ export default function UkmppdPage() {
           <Table className="min-w-[560px]">
             <TableHeader>
               <TableRow>
-                <TableHead>Percobaan</TableHead>
-                <TableHead>Tanggal</TableHead>
+                <TableHead>{t("colAttempt")}</TableHead>
+                <TableHead>{tc("date")}</TableHead>
                 <TableHead>CBT</TableHead>
                 <TableHead>OSCE</TableHead>
-                <TableHead>Hasil</TableHead>
+                <TableHead>{t("colResult")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {isLoading ? (
-                <TableRow><TableCell colSpan={5} className="text-center text-slate-500 py-10">Memuat...</TableCell></TableRow>
+                <TableRow><TableCell colSpan={5} className="text-center text-slate-500 py-10">{tc("loading")}</TableCell></TableRow>
               ) : myAttempts.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={5} className="py-12">
                     <div className="flex flex-col items-center gap-2 text-center">
                       <Award className="w-10 h-10 text-slate-300" />
-                      <p className="text-sm text-slate-500">Belum ada riwayat UKMPPD tercatat.</p>
+                      <p className="text-sm text-slate-500">{t("myEmpty")}</p>
                     </div>
                   </TableCell>
                 </TableRow>
               ) : (
                 myAttempts.map((row) => (
                   <TableRow key={row.id}>
-                    <TableCell>Ke-{row.attempt_number}</TableCell>
+                    <TableCell>{t("attemptNo", { n: row.attempt_number })}</TableCell>
                     <TableCell>{row.exam_date?.slice(0, 10)}</TableCell>
                     <TableCell>{row.cbt_score ?? "—"}</TableCell>
                     <TableCell>{row.osce_score ?? "—"}</TableCell>
@@ -254,32 +257,32 @@ export default function UkmppdPage() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Tracking UKMPPD</h1>
+          <h1 className="text-3xl font-bold tracking-tight">{t("adminTitle")}</h1>
           <p className="text-muted-foreground mt-1">
-            Hasil ujian nasional per mahasiswa per percobaan — bahan evaluasi kurikulum & akreditasi.
+            {t("adminSubtitle")}
           </p>
         </div>
         <Button
           onClick={() => { setIsOpen(true); setCandidates([]); setSearch(""); setForm({ ...form, student_id: "" }); }}
           className="bg-blue-900 hover:bg-blue-800 text-white"
         >
-          <Plus className="w-4 h-4 mr-2" /> Catat Hasil
+          <Plus className="w-4 h-4 mr-2" /> {t("recordResult")}
         </Button>
       </div>
 
       <div className="flex flex-wrap gap-3 items-center">
         <select className={selectClass} value={filterCohort} onChange={(e) => setFilterCohort(e.target.value)}>
-          <option value="">Semua Angkatan</option>
+          <option value="">{t("allCohorts")}</option>
           {cohorts.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
         </select>
         {passRate !== null && (
           <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300 text-sm px-3 py-1">
-            Pass rate: {passRate}% ({meta.passed}/{meta.total})
+            {t("passRate", { rate: passRate, passed: meta.passed, total: meta.total })}
           </Badge>
         )}
         {firstTakeRate !== null && (
           <Badge className="bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300 text-sm px-3 py-1">
-            First-taker: {firstTakeRate}%
+            {t("firstTaker", { rate: firstTakeRate })}
           </Badge>
         )}
       </div>
@@ -288,25 +291,25 @@ export default function UkmppdPage() {
         <Table className="min-w-[760px]">
           <TableHeader>
             <TableRow>
-              <TableHead>NIM</TableHead>
-              <TableHead>Nama</TableHead>
-              <TableHead>Percobaan</TableHead>
-              <TableHead>Tanggal</TableHead>
+              <TableHead>{t("colNim")}</TableHead>
+              <TableHead>{tc("name")}</TableHead>
+              <TableHead>{t("colAttempt")}</TableHead>
+              <TableHead>{tc("date")}</TableHead>
               <TableHead>CBT</TableHead>
               <TableHead>OSCE</TableHead>
-              <TableHead>Hasil</TableHead>
-              <TableHead className="text-right">Aksi</TableHead>
+              <TableHead>{t("colResult")}</TableHead>
+              <TableHead className="text-right">{tc("actions")}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {isLoading ? (
-              <TableRow><TableCell colSpan={8} className="text-center text-slate-500 py-10">Memuat...</TableCell></TableRow>
+              <TableRow><TableCell colSpan={8} className="text-center text-slate-500 py-10">{tc("loading")}</TableCell></TableRow>
             ) : rows.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={8} className="py-12">
                   <div className="flex flex-col items-center gap-2 text-center">
                     <Award className="w-10 h-10 text-slate-300" />
-                    <p className="text-sm text-slate-500">Belum ada hasil UKMPPD tercatat.</p>
+                    <p className="text-sm text-slate-500">{t("adminEmpty")}</p>
                   </div>
                 </TableCell>
               </TableRow>
@@ -315,13 +318,13 @@ export default function UkmppdPage() {
                 <TableRow key={row.id}>
                   <TableCell className="whitespace-nowrap font-medium">{row.student?.identity_number || "-"}</TableCell>
                   <TableCell className="whitespace-nowrap">{row.student?.name || "-"}</TableCell>
-                  <TableCell>Ke-{row.attempt_number}</TableCell>
+                  <TableCell>{t("attemptNo", { n: row.attempt_number })}</TableCell>
                   <TableCell className="whitespace-nowrap">{row.exam_date?.slice(0, 10)}</TableCell>
                   <TableCell>{row.cbt_score ?? "—"}</TableCell>
                   <TableCell>{row.osce_score ?? "—"}</TableCell>
                   <TableCell>{statusBadge(row.status)}</TableCell>
                   <TableCell className="text-right">
-                    <Button variant="ghost" size="sm" className="text-red-600 hover:text-red-700" onClick={() => setDeleting(row)} aria-label="Hapus">
+                    <Button variant="ghost" size="sm" className="text-red-600 hover:text-red-700" onClick={() => setDeleting(row)} aria-label={tc("delete")}>
                       <Trash2 className="w-4 h-4" />
                     </Button>
                   </TableCell>
@@ -336,19 +339,19 @@ export default function UkmppdPage() {
       <Dialog open={isOpen} onOpenChange={setIsOpen}>
         <DialogContent className="max-h-[85vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Catat Hasil UKMPPD</DialogTitle>
+            <DialogTitle>{t("recordTitle")}</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleSubmit} className="space-y-4 pt-2">
             <div className="space-y-2">
-              <label className="text-sm font-medium">Mahasiswa</label>
+              <label className="text-sm font-medium">{t("studentLabel")}</label>
               <div className="flex gap-2">
                 <Input
-                  placeholder="Cari nama / NIM..."
+                  placeholder={t("searchStudentPlaceholder")}
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); searchStudents(); } }}
                 />
-                <Button type="button" variant="outline" onClick={searchStudents}>
+                <Button type="button" variant="outline" onClick={searchStudents} aria-label={tc("search")}>
                   <Search className="w-4 h-4" />
                 </Button>
               </div>
@@ -359,7 +362,7 @@ export default function UkmppdPage() {
                   value={form.student_id}
                   onChange={(e) => setForm({ ...form, student_id: e.target.value })}
                 >
-                  <option value="">Pilih mahasiswa...</option>
+                  <option value="">{t("selectStudent")}</option>
                   {candidates.map((s) => (
                     <option key={s.id} value={s.user_id || s.user?.id || ""}>
                       {s.user?.name} ({s.user?.identity_number})
@@ -370,40 +373,40 @@ export default function UkmppdPage() {
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">
-                <label className="text-sm font-medium">Percobaan ke-</label>
+                <label className="text-sm font-medium">{t("attemptLabel")}</label>
                 <Input type="number" min={1} max={10} required value={form.attempt_number}
                   onChange={(e) => setForm({ ...form, attempt_number: Number(e.target.value) })} />
               </div>
               <div className="space-y-2">
-                <label className="text-sm font-medium">Tanggal Ujian</label>
+                <label className="text-sm font-medium">{t("examDateLabel")}</label>
                 <Input type="date" required value={form.exam_date}
                   onChange={(e) => setForm({ ...form, exam_date: e.target.value })} />
               </div>
               <div className="space-y-2">
-                <label className="text-sm font-medium">Skor CBT</label>
+                <label className="text-sm font-medium">{t("cbtScoreLabel")}</label>
                 <Input type="number" min={0} max={100} step="0.01" value={form.cbt_score}
                   onChange={(e) => setForm({ ...form, cbt_score: e.target.value })} />
               </div>
               <div className="space-y-2">
-                <label className="text-sm font-medium">Skor OSCE</label>
+                <label className="text-sm font-medium">{t("osceScoreLabel")}</label>
                 <Input type="number" min={0} max={100} step="0.01" value={form.osce_score}
                   onChange={(e) => setForm({ ...form, osce_score: e.target.value })} />
               </div>
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-medium">Hasil</label>
+              <label className="text-sm font-medium">{t("resultLabel")}</label>
               <select className={`${selectClass} w-full`} value={form.status}
                 onChange={(e) => setForm({ ...form, status: e.target.value })}>
-                <option value="passed">Lulus</option>
-                <option value="failed">Tidak Lulus</option>
+                <option value="passed">{t("passedOption")}</option>
+                <option value="failed">{t("failedOption")}</option>
               </select>
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-medium">Catatan (opsional)</label>
+              <label className="text-sm font-medium">{t("notesLabel")}</label>
               <Input maxLength={1000} value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
             </div>
             <Button type="submit" className="w-full" disabled={isSaving || !form.student_id}>
-              {isSaving ? "Menyimpan..." : "Simpan"}
+              {isSaving ? tc("saving") : tc("save")}
             </Button>
           </form>
         </DialogContent>
@@ -413,15 +416,18 @@ export default function UkmppdPage() {
       <Dialog open={!!deleting} onOpenChange={(open) => !open && setDeleting(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Hapus Hasil UKMPPD?</DialogTitle>
+            <DialogTitle>{t("deleteTitle")}</DialogTitle>
           </DialogHeader>
           <p className="text-sm text-slate-600 dark:text-slate-300">
-            Hasil percobaan ke-{deleting?.attempt_number} milik{" "}
-            <span className="font-semibold">{deleting?.student?.name}</span> akan dihapus.
+            {t.rich("deleteBody", {
+              attempt: deleting?.attempt_number ?? 0,
+              name: deleting?.student?.name ?? "",
+              b: (chunks) => <span className="font-semibold">{chunks}</span>,
+            })}
           </p>
           <div className="flex justify-end gap-2 pt-2">
-            <Button variant="outline" onClick={() => setDeleting(null)}>Batal</Button>
-            <Button className="bg-red-600 hover:bg-red-700 text-white" onClick={handleDelete}>Hapus</Button>
+            <Button variant="outline" onClick={() => setDeleting(null)}>{tc("cancel")}</Button>
+            <Button className="bg-red-600 hover:bg-red-700 text-white" onClick={handleDelete}>{tc("delete")}</Button>
           </div>
         </DialogContent>
       </Dialog>

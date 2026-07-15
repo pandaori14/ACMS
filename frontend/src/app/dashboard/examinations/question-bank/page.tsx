@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import api from "@/lib/api";
 import { getApiErrorMessage } from "@/lib/api-helpers";
 import { Stase } from "@/lib/types";
@@ -64,6 +65,9 @@ const selectClass =
   "flex h-10 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background";
 
 export default function QuestionBankPage() {
+  const t = useTranslations("examQuestionBank");
+  const tc = useTranslations("common");
+
   const [items, setItems] = useState<BankItem[]>([]);
   const [stases, setStases] = useState<Stase[]>([]);
   const [difficulties, setDifficulties] = useState<ReferenceItem[]>([]);
@@ -107,11 +111,11 @@ export default function QuestionBankPage() {
       setItems(res.data.data || []);
       setMeta(res.data.meta || { last_page: 1, total: 0 });
     } catch (err) {
-      toast.error(getApiErrorMessage(err, "Gagal memuat bank soal."));
+      toast.error(getApiErrorMessage(err, t("loadError")));
     } finally {
       setIsLoading(false);
     }
-  }, [page, search, filterStase, filterDiff]);
+  }, [page, search, filterStase, filterDiff, t]);
 
   useEffect(() => {
     fetchItems();
@@ -148,7 +152,7 @@ export default function QuestionBankPage() {
     e.preventDefault();
     const filled = options.filter((o) => o.option_text.trim() !== "");
     if (filled.length < 2 || filled.filter((o) => o.is_correct).length !== 1) {
-      toast.error("Minimal 2 opsi terisi dan tepat SATU ditandai benar.");
+      toast.error(t("validationError"));
       return;
     }
     setIsSaving(true);
@@ -163,15 +167,15 @@ export default function QuestionBankPage() {
       };
       if (editingId) {
         await api.put(`/api/v1/examinations/question-bank/${editingId}`, payload);
-        toast.success("Soal bank diperbarui.");
+        toast.success(t("updated"));
       } else {
         await api.post("/api/v1/examinations/question-bank", payload);
-        toast.success("Soal ditambahkan ke bank.");
+        toast.success(t("added"));
       }
       setIsOpen(false);
       fetchItems();
     } catch (err) {
-      toast.error(getApiErrorMessage(err, "Gagal menyimpan soal."));
+      toast.error(getApiErrorMessage(err, t("saveError")));
     } finally {
       setIsSaving(false);
     }
@@ -181,10 +185,10 @@ export default function QuestionBankPage() {
     if (!deleting) return;
     try {
       await api.delete(`/api/v1/examinations/question-bank/${deleting.id}`);
-      toast.success("Soal bank dihapus.");
+      toast.success(t("deleted"));
       fetchItems();
     } catch (err) {
-      toast.error(getApiErrorMessage(err, "Gagal menghapus soal."));
+      toast.error(getApiErrorMessage(err, t("deleteError")));
     } finally {
       setDeleting(null);
     }
@@ -205,7 +209,7 @@ export default function QuestionBankPage() {
       setIsImportOpen(false);
       fetchItems();
     } catch (err) {
-      toast.error(getApiErrorMessage(err, "Import gagal diproses."));
+      toast.error(getApiErrorMessage(err, t("importError")));
     } finally {
       setIsImporting(false);
     }
@@ -223,7 +227,7 @@ export default function QuestionBankPage() {
       a.click();
       URL.revokeObjectURL(url);
     } catch {
-      toast.error("Gagal mengunduh template.");
+      toast.error(t("templateError"));
     }
   };
 
@@ -231,18 +235,17 @@ export default function QuestionBankPage() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Bank Soal</h1>
+          <h1 className="text-3xl font-bold tracking-tight">{t("title")}</h1>
           <p className="text-muted-foreground mt-1">
-            Kumpulan soal reusable lintas ujian CBT. Memakai soal = menyalin ke ujian, sehingga
-            riwayat ujian lama tidak berubah saat bank diedit.
+            {t("subtitle")}
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
           <Button variant="outline" onClick={() => setIsImportOpen(true)}>
-            <Upload className="w-4 h-4 mr-2" /> Import
+            <Upload className="w-4 h-4 mr-2" /> {t("import")}
           </Button>
           <Button onClick={openCreate} className="bg-blue-900 hover:bg-blue-800 text-white">
-            <Plus className="w-4 h-4 mr-2" /> Tambah Soal
+            <Plus className="w-4 h-4 mr-2" /> {t("addQuestion")}
           </Button>
         </div>
       </div>
@@ -252,18 +255,18 @@ export default function QuestionBankPage() {
         <div className="relative sm:w-72">
           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-slate-400" />
           <Input
-            placeholder="Cari soal / topik..."
+            placeholder={t("searchPlaceholder")}
             className="pl-8"
             value={search}
             onChange={(e) => { setSearch(e.target.value); setPage(1); }}
           />
         </div>
         <select className={selectClass} value={filterStase} onChange={(e) => { setFilterStase(e.target.value); setPage(1); }}>
-          <option value="">Semua Stase</option>
+          <option value="">{t("allStase")}</option>
           {stases.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
         </select>
         <select className={selectClass} value={filterDiff} onChange={(e) => { setFilterDiff(e.target.value); setPage(1); }}>
-          <option value="">Semua Kesulitan</option>
+          <option value="">{t("allDifficulty")}</option>
           {difficulties.map((d) => <option key={d.id} value={d.value}>{d.name}</option>)}
         </select>
       </div>
@@ -272,23 +275,23 @@ export default function QuestionBankPage() {
         <Table className="min-w-[760px]">
           <TableHeader>
             <TableRow>
-              <TableHead>Soal</TableHead>
-              <TableHead>Stase</TableHead>
-              <TableHead>Topik</TableHead>
-              <TableHead>Kesulitan</TableHead>
-              <TableHead>Poin</TableHead>
-              <TableHead className="text-right">Aksi</TableHead>
+              <TableHead>{t("colQuestion")}</TableHead>
+              <TableHead>{t("colStase")}</TableHead>
+              <TableHead>{t("colTopic")}</TableHead>
+              <TableHead>{t("colDifficulty")}</TableHead>
+              <TableHead>{t("colPoints")}</TableHead>
+              <TableHead className="text-right">{tc("actions")}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {isLoading ? (
-              <TableRow><TableCell colSpan={6} className="text-center text-slate-500 py-10">Memuat...</TableCell></TableRow>
+              <TableRow><TableCell colSpan={6} className="text-center text-slate-500 py-10">{tc("loading")}</TableCell></TableRow>
             ) : items.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={6} className="py-12">
                   <div className="flex flex-col items-center gap-2 text-center">
                     <Database className="w-10 h-10 text-slate-300" />
-                    <p className="text-sm text-slate-500">Bank soal masih kosong.</p>
+                    <p className="text-sm text-slate-500">{t("empty")}</p>
                   </div>
                 </TableCell>
               </TableRow>
@@ -297,7 +300,7 @@ export default function QuestionBankPage() {
                 <TableRow key={item.id}>
                   <TableCell className="max-w-[320px]">
                     <span className="text-sm line-clamp-2" title={item.question_text}>{item.question_text}</span>
-                    <span className="block text-xs text-slate-400">{item.options.length} opsi</span>
+                    <span className="block text-xs text-slate-400">{t("optionsCount", { count: item.options.length })}</span>
                   </TableCell>
                   <TableCell className="whitespace-nowrap text-sm">{item.stase?.name || "—"}</TableCell>
                   <TableCell className="whitespace-nowrap text-sm">{item.topic || "—"}</TableCell>
@@ -310,10 +313,10 @@ export default function QuestionBankPage() {
                   </TableCell>
                   <TableCell>{item.points}</TableCell>
                   <TableCell className="text-right whitespace-nowrap">
-                    <Button variant="ghost" size="sm" onClick={() => openEdit(item)} aria-label="Edit">
+                    <Button variant="ghost" size="sm" onClick={() => openEdit(item)} aria-label={tc("edit")}>
                       <Pencil className="w-4 h-4" />
                     </Button>
-                    <Button variant="ghost" size="sm" className="text-red-600 hover:text-red-700" onClick={() => setDeleting(item)} aria-label="Hapus">
+                    <Button variant="ghost" size="sm" className="text-red-600 hover:text-red-700" onClick={() => setDeleting(item)} aria-label={tc("delete")}>
                       <Trash2 className="w-4 h-4" />
                     </Button>
                   </TableCell>
@@ -326,10 +329,10 @@ export default function QuestionBankPage() {
 
       {meta.total > 0 && (
         <div className="flex items-center justify-between text-sm text-slate-500">
-          <span>Total {meta.total} soal</span>
+          <span>{t("totalQuestions", { count: meta.total })}</span>
           <div className="flex gap-2">
-            <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage(page - 1)}>Sebelumnya</Button>
-            <Button variant="outline" size="sm" disabled={page >= meta.last_page} onClick={() => setPage(page + 1)}>Berikutnya</Button>
+            <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage(page - 1)}>{tc("previous")}</Button>
+            <Button variant="outline" size="sm" disabled={page >= meta.last_page} onClick={() => setPage(page + 1)}>{tc("next")}</Button>
           </div>
         </div>
       )}
@@ -338,11 +341,11 @@ export default function QuestionBankPage() {
       <Dialog open={isOpen} onOpenChange={setIsOpen}>
         <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle>{editingId ? "Edit Soal Bank" : "Tambah Soal ke Bank"}</DialogTitle>
+            <DialogTitle>{editingId ? t("editTitle") : t("createTitle")}</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleSubmit} className="space-y-4 pt-2">
             <div className="space-y-2">
-              <label className="text-sm font-medium">Teks Soal</label>
+              <label className="text-sm font-medium">{t("questionTextLabel")}</label>
               <textarea
                 className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                 required
@@ -353,30 +356,30 @@ export default function QuestionBankPage() {
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">
-                <label className="text-sm font-medium">Stase (opsional)</label>
+                <label className="text-sm font-medium">{t("staseOptionalLabel")}</label>
                 <select className={`${selectClass} w-full`} value={qStase} onChange={(e) => setQStase(e.target.value)}>
                   <option value="">—</option>
                   {stases.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
                 </select>
               </div>
               <div className="space-y-2">
-                <label className="text-sm font-medium">Kesulitan</label>
+                <label className="text-sm font-medium">{t("difficultyLabel")}</label>
                 <select className={`${selectClass} w-full`} value={qDiff} onChange={(e) => setQDiff(e.target.value)}>
                   <option value="">—</option>
                   {difficulties.map((d) => <option key={d.id} value={d.value}>{d.name}</option>)}
                 </select>
               </div>
               <div className="space-y-2">
-                <label className="text-sm font-medium">Topik</label>
+                <label className="text-sm font-medium">{t("topicLabel")}</label>
                 <Input maxLength={100} value={qTopic} onChange={(e) => setQTopic(e.target.value)} />
               </div>
               <div className="space-y-2">
-                <label className="text-sm font-medium">Poin</label>
+                <label className="text-sm font-medium">{t("pointsLabel")}</label>
                 <Input type="number" min={1} max={100} value={qPoints} onChange={(e) => setQPoints(Number(e.target.value))} />
               </div>
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-medium">Opsi Jawaban (pilih satu yang benar)</label>
+              <label className="text-sm font-medium">{t("optionsLabel")}</label>
               {options.map((opt, i) => (
                 <div key={i} className="flex items-center gap-2">
                   <input
@@ -386,10 +389,10 @@ export default function QuestionBankPage() {
                     onChange={() =>
                       setOptions(options.map((o, j) => ({ ...o, is_correct: j === i })))
                     }
-                    aria-label={`Opsi ${i + 1} benar`}
+                    aria-label={t("optionCorrectAria", { n: i + 1 })}
                   />
                   <Input
-                    placeholder={`Opsi ${String.fromCharCode(65 + i)}`}
+                    placeholder={t("optionPlaceholder", { letter: String.fromCharCode(65 + i) })}
                     value={opt.option_text}
                     onChange={(e) =>
                       setOptions(options.map((o, j) => (j === i ? { ...o, option_text: e.target.value } : o)))
@@ -399,12 +402,12 @@ export default function QuestionBankPage() {
               ))}
               {options.length < 6 && (
                 <Button type="button" variant="outline" size="sm" onClick={() => setOptions([...options, { option_text: "", is_correct: false }])}>
-                  <Plus className="w-3.5 h-3.5 mr-1" /> Tambah Opsi
+                  <Plus className="w-3.5 h-3.5 mr-1" /> {t("addOption")}
                 </Button>
               )}
             </div>
             <Button type="submit" className="w-full" disabled={isSaving}>
-              {isSaving ? "Menyimpan..." : "Simpan"}
+              {isSaving ? tc("saving") : tc("save")}
             </Button>
           </form>
         </DialogContent>
@@ -414,17 +417,17 @@ export default function QuestionBankPage() {
       <Dialog open={isImportOpen} onOpenChange={setIsImportOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Import Soal dari Excel/CSV</DialogTitle>
+            <DialogTitle>{t("importTitle")}</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleImport} className="space-y-4 pt-2">
             <p className="text-sm text-muted-foreground">
-              Heading kolom: <code className="text-xs">question, option_a..option_e, correct (a-e), points, topic, difficulty</code>
+              {t("importColumns")} <code className="text-xs">question, option_a..option_e, correct (a-e), points, topic, difficulty</code>
             </p>
             <Button type="button" variant="link" size="sm" className="px-0" onClick={downloadTemplate}>
-              <Download className="w-3.5 h-3.5 mr-1" /> Unduh template
+              <Download className="w-3.5 h-3.5 mr-1" /> {t("downloadTemplate")}
             </Button>
             <div className="space-y-2">
-              <label className="text-sm font-medium">Stase default (opsional)</label>
+              <label className="text-sm font-medium">{t("defaultStaseLabel")}</label>
               <select className={`${selectClass} w-full`} value={importStase} onChange={(e) => setImportStase(e.target.value)}>
                 <option value="">—</option>
                 {stases.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
@@ -437,7 +440,7 @@ export default function QuestionBankPage() {
               onChange={(e) => setImportFile(e.target.files?.[0] || null)}
             />
             <Button type="submit" className="w-full" disabled={isImporting || !importFile}>
-              {isImporting ? "Mengimpor..." : "Import"}
+              {isImporting ? t("importing") : t("import")}
             </Button>
           </form>
         </DialogContent>
@@ -447,15 +450,15 @@ export default function QuestionBankPage() {
       <Dialog open={!!deleting} onOpenChange={(open) => !open && setDeleting(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Hapus Soal Bank?</DialogTitle>
+            <DialogTitle>{t("deleteTitle")}</DialogTitle>
           </DialogHeader>
           <p className="text-sm text-slate-600 dark:text-slate-300 line-clamp-3">
             {deleting?.question_text}
           </p>
-          <p className="text-xs text-slate-400">Ujian yang sudah menyalin soal ini tidak terpengaruh.</p>
+          <p className="text-xs text-slate-400">{t("deleteNote")}</p>
           <div className="flex justify-end gap-2 pt-2">
-            <Button variant="outline" onClick={() => setDeleting(null)}>Batal</Button>
-            <Button className="bg-red-600 hover:bg-red-700 text-white" onClick={handleDelete}>Hapus</Button>
+            <Button variant="outline" onClick={() => setDeleting(null)}>{tc("cancel")}</Button>
+            <Button className="bg-red-600 hover:bg-red-700 text-white" onClick={handleDelete}>{tc("delete")}</Button>
           </div>
         </DialogContent>
       </Dialog>

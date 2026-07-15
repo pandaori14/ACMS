@@ -119,6 +119,7 @@
     "addStationTitle": "Tambah Stasiun OSCE",
     "stationNameLabel": "Nama Stasiun",
     "stationNamePlaceholder": "Contoh: Anamnesis & Pemeriksaan Fisik",
+    "descriptionLabel": "Deskripsi (opsional)",
     "rubricTemplateLabel": "Template Rubrik (opsional)",
     "noRubric": "Tanpa rubrik (nilai langsung)",
     "loadAssessorsError": "Gagal memuat daftar penguji.",
@@ -144,7 +145,10 @@
     "stationDeleteError": "Gagal menghapus stasiun.",
     "pdfLoading": "Membuat PDF Berita Acara...",
     "pdfSuccess": "PDF berhasil diunduh!",
-    "pdfError": "Gagal mengunduh PDF."
+    "pdfError": "Gagal mengunduh PDF.",
+    "pdfFilePrefix": "Berita_Acara_Ujian",
+    "pdfFileFallback": "Ujian",
+    "deleteStationAria": "Hapus stasiun"
   },
   "examTake": {
     "loadError": "Gagal memuat ujian.",

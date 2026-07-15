@@ -119,6 +119,7 @@
     "addStationTitle": "Add OSCE Station",
     "stationNameLabel": "Station Name",
     "stationNamePlaceholder": "Example: History Taking & Physical Examination",
+    "descriptionLabel": "Description (optional)",
     "rubricTemplateLabel": "Rubric Template (optional)",
     "noRubric": "No rubric (direct score)",
     "loadAssessorsError": "Failed to load examiner list.",
@@ -144,7 +145,10 @@
     "stationDeleteError": "Failed to delete station.",
     "pdfLoading": "Generating Official Report PDF...",
     "pdfSuccess": "PDF downloaded successfully!",
-    "pdfError": "Failed to download PDF."
+    "pdfError": "Failed to download PDF.",
+    "pdfFilePrefix": "Exam_Official_Report",
+    "pdfFileFallback": "Exam",
+    "deleteStationAria": "Delete station"
   },
   "examTake": {
     "loadError": "Failed to load exam.",

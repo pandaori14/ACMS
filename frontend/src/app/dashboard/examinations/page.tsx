@@ -231,16 +231,16 @@ export default function ExaminationsPage() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Manajemen Ujian</h1>
+          <h1 className="text-3xl font-bold tracking-tight">{t("title")}</h1>
           <p className="text-muted-foreground">
-            {canManage ? "Kelola jadwal ujian OSCE, CBT, dan tertulis" : "Daftar ujian yang harus Anda ikuti atau uji"}
+            {canManage ? t("subtitleManage") : t("subtitleView")}
           </p>
         </div>
 
         {canManage && (
           <Button className="flex items-center gap-2" onClick={openCreate}>
             <PlusCircle className="h-4 w-4" />
-            Jadwalkan Ujian Baru
+            {t("scheduleNew")}
           </Button>
         )}
       </div>
@@ -249,10 +249,10 @@ export default function ExaminationsPage() {
         {exams.length === 0 ? (
           <div className="col-span-full py-12 text-center text-muted-foreground border-2 border-dashed rounded-xl">
             <ClipboardCheck className="mx-auto h-12 w-12 text-gray-300 mb-3" />
-            <p>Belum ada ujian yang dijadwalkan.</p>
+            <p>{t("emptyTitle")}</p>
             {canManage && (
               <Button variant="outline" size="sm" className="mt-4" onClick={openCreate}>
-                <PlusCircle className="h-4 w-4 mr-2" /> Jadwalkan Ujian
+                <PlusCircle className="h-4 w-4 mr-2" /> {t("scheduleShort")}
               </Button>
             )}
           </div>
@@ -275,7 +275,7 @@ export default function ExaminationsPage() {
                           size="sm"
                           className="h-7 w-7 p-0"
                           onClick={() => openEdit(exam)}
-                          aria-label="Edit ujian"
+                          aria-label={t("editAria")}
                         >
                           <Pencil className="h-3.5 w-3.5" />
                         </Button>
@@ -284,7 +284,7 @@ export default function ExaminationsPage() {
                           size="sm"
                           className="h-7 w-7 p-0 text-red-600 hover:text-red-700"
                           onClick={() => setDeleting(exam)}
-                          aria-label="Hapus ujian"
+                          aria-label={t("deleteAria")}
                         >
                           <Trash2 className="h-3.5 w-3.5" />
                         </Button>
@@ -310,28 +310,28 @@ export default function ExaminationsPage() {
                     day: "numeric",
                   })}
                   {exam.start_time ? ` · ${exam.start_time.slice(0, 5)}` : ""}
-                  {exam.duration_minutes ? ` · ${exam.duration_minutes} mnt` : ""}
+                  {exam.duration_minutes ? ` · ${exam.duration_minutes} ${t("minutesUnit")}` : ""}
                 </div>
 
                 <div className="flex flex-col gap-2">
                   {isPreceptor && exam.status !== "COMPLETED" && (
                     <Button variant="default" className="w-full" onClick={() => window.location.href = `/dashboard/examinations/${exam.id}/assess`}>
-                      Mulai Menilai
+                      {t("startAssessing")}
                     </Button>
                   )}
                   {canManage && (
                     <Button variant="outline" className="w-full" onClick={() => window.location.href = `/dashboard/examinations/${exam.id}`}>
-                      Detail & Peserta
+                      {t("detailParticipants")}
                     </Button>
                   )}
                   {canManage && exam.status === "DRAFT" && (
                     <Button variant="secondary" className="w-full" onClick={() => handleChangeStatus(exam, "ONGOING")}>
-                      Mulai Ujian (ONGOING)
+                      {t("startExamOngoing")}
                     </Button>
                   )}
                   {canManage && exam.status === "ONGOING" && (
                     <Button variant="secondary" className="w-full" onClick={() => handleChangeStatus(exam, "COMPLETED")}>
-                      Selesaikan Ujian
+                      {t("completeExam")}
                     </Button>
                   )}
                   {isStudent && !canManage && (exam.type === "CBT" || exam.type === "WRITTEN") && exam.status === "ONGOING" && (
@@ -339,12 +339,12 @@ export default function ExaminationsPage() {
                       className="w-full bg-blue-900 hover:bg-blue-800 text-white"
                       onClick={() => window.location.href = `/dashboard/examinations/${exam.id}/take`}
                     >
-                      Kerjakan Ujian
+                      {t("takeExam")}
                     </Button>
                   )}
                   {isStudent && !canManage && !((exam.type === "CBT" || exam.type === "WRITTEN") && exam.status === "ONGOING") && (
                     <Button variant="outline" className="w-full" disabled>
-                      {exam.status === "DRAFT" ? "Belum Dibuka" : exam.status === "COMPLETED" ? "Ujian Selesai" : "Menunggu Dibuka"}
+                      {exam.status === "DRAFT" ? t("notOpen") : exam.status === "COMPLETED" ? t("examFinished") : t("awaitingOpen")}
                     </Button>
                   )}
                 </div>
@@ -358,21 +358,21 @@ export default function ExaminationsPage() {
       <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
         <DialogContent className="max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>{editingId ? "Edit Ujian" : "Jadwalkan Ujian Baru"}</DialogTitle>
+            <DialogTitle>{editingId ? t("editTitle") : t("createTitle")}</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleSubmit} className="space-y-4 pt-2">
             <div className="space-y-2">
-              <label className="text-sm font-medium">Nama Ujian</label>
+              <label className="text-sm font-medium">{t("nameLabel")}</label>
               <Input
                 required
                 value={form.name}
                 onChange={(e) => setForm({ ...form, name: e.target.value })}
-                placeholder="Contoh: OSCE Penyakit Dalam Batch 1"
+                placeholder={t("namePlaceholder")}
               />
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <label className="text-sm font-medium">Tipe</label>
+                <label className="text-sm font-medium">{t("typeLabel")}</label>
                 <select
                   className={selectClass}
                   required
@@ -382,11 +382,11 @@ export default function ExaminationsPage() {
                 >
                   <option value="OSCE">OSCE</option>
                   <option value="CBT">CBT</option>
-                  <option value="WRITTEN">Tertulis (WRITTEN)</option>
+                  <option value="WRITTEN">{t("typeWritten")}</option>
                 </select>
               </div>
               <div className="space-y-2">
-                <label className="text-sm font-medium">Tanggal</label>
+                <label className="text-sm font-medium">{t("dateLabel")}</label>
                 <Input
                   type="date"
                   required
@@ -396,7 +396,7 @@ export default function ExaminationsPage() {
               </div>
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-medium">Stase</label>
+              <label className="text-sm font-medium">{t("staseLabel")}</label>
               <select
                 className={selectClass}
                 required
@@ -404,7 +404,7 @@ export default function ExaminationsPage() {
                 value={form.stase_id}
                 onChange={(e) => setForm({ ...form, stase_id: e.target.value })}
               >
-                <option value="">Pilih Stase</option>
+                <option value="">{t("selectStase")}</option>
                 {stases.map((s) => (
                   <option key={s.id} value={s.id}>{s.name}</option>
                 ))}
@@ -412,7 +412,7 @@ export default function ExaminationsPage() {
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div className="space-y-2">
-                <label className="text-sm font-medium">Jam Mulai</label>
+                <label className="text-sm font-medium">{t("startTimeLabel")}</label>
                 <Input
                   type="time"
                   value={form.start_time}
@@ -420,23 +420,23 @@ export default function ExaminationsPage() {
                 />
               </div>
               <div className="space-y-2">
-                <label className="text-sm font-medium">Durasi (menit)</label>
+                <label className="text-sm font-medium">{t("durationLabel")}</label>
                 <Input
                   type="number"
                   min={5}
                   max={600}
-                  placeholder="mis. 90"
+                  placeholder={t("durationPlaceholder")}
                   value={form.duration_minutes}
                   onChange={(e) => setForm({ ...form, duration_minutes: e.target.value })}
                 />
               </div>
               <div className="space-y-2">
-                <label className="text-sm font-medium">Nilai Lulus</label>
+                <label className="text-sm font-medium">{t("passingScoreLabel")}</label>
                 <Input
                   type="number"
                   min={0}
                   max={100}
-                  placeholder="default stase"
+                  placeholder={t("passingScorePlaceholder")}
                   value={form.passing_score}
                   onChange={(e) => setForm({ ...form, passing_score: e.target.value })}
                 />
@@ -445,7 +445,7 @@ export default function ExaminationsPage() {
             {(form.type === "CBT" || form.type === "WRITTEN") && (
               <>
                 <p className="text-xs text-muted-foreground -mt-2">
-                  Durasi dipakai sebagai timer ujian online. Bank soal dikelola dari halaman detail ujian.
+                  {t("onlineTimerHint")}
                 </p>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   <label className="flex items-center gap-2 text-sm rounded-md border p-2.5 cursor-pointer">
@@ -455,7 +455,7 @@ export default function ExaminationsPage() {
                       checked={form.shuffle_questions}
                       onChange={(e) => setForm({ ...form, shuffle_questions: e.target.checked })}
                     />
-                    Acak urutan soal per peserta
+                    {t("shuffleQuestionsLabel")}
                   </label>
                   <label className="flex items-center gap-2 text-sm rounded-md border p-2.5 cursor-pointer">
                     <input
@@ -464,13 +464,13 @@ export default function ExaminationsPage() {
                       checked={form.shuffle_options}
                       onChange={(e) => setForm({ ...form, shuffle_options: e.target.checked })}
                     />
-                    Acak urutan opsi jawaban
+                    {t("shuffleOptionsLabel")}
                   </label>
                 </div>
               </>
             )}
             <div className="space-y-2">
-              <label className="text-sm font-medium">Deskripsi (opsional)</label>
+              <label className="text-sm font-medium">{t("descriptionLabel")}</label>
               <Textarea
                 rows={2}
                 value={form.description}
@@ -481,21 +481,21 @@ export default function ExaminationsPage() {
             {!editingId && form.type === "OSCE" && (
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <label className="text-sm font-medium">Stasiun OSCE</label>
+                  <label className="text-sm font-medium">{t("osceStationsLabel")}</label>
                   <Button type="button" variant="outline" size="sm" onClick={() => setStations([...stations, ""])}>
-                    <PlusCircle className="h-4 w-4 mr-1" /> Stasiun
+                    <PlusCircle className="h-4 w-4 mr-1" /> {t("stationBtn")}
                   </Button>
                 </div>
                 {stations.length === 0 && (
                   <p className="text-xs text-muted-foreground">
-                    Stasiun bisa juga ditambahkan nanti dari halaman detail ujian.
+                    {t("stationLaterHint")}
                   </p>
                 )}
                 {stations.map((name, idx) => (
                   <div key={idx} className="flex gap-2">
                     <Input
                       value={name}
-                      placeholder={`Nama stasiun ${idx + 1}`}
+                      placeholder={t("stationNamePlaceholder", { n: idx + 1 })}
                       onChange={(e) => {
                         const next = [...stations];
                         next[idx] = e.target.value;
@@ -508,7 +508,7 @@ export default function ExaminationsPage() {
                       size="sm"
                       className="text-red-600"
                       onClick={() => setStations(stations.filter((_, i) => i !== idx))}
-                      aria-label="Hapus stasiun"
+                      aria-label={t("deleteStationAria")}
                     >
                       <X className="h-4 w-4" />
                     </Button>
@@ -518,7 +518,7 @@ export default function ExaminationsPage() {
             )}
 
             <Button type="submit" className="w-full" disabled={isSaving}>
-              {isSaving ? "Menyimpan..." : "Simpan"}
+              {isSaving ? tc("saving") : tc("save")}
             </Button>
           </form>
         </DialogContent>
@@ -528,16 +528,18 @@ export default function ExaminationsPage() {
       <Dialog open={!!deleting} onOpenChange={(open) => !open && setDeleting(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Hapus Ujian?</DialogTitle>
+            <DialogTitle>{t("deleteConfirmTitle")}</DialogTitle>
           </DialogHeader>
           <p className="text-sm text-slate-600 dark:text-slate-300">
-            Ujian <span className="font-semibold">{deleting?.name}</span> akan dihapus.
-            Ujian yang sudah memiliki nilai tidak dapat dihapus.
+            {t.rich("deleteConfirmBody", {
+              name: deleting?.name ?? "",
+              b: (c) => <span className="font-semibold">{c}</span>,
+            })}
           </p>
           <div className="flex justify-end gap-2 pt-2">
-            <Button variant="outline" onClick={() => setDeleting(null)}>Batal</Button>
+            <Button variant="outline" onClick={() => setDeleting(null)}>{tc("cancel")}</Button>
             <Button className="bg-red-600 hover:bg-red-700 text-white" onClick={handleDelete}>
-              Hapus
+              {tc("delete")}
             </Button>
           </div>
         </DialogContent>
