@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { useQuery } from "@tanstack/react-query";
 import api from "@/lib/api";
 import { ApiError } from "@/lib/api-helpers";
@@ -46,6 +47,8 @@ interface User {
 }
 
 export function UsersClient() {
+  const t = useTranslations("settingsUsers");
+  const tc = useTranslations("common");
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -135,14 +138,14 @@ export function UsersClient() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm("Apakah Anda yakin ingin menghapus pengguna ini?")) return;
+    if (!confirm(t("deleteConfirm"))) return;
     try {
       await api.delete(`/api/users/${id}`);
-      toast.success("Pengguna dihapus.");
+      toast.success(t("deleteSuccess"));
       refetchUsers();
     } catch (err) {
       console.error(err);
-      toast.error("Gagal menghapus pengguna.");
+      toast.error(t("deleteError"));
     }
   };
 
@@ -161,12 +164,12 @@ export function UsersClient() {
         await api.post("/api/users", payload);
       }
       setOpen(false);
-      toast.success(editingId ? "Pengguna diperbarui." : "Pengguna ditambahkan.");
+      toast.success(editingId ? t("updateSuccess") : t("createSuccess"));
       refetchUsers();
     } catch (err) {
       console.error("FULL ERROR", err);
       const e = err as ApiError;
-      let msg = "Gagal menyimpan pengguna.";
+      let msg = t("saveError");
       if (e.response?.data?.errors) {
         // Gabungkan semua pesan error validasi (misal: "Email sudah ada", "Password minimal 8", dsb)
         const errors = e.response.data.errors;
@@ -212,10 +215,10 @@ export function UsersClient() {
         status: nextStatus,
         roles: toggling.roles,
       });
-      toast.success(nextStatus === "inactive" ? "Pengguna dinonaktifkan — tidak bisa login." : "Pengguna diaktifkan kembali.");
+      toast.success(nextStatus === "inactive" ? t("deactivated") : t("activated"));
       refetchUsers();
     } catch {
-      toast.error("Gagal mengubah status pengguna.");
+      toast.error(t("statusError"));
     } finally {
       setToggling(null);
     }
@@ -246,7 +249,7 @@ export function UsersClient() {
       refetchUsers();
     } catch (err) {
       const e2 = err as ApiError;
-      toast.error(e2.response?.data?.message || "Import gagal diproses.");
+      toast.error(e2.response?.data?.message || t("importError"));
     } finally {
       setIsImporting(false);
     }
@@ -262,7 +265,7 @@ export function UsersClient() {
       a.click();
       URL.revokeObjectURL(url);
     } catch {
-      toast.error("Gagal mengunduh template.");
+      toast.error(t("templateError"));
     }
   };
 
@@ -271,9 +274,9 @@ export function UsersClient() {
       <div className="flex justify-between items-center">
         <div className="relative w-64">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-          <input 
+          <input
             type="text"
-            placeholder="Cari pengguna..."
+            placeholder={t("searchPlaceholder")}
             className="w-full pl-9 pr-4 py-2 text-sm border rounded-md focus:outline-none focus:ring-2 focus:ring-primary/50"
           />
         </div>
@@ -284,14 +287,14 @@ export function UsersClient() {
             className="inline-flex items-center gap-2 border px-4 py-2 rounded-md hover:bg-slate-50 dark:hover:bg-slate-800 text-sm font-medium transition-colors"
           >
             <Upload className="w-4 h-4" />
-            Import Excel
+            {t("importExcel")}
           </button>
           <button
             onClick={handleOpenNew}
             className="inline-flex items-center gap-2 bg-primary text-white px-4 py-2 rounded-md hover:bg-primary/90 text-sm font-medium transition-colors"
           >
             <Plus className="w-4 h-4" />
-            Tambah Pengguna
+            {t("addUser")}
           </button>
         </div>
       </div>
@@ -300,10 +303,10 @@ export function UsersClient() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Users className="w-5 h-5 text-slate-500" />
-            Daftar Pengguna
+            {t("listTitle")}
           </CardTitle>
           <CardDescription>
-            Kelola akses dan data pengguna sistem.
+            {t("listDesc")}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -313,18 +316,18 @@ export function UsersClient() {
             </div>
           ) : users.length === 0 ? (
             <div className="text-center p-8 text-slate-500 text-sm">
-              Belum ada data pengguna.
+              {t("empty")}
             </div>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm text-left">
                 <thead className="bg-slate-50 text-slate-600 font-medium border-b">
                   <tr>
-                    <th className="py-3 px-4">Nama / Identitas</th>
-                    <th className="py-3 px-4">Email</th>
-                    <th className="py-3 px-4">Peran (Role)</th>
-                    <th className="py-3 px-4">Status</th>
-                    <th className="py-3 px-4 text-right">Aksi</th>
+                    <th className="py-3 px-4">{t("colNameIdentity")}</th>
+                    <th className="py-3 px-4">{t("colEmail")}</th>
+                    <th className="py-3 px-4">{t("colRole")}</th>
+                    <th className="py-3 px-4">{t("colStatus")}</th>
+                    <th className="py-3 px-4 text-right">{t("colActions")}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y">
@@ -347,10 +350,10 @@ export function UsersClient() {
                       <td className="py-3 px-4">
                         <button
                           onClick={() => setToggling(user)}
-                          title="Klik untuk ubah status"
+                          title={t("toggleTitle")}
                           className={`px-2 py-1 rounded-full text-xs font-medium transition-colors ${user.status === 'active' ? 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}
                         >
-                          {user.status === 'active' ? 'Aktif' : 'Nonaktif'}
+                          {user.status === 'active' ? t("statusActive") : t("statusInactive")}
                         </button>
                       </td>
                       <td className="py-3 px-4 text-right">
@@ -375,46 +378,46 @@ export function UsersClient() {
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>{editingId ? "Edit Pengguna" : "Tambah Pengguna Baru"}</DialogTitle>
+            <DialogTitle>{editingId ? t("editUser") : t("addUserTitle")}</DialogTitle>
             <DialogDescription>
-              Isi data pengguna dan tetapkan peran (role) yang sesuai.
+              {t("dialogDesc")}
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleSave} className="space-y-6 py-4">
             
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <label className="text-sm font-medium">Nama Lengkap</label>
+                <label className="text-sm font-medium">{t("fullName")}</label>
                 <input required type="text" className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary/50 text-sm" value={form.name} onChange={e => setForm({...form, name: e.target.value})} />
               </div>
               <div className="space-y-2">
-                <label className="text-sm font-medium">Email</label>
+                <label className="text-sm font-medium">{t("email")}</label>
                 <input required type="email" className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary/50 text-sm" value={form.email} onChange={e => setForm({...form, email: e.target.value})} />
               </div>
               <div className="space-y-2">
-                <label className="text-sm font-medium">Password {editingId && <span className="text-xs font-normal text-slate-400">(Kosongkan jika tidak diubah)</span>}</label>
+                <label className="text-sm font-medium">{t("password")} {editingId && <span className="text-xs font-normal text-slate-400">{t("passwordHint")}</span>}</label>
                 <input type="password" required={!editingId} className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary/50 text-sm" value={form.password} onChange={e => setForm({...form, password: e.target.value})} />
               </div>
               <div className="space-y-2">
-                <label className="text-sm font-medium">No. Identitas (NIM/NIP)</label>
+                <label className="text-sm font-medium">{t("identityNumber")}</label>
                 <input type="text" className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary/50 text-sm" value={form.identity_number} onChange={e => setForm({...form, identity_number: e.target.value})} />
               </div>
             </div>
 
             <div className="space-y-2 w-48">
-              <label className="text-sm font-medium">Status Akun</label>
+              <label className="text-sm font-medium">{t("accountStatus")}</label>
               <select
                 className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary/50 text-sm"
                 value={form.status}
                 onChange={e => setForm({...form, status: e.target.value})}
               >
-                <option value="active">Aktif</option>
-                <option value="inactive">Nonaktif (tidak bisa login)</option>
+                <option value="active">{t("optActive")}</option>
+                <option value="inactive">{t("optInactive")}</option>
               </select>
             </div>
 
             <div className="space-y-2">
-              <label className="text-sm font-medium">Peran Pengguna (Role)</label>
+              <label className="text-sm font-medium">{t("userRole")}</label>
               <div className="flex flex-wrap gap-3 p-3 border rounded-md bg-slate-50/50">
                 {roles.map(role => (
                   <label key={role.id} className="flex items-center gap-2 text-sm cursor-pointer">
@@ -433,7 +436,7 @@ export function UsersClient() {
             {/* Optional Fields Based on Roles */}
             {form.roles.includes("Dodiknis") && (
               <div className="space-y-2">
-                <label className="text-sm font-medium">Afiliasi Rumah Sakit (Bisa lebih dari 1)</label>
+                <label className="text-sm font-medium">{t("hospitalAffiliation")}</label>
                 <div className="grid grid-cols-2 gap-2 p-3 border rounded-md max-h-40 overflow-y-auto bg-slate-50/50">
                   {hospitals.map(hospital => (
                     <label key={hospital.id} className="flex items-center gap-2 text-sm cursor-pointer">
@@ -452,13 +455,13 @@ export function UsersClient() {
 
             {(form.roles.includes("Mahasiswa") || form.roles.includes("Admin Prodi")) && (
               <div className="space-y-2">
-                <label className="text-sm font-medium">Program Studi</label>
-                <select 
+                <label className="text-sm font-medium">{t("studyProgram")}</label>
+                <select
                   className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary/50 text-sm"
                   value={form.program_id}
                   onChange={e => setForm({...form, program_id: e.target.value})}
                 >
-                  <option value="">-- Pilih Program Studi --</option>
+                  <option value="">{t("selectProgram")}</option>
                   {programs.map(prog => (
                     <option key={prog.id} value={prog.id}>{prog.name}</option>
                   ))}
@@ -468,11 +471,11 @@ export function UsersClient() {
 
             <DialogFooter className="pt-4 border-t">
               <button type="button" onClick={() => setOpen(false)} className="px-4 py-2 text-sm font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-md transition-colors">
-                Batal
+                {tc("cancel")}
               </button>
               <button type="submit" disabled={saving || form.roles.length === 0} className="px-4 py-2 text-sm font-medium text-white bg-primary hover:bg-primary/90 rounded-md transition-colors inline-flex items-center gap-2 disabled:opacity-50">
                 {saving && <Loader2 className="w-4 h-4 animate-spin" />}
-                Simpan Pengguna
+                {t("saveUser")}
               </button>
             </DialogFooter>
           </form>
@@ -484,24 +487,22 @@ export function UsersClient() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>
-              {toggling?.status === "active" ? "Nonaktifkan Pengguna?" : "Aktifkan Pengguna?"}
+              {toggling?.status === "active" ? t("deactivateTitle") : t("activateTitle")}
             </DialogTitle>
           </DialogHeader>
           <p className="text-sm text-slate-600 dark:text-slate-300">
             <span className="font-semibold">{toggling?.name}</span>{" "}
-            {toggling?.status === "active"
-              ? "tidak akan bisa login sampai diaktifkan kembali. Data & riwayatnya tetap utuh."
-              : "akan bisa login kembali dengan akun yang sama."}
+            {toggling?.status === "active" ? t("deactivateMsg") : t("activateMsg")}
           </p>
           <div className="flex justify-end gap-2 pt-2">
             <button onClick={() => setToggling(null)} className="px-4 py-2 text-sm font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-md">
-              Batal
+              {tc("cancel")}
             </button>
             <button
               onClick={handleToggleStatus}
               className={`px-4 py-2 text-sm font-medium text-white rounded-md ${toggling?.status === "active" ? "bg-red-600 hover:bg-red-700" : "bg-emerald-600 hover:bg-emerald-700"}`}
             >
-              {toggling?.status === "active" ? "Nonaktifkan" : "Aktifkan"}
+              {toggling?.status === "active" ? t("deactivate") : t("activate")}
             </button>
           </div>
         </DialogContent>
@@ -511,37 +512,39 @@ export function UsersClient() {
       <Dialog open={isImportOpen} onOpenChange={setIsImportOpen}>
         <DialogContent className="max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Import Pengguna dari Excel/CSV</DialogTitle>
+            <DialogTitle>{t("importTitle")}</DialogTitle>
             <DialogDescription>
-              Semua baris akan diberi role yang dipilih. Kolom wajib: <b>nama, email</b>
-              {" "}(kolom <b>password</b> & <b>nim</b> opsional — password kosong dibuat otomatis
-              dan dikirim via email).{" "}
-              <button type="button" onClick={downloadImportTemplate} className="underline font-medium text-blue-700">
-                Unduh template
-              </button>
+              {t.rich("importDesc", {
+                b: (c) => <b>{c}</b>,
+                download: (c) => (
+                  <button type="button" onClick={downloadImportTemplate} className="underline font-medium text-blue-700">
+                    {c}
+                  </button>
+                ),
+              })}
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleImport} className="space-y-4 pt-2">
             <div className="space-y-2">
-              <label className="text-sm font-medium">Role untuk semua baris</label>
+              <label className="text-sm font-medium">{t("importRoleLabel")}</label>
               <select
                 required
                 className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary/50 text-sm"
                 value={importRole}
                 onChange={(e) => setImportRole(e.target.value)}
               >
-                <option value="">-- Pilih Role --</option>
+                <option value="">{t("selectRole")}</option>
                 {roles.filter((r) => r.name !== "Super Admin" && r.name !== "Mahasiswa").map((r) => (
                   <option key={r.id} value={r.name}>{r.name}</option>
                 ))}
               </select>
               <p className="text-xs text-slate-500 flex items-center gap-1">
                 <GraduationCap className="w-3.5 h-3.5" />
-                Untuk mahasiswa, gunakan menu Mahasiswa → Import Excel (membuat profil akademik sekaligus).
+                {t("importStudentNote")}
               </p>
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-medium">File (.xlsx / .csv, maks 5MB)</label>
+              <label className="text-sm font-medium">{t("importFileLabel")}</label>
               <input
                 ref={importFileRef}
                 type="file"
@@ -554,13 +557,13 @@ export function UsersClient() {
 
             {importResult && (
               <div className="rounded-md border p-3 text-sm space-y-2">
-                <p className="font-medium text-emerald-700">✓ {importResult.created} pengguna dibuat</p>
+                <p className="font-medium text-emerald-700">{t("importCreated", { count: importResult.created })}</p>
                 {importResult.skipped.length > 0 && (
                   <div>
-                    <p className="font-medium text-amber-700 mb-1">{importResult.skipped.length} baris dilewati:</p>
+                    <p className="font-medium text-amber-700 mb-1">{t("importSkipped", { count: importResult.skipped.length })}</p>
                     <ul className="list-disc pl-5 text-slate-600 max-h-36 overflow-y-auto">
                       {importResult.skipped.map((s, i) => (
-                        <li key={i}>Baris {s.row}: {s.reason}</li>
+                        <li key={i}>{t("importSkippedRow", { row: s.row, reason: s.reason })}</li>
                       ))}
                     </ul>
                   </div>
@@ -574,7 +577,7 @@ export function UsersClient() {
               className="w-full px-4 py-2 text-sm font-medium text-white bg-primary hover:bg-primary/90 rounded-md disabled:opacity-50 inline-flex items-center justify-center gap-2"
             >
               {isImporting && <Loader2 className="w-4 h-4 animate-spin" />}
-              {isImporting ? "Memproses import..." : "Mulai Import"}
+              {isImporting ? t("importing") : t("startImport")}
             </button>
           </form>
         </DialogContent>

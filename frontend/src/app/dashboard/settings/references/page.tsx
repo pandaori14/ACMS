@@ -1,18 +1,24 @@
 import { Metadata } from "next";
+import { getTranslations } from "next-intl/server";
 import ReferencesClient from "./ReferencesClient";
 
-export const metadata: Metadata = {
-  title: "Master Data Referensi | ACMS",
-  description: "Kelola referensi data sistem untuk seluruh modul ACMS",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("settingsReferences");
+  return {
+    title: t("metaTitle"),
+    description: t("metaDescription"),
+  };
+}
 
-export default function SettingsReferencesPage() {
+export default async function SettingsReferencesPage() {
+  const t = await getTranslations("settingsReferences");
+
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-2">
-        <h1 className="text-3xl font-bold tracking-tight">Master Data & Referensi Sistem</h1>
+        <h1 className="text-3xl font-bold tracking-tight">{t("pageTitle")}</h1>
         <p className="text-muted-foreground">
-          Konfigurasi semua nilai dropdown dan data master yang digunakan oleh berbagai modul dalam ACMS.
+          {t("pageSubtitle")}
         </p>
       </div>
       <ReferencesClient />

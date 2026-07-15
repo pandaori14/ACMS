@@ -1,20 +1,24 @@
 import { Metadata } from "next";
+import { getTranslations } from "next-intl/server";
 import AuditLogsClient from "./AuditLogsClient";
 
-export const metadata: Metadata = {
-  title: "Audit Trail | ACMS",
-  description: "Jejak audit immutable seluruh aktivitas penting sistem ACMS",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("settingsAuditLogs");
+  return {
+    title: t("metaTitle"),
+    description: t("metaDescription"),
+  };
+}
 
-export default function AuditLogsPage() {
+export default async function AuditLogsPage() {
+  const t = await getTranslations("settingsAuditLogs");
+
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-2">
-        <h1 className="text-3xl font-bold tracking-tight">Audit Trail</h1>
+        <h1 className="text-3xl font-bold tracking-tight">{t("title")}</h1>
         <p className="text-muted-foreground">
-          Catatan immutable (append-only) dengan rantai hash anti-manipulasi untuk setiap aksi
-          penting: perubahan nilai, verifikasi logbook, penugasan rotasi, dan operasi keuangan.
-          Super Admin melihat seluruh program; Kaprodi hanya programnya sendiri.
+          {t("subtitle")}
         </p>
       </div>
       <AuditLogsClient />

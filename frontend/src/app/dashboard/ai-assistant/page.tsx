@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useTranslations } from "next-intl";
 import { useAuthStore } from "@/store/useAuthStore";
 import api from "@/lib/api";
 import { getApiErrorMessage } from "@/lib/api-helpers";
@@ -32,11 +33,12 @@ interface AiStatus {
   model: string;
 }
 
+// Label & prompt saran diambil dari katalog i18n: settingsAi.suggestions.*
 const SUGGESTIONS = [
-  { icon: Activity, label: "Insiden belum tertangani", prompt: "Berapa laporan insiden yang masih dalam status submitted dan investigating?" },
-  { icon: Users, label: "Daftar mahasiswa", prompt: "Tampilkan daftar mahasiswa beserta program studi dan statusnya." },
-  { icon: BarChart3, label: "Ringkasan sistem", prompt: "Beri ringkasan jumlah entitas inti sistem (mahasiswa, RS, program, stase, ujian)." },
-  { icon: FileText, label: "Draf memo rapat", prompt: "Bantu saya menyusun draf memo undangan rapat koordinasi rotasi klinik minggu depan." },
+  { key: "incidents", icon: Activity },
+  { key: "students", icon: Users },
+  { key: "summary", icon: BarChart3 },
+  { key: "memo", icon: FileText },
 ];
 
 const MARKDOWN_CLASS =
@@ -47,6 +49,7 @@ const MARKDOWN_CLASS =
   "dark:[&_code]:bg-slate-800 [&_a]:text-teal-600 [&_a]:underline [&_blockquote]:border-l-2 [&_blockquote]:border-teal-300 [&_blockquote]:pl-3 [&_blockquote]:italic";
 
 export default function AiAssistantPage() {
+  const t = useTranslations("settingsAi");
   const user = useAuthStore((s) => s.user);
   const isSuperAdmin = user?.roles?.includes("Super Admin") ?? false;
 
@@ -68,7 +71,7 @@ export default function AiAssistantPage() {
 
   if (!isSuperAdmin) {
     return (
-      <div className="py-20 text-center text-muted-foreground">Fitur ini hanya untuk Super Admin.</div>
+      <div className="py-20 text-center text-muted-foreground">{t("superAdminOnly")}</div>
     );
   }
 
@@ -86,7 +89,7 @@ export default function AiAssistantPage() {
       const res = await api.post("/api/ai-assistant/chat", { message: content, history });
       setMessages((m) => [...m, { role: "assistant", content: res.data.data.reply }]);
     } catch (err) {
-      setError(getApiErrorMessage(err, "Gagal menghubungi AI Assistant."));
+      setError(getApiErrorMessage(err, t("chatError")));
     } finally {
       setLoading(false);
     }
@@ -108,17 +111,17 @@ export default function AiAssistantPage() {
             <Sparkles className="h-5 w-5" />
           </div>
           <div>
-            <h1 className="text-xl font-bold tracking-tight text-slate-900 dark:text-slate-100">AI Assistant</h1>
+            <h1 className="text-xl font-bold tracking-tight text-slate-900 dark:text-slate-100">{t("title")}</h1>
             <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
               {configured ? (
                 <>
                   <span className="inline-block h-1.5 w-1.5 rounded-full bg-teal-500" />
-                  Aktif · {status?.model}
+                  {t("statusActive", { model: status?.model ?? "" })}
                 </>
               ) : (
                 <>
                   <span className="inline-block h-1.5 w-1.5 rounded-full bg-amber-400" />
-                  Belum dikonfigurasi
+                  {t("notConfigured")}
                 </>
               )}
             </p>
@@ -131,7 +134,7 @@ export default function AiAssistantPage() {
             onClick={() => { setMessages([]); setError(null); }}
             className="text-muted-foreground hover:text-foreground"
           >
-            <Trash2 className="mr-1.5 h-4 w-4" /> Bersihkan
+            <Trash2 className="mr-1.5 h-4 w-4" /> {t("clear")}
           </Button>
         )}
       </div>
@@ -140,8 +143,7 @@ export default function AiAssistantPage() {
         <div className="mb-4 flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800 dark:border-amber-900/40 dark:bg-amber-950/20 dark:text-amber-300">
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
           <span>
-            AI Assistant belum aktif/dikonfigurasi. Buka <strong>Pengaturan → AI Assistant</strong> untuk
-            mengaktifkan dan memasukkan API key.
+            {t.rich("notConfiguredWarning", { b: (c) => <strong>{c}</strong> })}
           </span>
         </div>
       )}
@@ -157,26 +159,30 @@ export default function AiAssistantPage() {
               <Bot className="h-7 w-7" />
             </div>
             <p className="mt-4 text-base font-semibold text-slate-800 dark:text-slate-200">
-              Halo, {user?.name?.split(" ")[0] || "Admin"} 👋
+              {t("greeting", { name: user?.name?.split(" ")[0] || t("adminFallback") })}
             </p>
             <p className="mt-1 max-w-sm text-sm text-muted-foreground">
-              Tanyakan kondisi sistem berdasarkan data nyata, atau minta bantuan menyusun draf dokumen.
+              {t("emptyHint")}
             </p>
             <div className="mt-6 grid w-full max-w-xl grid-cols-1 gap-2.5 sm:grid-cols-2">
-              {SUGGESTIONS.map((s) => (
-                <button
-                  key={s.label}
-                  onClick={() => send(s.prompt)}
-                  disabled={!configured}
-                  className="group flex items-start gap-3 rounded-xl border bg-white p-3 text-left transition hover:border-teal-300 hover:bg-teal-50/50 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-slate-900 dark:hover:bg-teal-950/20"
-                >
-                  <s.icon className="mt-0.5 h-4 w-4 shrink-0 text-teal-600" />
-                  <span>
-                    <span className="block text-sm font-medium text-slate-800 dark:text-slate-200">{s.label}</span>
-                    <span className="line-clamp-2 text-xs text-muted-foreground">{s.prompt}</span>
-                  </span>
-                </button>
-              ))}
+              {SUGGESTIONS.map((s) => {
+                const label = t(`suggestions.${s.key}.label`);
+                const prompt = t(`suggestions.${s.key}.prompt`);
+                return (
+                  <button
+                    key={s.key}
+                    onClick={() => send(prompt)}
+                    disabled={!configured}
+                    className="group flex items-start gap-3 rounded-xl border bg-white p-3 text-left transition hover:border-teal-300 hover:bg-teal-50/50 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-slate-900 dark:hover:bg-teal-950/20"
+                  >
+                    <s.icon className="mt-0.5 h-4 w-4 shrink-0 text-teal-600" />
+                    <span>
+                      <span className="block text-sm font-medium text-slate-800 dark:text-slate-200">{label}</span>
+                      <span className="line-clamp-2 text-xs text-muted-foreground">{prompt}</span>
+                    </span>
+                  </button>
+                );
+              })}
             </div>
           </div>
         ) : (
@@ -238,7 +244,7 @@ export default function AiAssistantPage() {
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={onKeyDown}
           rows={1}
-          placeholder={configured ? "Tulis pesan… (Enter kirim · Shift+Enter baris baru)" : "Aktifkan AI di Pengaturan dulu"}
+          placeholder={configured ? t("inputPlaceholder") : t("inputPlaceholderDisabled")}
           disabled={loading || !configured}
           className="max-h-40 min-h-[2.5rem] resize-none border-0 bg-transparent shadow-none focus-visible:ring-0"
         />

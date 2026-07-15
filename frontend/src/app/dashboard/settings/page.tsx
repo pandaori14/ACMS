@@ -1,12 +1,15 @@
+import { getTranslations } from "next-intl/server";
 import { SettingsClient } from "./SettingsClient";
 
-export default function SettingsPage() {
+export default async function SettingsPage() {
+  const t = await getTranslations("settingsMain");
+
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">Pengaturan Sistem</h1>
+        <h1 className="text-3xl font-bold tracking-tight">{t("pageTitle")}</h1>
         <p className="text-muted-foreground mt-2">
-          Konfigurasi global terkait tahun akademik dan aturan aplikasi.
+          {t("pageSubtitle")}
         </p>
       </div>
 

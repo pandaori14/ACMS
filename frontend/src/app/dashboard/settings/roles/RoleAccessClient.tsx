@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useTranslations } from "next-intl";
 import api from "@/lib/api";
 import { getApiErrorMessage } from "@/lib/api-helpers";
 import { toast } from "sonner";
@@ -24,10 +25,11 @@ interface Permission {
  * Pemetaan permission → modul (selaras dengan grup navigasi sidebar).
  * Dipakai untuk mengelompokkan & memfokuskan matriks RBAC per modul.
  * "Keamanan & Laporan" ditaruh pertama karena modul yang sedang dikerjakan.
+ * Label grup diambil dari katalog i18n: settingsRoles.groups.*
  */
-const MODULE_GROUPS: { label: string; permissions: string[] }[] = [
+const MODULE_GROUPS: { key: string; permissions: string[] }[] = [
   {
-    label: "Keamanan & Laporan",
+    key: "securityReports",
     permissions: [
       "report-incidents",
       "configure-incident-form",
@@ -38,9 +40,9 @@ const MODULE_GROUPS: { label: string; permissions: string[] }[] = [
       "view-incident-guide",
     ],
   },
-  { label: "Utama", permissions: ["view-dashboard", "view-analytics"] },
+  { key: "main", permissions: ["view-dashboard", "view-analytics"] },
   {
-    label: "Akademik & Klinis",
+    key: "academicClinical",
     permissions: [
       "manage-stase",
       "manage-hospitals",
@@ -52,7 +54,7 @@ const MODULE_GROUPS: { label: string; permissions: string[] }[] = [
     ],
   },
   {
-    label: "Penilaian & Evaluasi",
+    key: "assessmentEvaluation",
     permissions: [
       "take-examinations",
       "manage-examinations",
@@ -62,16 +64,18 @@ const MODULE_GROUPS: { label: string; permissions: string[] }[] = [
       "view-transcripts",
     ],
   },
-  { label: "Keuangan", permissions: ["manage-finance"] },
+  { key: "finance", permissions: ["manage-finance"] },
   {
-    label: "Sistem & Master Data",
+    key: "systemMasterData",
     permissions: ["manage-users", "manage-academic-master", "manage-settings", "view-audit-logs"],
   },
 ];
 
-const DEFAULT_FOCUS = "Keamanan & Laporan";
+const DEFAULT_FOCUS = "securityReports";
 
 export function RoleAccessClient() {
+  const t = useTranslations("settingsRoles");
+  const tc = useTranslations("common");
   const [roles, setRoles] = useState<Role[]>([]);
   const [permissions, setPermissions] = useState<Permission[]>([]);
   const [loading, setLoading] = useState(true);
@@ -80,6 +84,7 @@ export function RoleAccessClient() {
 
   useEffect(() => {
     fetchData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- sekali saat mount
   }, []);
 
   const fetchData = async () => {
@@ -88,7 +93,7 @@ export function RoleAccessClient() {
       setRoles(res.data.roles);
       setPermissions(res.data.permissions);
     } catch (error) {
-      toast.error("Gagal memuat data role & permissions");
+      toast.error(t("loadError"));
     } finally {
       setLoading(false);
     }
@@ -96,7 +101,7 @@ export function RoleAccessClient() {
 
   /**
    * Kelompokkan permission yang benar-benar ada (dari backend) ke dalam modul.
-   * Permission yang tidak terpetakan masuk grup "Lainnya".
+   * Permission yang tidak terpetakan masuk grup "other" (Lainnya).
    */
   const groupedPermissions = useMemo(() => {
     const existingNames = new Set(permissions.map((p) => p.name));
@@ -110,12 +115,12 @@ export function RoleAccessClient() {
           claimed.add(name);
           return byName.get(name)!;
         });
-      return { label: group.label, permissions: perms };
+      return { key: group.key, permissions: perms };
     }).filter((g) => g.permissions.length > 0);
 
     const leftovers = permissions.filter((p) => !claimed.has(p.name));
     if (leftovers.length > 0) {
-      groups.push({ label: "Lainnya", permissions: leftovers });
+      groups.push({ key: "other", permissions: leftovers });
     }
 
     return groups;
@@ -123,7 +128,7 @@ export function RoleAccessClient() {
 
   const visibleGroups = useMemo(() => {
     if (moduleFilter === "all") return groupedPermissions;
-    return groupedPermissions.filter((g) => g.label === moduleFilter);
+    return groupedPermissions.filter((g) => g.key === moduleFilter);
   }, [groupedPermissions, moduleFilter]);
 
   const hasPermission = (role: Role, permName: string) => {
@@ -150,46 +155,46 @@ export function RoleAccessClient() {
     try {
       const permNames = role.permissions.map((p) => p.name);
       await api.post(`/api/role-permissions/${role.id}/sync`, { permissions: permNames });
-      toast.success(`Hak akses untuk ${role.name} diperbarui!`);
+      toast.success(t("updateSuccess", { role: role.name }));
     } catch (error) {
-      toast.error(getApiErrorMessage(error, `Gagal memperbarui ${role.name}`));
+      toast.error(getApiErrorMessage(error, t("updateError", { role: role.name })));
     } finally {
       setSaving(null);
     }
   };
 
-  if (loading) return <div className="p-6">Memuat matriks akses...</div>;
+  if (loading) return <div className="p-6">{t("loadingMatrix")}</div>;
 
   const totalVisible = visibleGroups.reduce((sum, g) => sum + g.permissions.length, 0);
 
   return (
     <div className="p-6 max-w-full overflow-x-auto">
       <div className="mb-6">
-        <h1 className="text-2xl font-bold tracking-tight">Manajemen Akses Modul (RBAC)</h1>
+        <h1 className="text-2xl font-bold tracking-tight">{t("title")}</h1>
         <p className="text-muted-foreground mt-2">
-          Centang modul yang ingin diaktifkan untuk masing-masing Role. Pengaturan ini langsung mengubah menu yang tampil di sisi *client* dan akses API di *server*.
+          {t("subtitle")}
         </p>
       </div>
 
       {/* Filter Fokus Modul */}
       <div className="mb-4 flex flex-wrap items-center gap-3">
-        <span className="text-sm font-medium text-muted-foreground">Fokus Modul:</span>
+        <span className="text-sm font-medium text-muted-foreground">{t("focusModule")}</span>
         <Select value={moduleFilter} onValueChange={(v) => setModuleFilter(v ?? DEFAULT_FOCUS)}>
           <SelectTrigger className="w-[260px]">
-            <SelectValue placeholder="Pilih modul" />
+            <SelectValue placeholder={t("selectModule")} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">Semua Modul</SelectItem>
+            <SelectItem value="all">{t("allModules")}</SelectItem>
             {groupedPermissions.map((g) => (
-              <SelectItem key={g.label} value={g.label}>
-                {g.label} ({g.permissions.length})
+              <SelectItem key={g.key} value={g.key}>
+                {t(`groups.${g.key}`)} ({g.permissions.length})
               </SelectItem>
             ))}
           </SelectContent>
         </Select>
         <span className="text-xs text-muted-foreground">
-          Menampilkan {totalVisible} permission
-          {moduleFilter !== "all" && " — fokus pada modul yang sedang dikerjakan"}
+          {t("showingPermissions", { count: totalVisible })}
+          {moduleFilter !== "all" && t("focusSuffix")}
         </span>
       </div>
 
@@ -198,7 +203,7 @@ export function RoleAccessClient() {
           <thead className="bg-slate-50 dark:bg-slate-800 border-b">
             <tr>
               <th className="px-4 py-3 font-semibold whitespace-nowrap min-w-[200px] border-r bg-slate-100 dark:bg-slate-800 sticky left-0 z-10">
-                Nama Modul / Menu
+                {t("moduleMenu")}
               </th>
               {roles.map((role) => (
                 <th key={role.id} className="px-4 py-3 font-semibold text-center whitespace-nowrap min-w-[150px]">
@@ -211,8 +216,8 @@ export function RoleAccessClient() {
                       onClick={() => handleSave(role)}
                       disabled={saving === role.id.toString() || role.name === "Super Admin"}
                     >
-                      {saving === role.id.toString() ? "Menyimpan..." : (
-                        <><Save className="w-3 h-3 mr-1" /> Simpan</>
+                      {saving === role.id.toString() ? tc("saving") : (
+                        <><Save className="w-3 h-3 mr-1" /> {tc("save")}</>
                       )}
                     </Button>
                   </div>
@@ -223,8 +228,9 @@ export function RoleAccessClient() {
           <tbody className="divide-y">
             {visibleGroups.map((group) => (
               <FragmentGroup
-                key={group.label}
+                key={group.key}
                 group={group}
+                label={t(`groups.${group.key}`)}
                 roles={roles}
                 showHeader={moduleFilter === "all"}
                 hasPermission={hasPermission}
@@ -239,14 +245,15 @@ export function RoleAccessClient() {
 }
 
 interface FragmentGroupProps {
-  group: { label: string; permissions: Permission[] };
+  group: { key: string; permissions: Permission[] };
+  label: string;
   roles: Role[];
   showHeader: boolean;
   hasPermission: (role: Role, permName: string) => boolean;
   togglePermission: (roleId: string | number, permName: string, checked: boolean) => void;
 }
 
-function FragmentGroup({ group, roles, showHeader, hasPermission, togglePermission }: FragmentGroupProps) {
+function FragmentGroup({ group, label, roles, showHeader, hasPermission, togglePermission }: FragmentGroupProps) {
   return (
     <>
       {showHeader && (
@@ -255,7 +262,7 @@ function FragmentGroup({ group, roles, showHeader, hasPermission, togglePermissi
             colSpan={roles.length + 1}
             className="px-4 py-2 text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300 sticky left-0"
           >
-            {group.label}
+            {label}
           </td>
         </tr>
       )}

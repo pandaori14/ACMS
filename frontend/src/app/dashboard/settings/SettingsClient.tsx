@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useTranslations } from "next-intl";
 import api from "@/lib/api";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
@@ -41,44 +42,68 @@ interface Setting {
 
 interface Category {
   id: string;
-  label: string;
   icon: LucideIcon;
-  description: string;
 }
 
 interface Section {
-  label: string;
+  key: string;
   items: Category[];
 }
 
 // Navigation grouped into cross-cutting "system" settings and per-module settings.
+// Label & deskripsi diambil dari katalog i18n: settingsMain.sections.* & settingsMain.categories.*
 const SECTIONS: Section[] = [
   {
-    label: "Umum & Sistem",
+    key: "systemGeneral",
     items: [
-      { id: "general", label: "Umum", icon: MonitorSmartphone, description: "Nama aplikasi, warna tema, logo, dan konfigurasi global." },
-      { id: "landing", label: "Landing Page", icon: LayoutTemplate, description: "Judul, deskripsi, dan elemen visual halaman publik." },
-      { id: "security", label: "Keamanan", icon: ShieldCheck, description: "Timeout sesi dan penegakan Two-Factor Authentication (2FA)." },
-      { id: "smtp", label: "SMTP (Email)", icon: Mail, description: "Server email, template, dan matriks notifikasi otomatis." },
-      { id: "oauth", label: "OAuth (SSO)", icon: Key, description: "Kredensial Google Single Sign-On." },
-      { id: "guide", label: "Panduan", icon: BookOpen, description: "Konten panduan pelaporan insiden per peran (Markdown)." },
-      { id: "help", label: "Pusat Bantuan", icon: BookOpen, description: "Konten Pusat Bantuan per peran (Markdown) — tampil di menu Bantuan semua pengguna." },
-      { id: "ai_assistant", label: "AI Assistant", icon: Bot, description: "Konfigurasi LLM (NVIDIA NIM / Ollama): aktif, base URL, model, API key (terenkripsi), system prompt." },
+      { id: "general", icon: MonitorSmartphone },
+      { id: "landing", icon: LayoutTemplate },
+      { id: "security", icon: ShieldCheck },
+      { id: "smtp", icon: Mail },
+      { id: "oauth", icon: Key },
+      { id: "guide", icon: BookOpen },
+      { id: "help", icon: BookOpen },
+      { id: "ai_assistant", icon: Bot },
     ],
   },
   {
-    label: "Per Modul",
+    key: "perModule",
     items: [
-      { id: "academic", label: "Akademik", icon: GraduationCap, description: "Tahun ajaran, semester, dan kebijakan akademik." },
-      { id: "assessment", label: "Penilaian", icon: Scale, description: "Bobot komponen nilai (Logbook/Mini-CEX/DOPS/CBD) dan rentang nilai huruf." },
-      { id: "clinical", label: "Klinis & Logbook", icon: Stethoscope, description: "Batas pengisian dan auto-verifikasi logbook klinis." },
-      { id: "attendance", label: "Presensi", icon: MapPin, description: "Geofence GPS, radius default, ambang terlambat, dan deteksi anomali." },
-      { id: "finance", label: "Keuangan", icon: Landmark, description: "Tarif honorarium dan siklus penagihan rumah sakit." },
+      { id: "academic", icon: GraduationCap },
+      { id: "assessment", icon: Scale },
+      { id: "clinical", icon: Stethoscope },
+      { id: "attendance", icon: MapPin },
+      { id: "finance", icon: Landmark },
     ],
   },
 ];
 
 const ALL_CATEGORIES: Category[] = SECTIONS.flatMap((s) => s.items);
+
+// Kejadian pada matriks notifikasi SMTP (urutan tampil). Label via i18n: settingsMain.matrixLabels.*
+const MATRIX_KEYS = [
+  "new_account",
+  "reset_password",
+  "logbook_verified",
+  "rotation_assigned",
+  "grade_published",
+  "finance_billing",
+  "incident_reported",
+  "incident_status_updated",
+  "consultation_submitted",
+  "consultation_responded",
+];
+
+// Kolom yang bisa dicek per kejadian (untuk aturan bersyarat).
+// Hanya kolom yang BENAR-BENAR dikirim sebagai konteks oleh pemicunya.
+// Tambahkan di sini saat modul lain mulai mengirim konteks tambahan.
+// Label kolom via i18n: settingsMain.triggerFields.*
+const EVENT_TRIGGER_FIELDS: Record<string, string[]> = {
+  incident_reported: ["incident_type"],
+  incident_status_updated: ["status"],
+  consultation_submitted: ["category"],
+  consultation_responded: ["category"],
+};
 
 // Settings that exist in the DB but whose feature is not yet enforced by the backend.
 // Shown with a "Belum aktif" badge so the Super Admin is not misled.
@@ -91,6 +116,7 @@ const INACTIVE_KEYS = [
 ];
 
 export function SettingsClient() {
+  const t = useTranslations("settingsMain");
   const [settings, setSettings] = useState<Setting[]>([]);
   const [files, setFiles] = useState<Record<string, File>>({});
   const [loading, setLoading] = useState(true);
@@ -113,21 +139,30 @@ export function SettingsClient() {
       setTriggerRefs({
         incident_type: pick(incidentTypes),
         category: pick(consultationCategories),
-        status: [
-          { value: "submitted", name: "Laporan Masuk" },
-          { value: "investigating", name: "Investigasi" },
-          { value: "resolved", name: "Selesai" },
-        ],
       });
     });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- sekali saat mount
   }, []);
+
+  // Status laporan bukan system_reference (enum workflow) → labelnya dari katalog i18n.
+  const triggerOptions = useMemo<Record<string, { value: string; name: string }[]>>(
+    () => ({
+      ...triggerRefs,
+      status: [
+        { value: "submitted", name: t("statusSubmitted") },
+        { value: "investigating", name: t("statusInvestigating") },
+        { value: "resolved", name: t("statusResolved") },
+      ],
+    }),
+    [triggerRefs, t]
+  );
 
   const fetchSettings = async () => {
     try {
       const { data } = await api.get("/api/settings");
       setSettings(data);
     } catch (err) {
-      toast.error("Gagal memuat pengaturan.");
+      toast.error(t("loadError"));
     } finally {
       setLoading(false);
     }
@@ -156,7 +191,7 @@ export function SettingsClient() {
       await api.post("/api/settings", formData, {
         headers: { "Content-Type": "multipart/form-data" }
       });
-      toast.success("Pengaturan berhasil disimpan. Perubahan mungkin membutuhkan refresh untuk terlihat penuh.");
+      toast.success(t("saveSuccess"));
 
       // Update global CSS var if primary_color changed
       const primaryColor = settings.find(s => s.key === "primary_color")?.value;
@@ -164,7 +199,7 @@ export function SettingsClient() {
         document.documentElement.style.setProperty("--primary", primaryColor);
       }
     } catch (err) {
-      toast.error("Gagal menyimpan pengaturan.");
+      toast.error(t("saveError"));
     } finally {
       setSaving(false);
     }
@@ -188,7 +223,7 @@ export function SettingsClient() {
             checked={setting.value === "true"}
             onCheckedChange={(val) => handleChange(setting.key, val)}
           />
-          <span className="text-sm text-muted-foreground">Aktifkan</span>
+          <span className="text-sm text-muted-foreground">{t("enable")}</span>
         </div>
       );
     }
@@ -214,14 +249,14 @@ export function SettingsClient() {
             onChange={(e) => { if (e.target.value !== "__custom__") handleChange(setting.key, e.target.value); }}
             className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm"
           >
-            {isFallback && <option value="">— Tidak ada (nonaktif) —</option>}
+            {isFallback && <option value="">{t("aiNoneOption")}</option>}
             {presets.map((m) => <option key={m} value={m}>{m}</option>)}
-            <option value="__custom__">Custom / model id lain…</option>
+            <option value="__custom__">{t("aiCustomOption")}</option>
           </select>
           <Input
             value={value}
             onChange={(e) => handleChange(setting.key, e.target.value)}
-            placeholder="atau tempel model id persis dari build.nvidia.com"
+            placeholder={t("aiModelPlaceholder")}
           />
         </div>
       );
@@ -275,8 +310,8 @@ export function SettingsClient() {
           onChange={(e) => handleChange(setting.key, e.target.value)}
           className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
         >
-          <option value="acms_default">ACMS Full System (Default)</option>
-          <option value="incident_reporting">Sistem Pelaporan Insiden Khusus</option>
+          <option value="acms_default">{t("templateAcmsDefault")}</option>
+          <option value="incident_reporting">{t("templateIncident")}</option>
         </select>
       );
     }
@@ -286,7 +321,7 @@ export function SettingsClient() {
         <Textarea
           value={setting.value || ""}
           onChange={(e) => handleChange(setting.key, e.target.value)}
-          placeholder={`Masukkan ${setting.key}`}
+          placeholder={t("enterPlaceholder", { key: setting.key })}
           rows={4}
         />
       );
@@ -298,7 +333,7 @@ export function SettingsClient() {
           type="password"
           value={setting.value || ""}
           onChange={(e) => handleChange(setting.key, e.target.value)}
-          placeholder={`Masukkan ${setting.key}`}
+          placeholder={t("enterPlaceholder", { key: setting.key })}
         />
       );
     }
@@ -314,12 +349,10 @@ export function SettingsClient() {
             autoComplete="off"
             value={isSet ? "" : (setting.value || "")}
             onChange={(e) => handleChange(setting.key, e.target.value)}
-            placeholder={isSet ? "•••••••••• (tersimpan)" : "Tempel API key (mis. nvapi-...)"}
+            placeholder={isSet ? t("secretSavedPlaceholder") : t("secretPlaceholder")}
           />
           <p className="text-xs text-muted-foreground">
-            {isSet
-              ? "✓ Key tersimpan & terenkripsi. Biarkan kosong untuk mempertahankan, atau ketik untuk mengganti."
-              : "Disimpan terenkripsi di server; tidak pernah ditampilkan kembali ke browser."}
+            {isSet ? t("secretSavedHint") : t("secretHint")}
           </p>
         </div>
       );
@@ -355,23 +388,23 @@ export function SettingsClient() {
               </Button>
               <div className="grid grid-cols-2 gap-3 mr-8">
                 <div className="space-y-1">
-                  <label className="text-xs text-muted-foreground">Nama Kontak / Divisi</label>
-                  <Input value={contact.name || ''} onChange={(e) => updateContact(idx, 'name', e.target.value)} className="h-8 text-sm" placeholder="Contoh: Pusat Bantuan Psikologi" />
+                  <label className="text-xs text-muted-foreground">{t("contactName")}</label>
+                  <Input value={contact.name || ''} onChange={(e) => updateContact(idx, 'name', e.target.value)} className="h-8 text-sm" placeholder={t("contactNamePlaceholder")} />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-xs text-muted-foreground">Peran / Deskripsi Singkat</label>
-                  <Input value={contact.role || ''} onChange={(e) => updateContact(idx, 'role', e.target.value)} className="h-8 text-sm" placeholder="Contoh: Dukungan Mental" />
+                  <label className="text-xs text-muted-foreground">{t("contactRole")}</label>
+                  <Input value={contact.role || ''} onChange={(e) => updateContact(idx, 'role', e.target.value)} className="h-8 text-sm" placeholder={t("contactRolePlaceholder")} />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-xs text-muted-foreground">Nomor Telepon</label>
-                  <Input value={contact.phone || ''} onChange={(e) => updateContact(idx, 'phone', e.target.value)} className="h-8 text-sm" placeholder="Contoh: 119 atau +62..." />
+                  <label className="text-xs text-muted-foreground">{t("contactPhone")}</label>
+                  <Input value={contact.phone || ''} onChange={(e) => updateContact(idx, 'phone', e.target.value)} className="h-8 text-sm" placeholder={t("contactPhonePlaceholder")} />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-xs text-muted-foreground">Email</label>
-                  <Input value={contact.email || ''} onChange={(e) => updateContact(idx, 'email', e.target.value)} className="h-8 text-sm" placeholder="Contoh: help@acms.edu" />
+                  <label className="text-xs text-muted-foreground">{t("contactEmail")}</label>
+                  <Input value={contact.email || ''} onChange={(e) => updateContact(idx, 'email', e.target.value)} className="h-8 text-sm" placeholder={t("contactEmailPlaceholder")} />
                 </div>
                 <div className="space-y-1 col-span-2">
-                  <label className="text-xs text-muted-foreground">Link Eksternal (Opsional, cth: link WhatsApp)</label>
+                  <label className="text-xs text-muted-foreground">{t("contactLink")}</label>
                   <Input value={contact.link || ''} onChange={(e) => updateContact(idx, 'link', e.target.value)} className="h-8 text-sm" placeholder="https://wa.me/..." />
                 </div>
               </div>
@@ -386,7 +419,7 @@ export function SettingsClient() {
               handleChange(setting.key, JSON.stringify(newData));
             }}
           >
-            <Plus className="w-3 h-3 mr-1" /> Tambah Kontak Baru
+            <Plus className="w-3 h-3 mr-1" /> {t("addContact")}
           </Button>
         </div>
       );
@@ -409,12 +442,12 @@ export function SettingsClient() {
           {linksData.map((link, idx) => (
             <div key={idx} className="flex items-end gap-2 border rounded-md p-3 bg-slate-50/50 dark:bg-slate-900/50">
               <div className="space-y-1 flex-1">
-                <label className="text-xs text-muted-foreground">Label</label>
-                <Input value={link.label || ''} onChange={(e) => updateLink(idx, 'label', e.target.value)} className="h-8 text-sm" placeholder="Cth: Kebijakan Privasi" />
+                <label className="text-xs text-muted-foreground">{t("linkLabel")}</label>
+                <Input value={link.label || ''} onChange={(e) => updateLink(idx, 'label', e.target.value)} className="h-8 text-sm" placeholder={t("linkLabelPlaceholder")} />
               </div>
               <div className="space-y-1 flex-1">
-                <label className="text-xs text-muted-foreground">URL / Tautan</label>
-                <Input value={link.url || ''} onChange={(e) => updateLink(idx, 'url', e.target.value)} className="h-8 text-sm font-mono" placeholder="/safety/sop atau https://..." />
+                <label className="text-xs text-muted-foreground">{t("linkUrl")}</label>
+                <Input value={link.url || ''} onChange={(e) => updateLink(idx, 'url', e.target.value)} className="h-8 text-sm font-mono" placeholder={t("linkUrlPlaceholder")} />
               </div>
               <Button
                 variant="ghost"
@@ -436,7 +469,7 @@ export function SettingsClient() {
             className="w-full text-xs border-dashed"
             onClick={() => handleChange(setting.key, JSON.stringify([...linksData, { label: '', url: '' }]))}
           >
-            <Plus className="w-3 h-3 mr-1" /> Tambah Tautan
+            <Plus className="w-3 h-3 mr-1" /> {t("addLink")}
           </Button>
         </div>
       );
@@ -472,12 +505,12 @@ export function SettingsClient() {
               </Button>
               <div className="space-y-2 mr-8">
                 <div className="space-y-1">
-                  <label className="text-xs text-muted-foreground">Judul Kategori</label>
-                  <Input value={card.title || ''} onChange={(e) => updateCard(idx, 'title', e.target.value)} className="h-8 text-sm" placeholder="Cth: Patient Safety" />
+                  <label className="text-xs text-muted-foreground">{t("cardTitle")}</label>
+                  <Input value={card.title || ''} onChange={(e) => updateCard(idx, 'title', e.target.value)} className="h-8 text-sm" placeholder={t("cardTitlePlaceholder")} />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-xs text-muted-foreground">Deskripsi</label>
-                  <Textarea value={card.description || ''} onChange={(e) => updateCard(idx, 'description', e.target.value)} rows={2} className="text-sm" placeholder="Deskripsi singkat kategori ini" />
+                  <label className="text-xs text-muted-foreground">{t("cardDesc")}</label>
+                  <Textarea value={card.description || ''} onChange={(e) => updateCard(idx, 'description', e.target.value)} rows={2} className="text-sm" placeholder={t("cardDescPlaceholder")} />
                 </div>
               </div>
             </div>
@@ -488,7 +521,7 @@ export function SettingsClient() {
             className="w-full text-xs border-dashed"
             onClick={() => handleChange(setting.key, JSON.stringify([...cardsData, { title: '', description: '' }]))}
           >
-            <Plus className="w-3 h-3 mr-1" /> Tambah Kategori
+            <Plus className="w-3 h-3 mr-1" /> {t("addCard")}
           </Button>
         </div>
       );
@@ -524,12 +557,12 @@ export function SettingsClient() {
               </Button>
               <div className="space-y-2 mr-8">
                 <div className="space-y-1">
-                  <label className="text-xs text-muted-foreground">Pertanyaan</label>
-                  <Input value={faq.question || ''} onChange={(e) => updateFaq(idx, 'question', e.target.value)} className="h-8 text-sm" placeholder="Cth: Apakah identitas saya aman?" />
+                  <label className="text-xs text-muted-foreground">{t("faqQuestion")}</label>
+                  <Input value={faq.question || ''} onChange={(e) => updateFaq(idx, 'question', e.target.value)} className="h-8 text-sm" placeholder={t("faqQuestionPlaceholder")} />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-xs text-muted-foreground">Jawaban</label>
-                  <Textarea value={faq.answer || ''} onChange={(e) => updateFaq(idx, 'answer', e.target.value)} rows={3} className="text-sm" placeholder="Jawaban atas pertanyaan ini" />
+                  <label className="text-xs text-muted-foreground">{t("faqAnswer")}</label>
+                  <Textarea value={faq.answer || ''} onChange={(e) => updateFaq(idx, 'answer', e.target.value)} rows={3} className="text-sm" placeholder={t("faqAnswerPlaceholder")} />
                 </div>
               </div>
             </div>
@@ -540,7 +573,7 @@ export function SettingsClient() {
             className="w-full text-xs border-dashed"
             onClick={() => handleChange(setting.key, JSON.stringify([...faqData, { question: '', answer: '' }]))}
           >
-            <Plus className="w-3 h-3 mr-1" /> Tambah Pertanyaan
+            <Plus className="w-3 h-3 mr-1" /> {t("addFaq")}
           </Button>
         </div>
       );
@@ -552,19 +585,6 @@ export function SettingsClient() {
         matrixData = JSON.parse(setting.value || "{}");
       } catch (e) {}
 
-      const labels: Record<string, string> = {
-        new_account: "Akun Baru Dibuat",
-        reset_password: "Permintaan Reset Password",
-        logbook_verified: "Status Logbook Diverifikasi",
-        rotation_assigned: "Jadwal Rotasi Klinis Baru",
-        grade_published: "Nilai Ujian / Stase Diterbitkan",
-        finance_billing: "Tagihan Keuangan Baru",
-        incident_reported: "Pelaporan Insiden Baru",
-        incident_status_updated: "Status Laporan Insiden Diperbarui (ke pelapor)",
-        consultation_submitted: "Konsultasi Baru Masuk",
-        consultation_responded: "Konsultasi Dibalas (ke pengaju)"
-      };
-
       const updateMatrixNode = (key: string, field: string, value: unknown) => {
         const newData = { ...matrixData };
         if (!newData[key]) newData[key] = { enabled: false, cc_emails: '', notify_roles: [], conditional_rules: [] };
@@ -572,33 +592,27 @@ export function SettingsClient() {
         handleChange(setting.key, JSON.stringify(newData));
       };
 
-      // Kolom yang bisa dicek per kejadian (untuk aturan bersyarat).
-      // Hanya kolom yang BENAR-BENAR dikirim sebagai konteks oleh pemicunya.
-      // Tambahkan di sini saat modul lain mulai mengirim konteks tambahan.
-      const eventTriggerFields: Record<string, { field: string; label: string }[]> = {
-        incident_reported: [{ field: 'incident_type', label: 'Jenis Insiden' }],
-        incident_status_updated: [{ field: 'status', label: 'Status Laporan' }],
-        consultation_submitted: [{ field: 'category', label: 'Kategori Konsultasi' }],
-        consultation_responded: [{ field: 'category', label: 'Kategori Konsultasi' }],
-      };
-
       return (
         <div className="space-y-4 pt-2">
           {/* Panduan singkat */}
           <div className="rounded-md border border-blue-200 bg-blue-50 dark:border-blue-900 dark:bg-blue-950/30 p-3 text-xs text-blue-900 dark:text-blue-200 space-y-1.5">
-            <p className="font-semibold">Cara mengisi:</p>
-            <p>1. <strong>Centang</strong> kejadian yang ingin memicu email otomatis.</p>
-            <p>2. Tentukan penerimanya:</p>
+            <p className="font-semibold">{t("guideHow")}</p>
+            <p>{t.rich("guideStep1", { b: (c) => <strong>{c}</strong> })}</p>
+            <p>{t("guideStep2")}</p>
             <ul className="list-disc pl-5 space-y-0.5">
-              <li><strong>Kirim ke Peran</strong> — semua pengguna dengan peran itu (mis. semua &quot;Kaprodi&quot;).</li>
-              <li><strong>Email Manual (CC)</strong> — alamat email tertentu di luar peran (mis. komite/satgas).</li>
+              <li>{t.rich("guideBullet1", { b: (c) => <strong>{c}</strong> })}</li>
+              <li>{t.rich("guideBullet2", { b: (c) => <strong>{c}</strong> })}</li>
             </ul>
-            <p className="text-blue-700/80 dark:text-blue-300/80">Untuk notifikasi yang ditujukan ke pelapor/pengaju (mis. &quot;Status Diperbarui&quot;, &quot;Konsultasi Dibalas&quot;), orang tersebut sudah otomatis menerima — daftar di sini adalah penerima <em>tambahan</em>.</p>
+            <p className="text-blue-700/80 dark:text-blue-300/80">{t.rich("guideNote", { em: (c) => <em>{c}</em> })}</p>
           </div>
 
-          {Object.entries(labels).map(([key, label]) => {
+          {MATRIX_KEYS.map((key) => {
+            const label = t(`matrixLabels.${key}`);
             const dataNode = matrixData[key] || { enabled: false, cc_emails: '', notify_roles: [], conditional_rules: [] };
-            const fieldOptions = eventTriggerFields[key] ?? [];
+            const fieldOptions = (EVENT_TRIGGER_FIELDS[key] ?? []).map((field) => ({
+              field,
+              label: t(`triggerFields.${field}`),
+            }));
             const defaultTriggerField = fieldOptions[0]?.field ?? '';
 
             return (
@@ -609,43 +623,46 @@ export function SettingsClient() {
                     onCheckedChange={(checked) => updateMatrixNode(key, 'enabled', !!checked)}
                   />
                   <span className="font-semibold text-sm">{label}</span>
-                  {!dataNode.enabled && <span className="text-[10px] text-muted-foreground">(nonaktif)</span>}
+                  {!dataNode.enabled && <span className="text-[10px] text-muted-foreground">{t("matrixInactive")}</span>}
                 </div>
 
                 {dataNode.enabled && (
                   <div className="ml-7 mt-3 space-y-3 border-l-2 pl-3 pb-1 border-primary/20">
                     <div className="space-y-1">
-                      <label className="text-xs font-medium">Kirim ke Peran (Role)</label>
+                      <label className="text-xs font-medium">{t("sendToRole")}</label>
                       <Input
                         value={(dataNode.notify_roles || []).join(', ')}
                         onChange={(e) => updateMatrixNode(key, 'notify_roles', e.target.value.split(',').map((r: string) => r.trim()).filter((r: string) => r))}
-                        placeholder="Kaprodi, Super Admin"
+                        placeholder={t("rolePlaceholder")}
                         className="h-8 text-sm"
                       />
-                      <p className="text-[11px] text-muted-foreground">Semua pengguna dengan peran ini akan menerima email. Pisahkan beberapa peran dengan koma. Tulis persis nama perannya (lihat halaman Hak Akses/RBAC).</p>
+                      <p className="text-[11px] text-muted-foreground">{t("roleHelp")}</p>
                     </div>
                     <div className="space-y-1">
-                      <label className="text-xs font-medium">Kirim ke Email Manual (CC)</label>
+                      <label className="text-xs font-medium">{t("sendToCc")}</label>
                       <Input
                         value={dataNode.cc_emails || ''}
                         onChange={(e) => updateMatrixNode(key, 'cc_emails', e.target.value)}
-                        placeholder="admin@acms.edu, dekan@acms.edu"
+                        placeholder={t("ccPlaceholder")}
                         className="h-8 text-sm"
                       />
-                      <p className="text-[11px] text-muted-foreground">Alamat email tertentu (opsional). Pisahkan dengan koma. Boleh dikosongkan.</p>
+                      <p className="text-[11px] text-muted-foreground">{t("ccHelp")}</p>
                     </div>
 
                     {/* Aturan bersyarat (lanjutan, disembunyikan secara default) */}
                     <details className="bg-white dark:bg-slate-950 rounded border mt-1">
                       <summary className="text-xs font-semibold cursor-pointer p-2 select-none">
-                        Pengaturan Lanjutan: Aturan Bersyarat (opsional)
+                        {t("advancedTitle")}
                       </summary>
                       <div className="p-2 pt-0 space-y-2">
                         <p className="text-[11px] text-muted-foreground">
-                          Tambahkan penerima ekstra <strong>hanya jika</strong> sebuah kolom bernilai tertentu.
-                          Contoh: kirim CC ke <span className="font-mono">satgas@acms.edu</span> hanya bila <span className="font-mono">{fieldOptions[0]?.label ?? 'kolom tertentu'}</span> = <span className="font-mono">bullying</span>.
-                          {fieldOptions.length === 0 && " (Kejadian ini belum menyediakan kolom untuk dicek.)"}
-                          {" "}Lewati bagian ini jika tidak diperlukan.
+                          {t.rich("condHelp", {
+                            field: fieldOptions[0]?.label ?? t("condFieldFallback"),
+                            b: (c) => <strong>{c}</strong>,
+                            mono: (c) => <span className="font-mono">{c}</span>,
+                          })}
+                          {fieldOptions.length === 0 && t("condNoField")}
+                          {t("condSkip")}
                         </p>
                         <div className="flex justify-end">
                           <Button
@@ -659,13 +676,13 @@ export function SettingsClient() {
                               updateMatrixNode(key, 'conditional_rules', rules);
                             }}
                           >
-                            <Plus className="w-3 h-3 mr-1" /> Tambah Aturan
+                            <Plus className="w-3 h-3 mr-1" /> {t("addRule")}
                           </Button>
                         </div>
 
                         {(dataNode.conditional_rules || []).length === 0 ? (
                           <div className="text-[10px] text-muted-foreground text-center py-2 italic border-dashed border rounded">
-                            Belum ada aturan bersyarat.
+                            {t("noRules")}
                           </div>
                         ) : (
                           (dataNode.conditional_rules || []).map((rule: MatrixRule, idx: number) => (
@@ -684,7 +701,7 @@ export function SettingsClient() {
                               </Button>
 
                               <div>
-                                <label className="text-[10px] text-muted-foreground">Kolom yang Dicek</label>
+                                <label className="text-[10px] text-muted-foreground">{t("fieldChecked")}</label>
                                 {fieldOptions.length > 0 ? (
                                   <Select
                                     value={rule.trigger_field || ""}
@@ -696,7 +713,7 @@ export function SettingsClient() {
                                     }}
                                   >
                                     <SelectTrigger className="h-6 text-xs px-1 mt-1">
-                                      <SelectValue placeholder="Pilih kolom..." />
+                                      <SelectValue placeholder={t("selectField")} />
                                     </SelectTrigger>
                                     <SelectContent>
                                       {fieldOptions.map((f) => (
@@ -718,8 +735,8 @@ export function SettingsClient() {
                                 )}
                               </div>
                               <div>
-                                <label className="text-[10px] text-muted-foreground">Nilai Pemicu</label>
-                                {(triggerRefs[rule.trigger_field ?? ""] && triggerRefs[rule.trigger_field ?? ""].length > 0) ? (
+                                <label className="text-[10px] text-muted-foreground">{t("triggerValue")}</label>
+                                {(triggerOptions[rule.trigger_field ?? ""] && triggerOptions[rule.trigger_field ?? ""].length > 0) ? (
                                   <Select
                                     value={rule.trigger_value || ""}
                                     onValueChange={(v) => {
@@ -729,10 +746,10 @@ export function SettingsClient() {
                                     }}
                                   >
                                     <SelectTrigger className="h-6 text-xs px-1 mt-1">
-                                      <SelectValue placeholder="Pilih nilai..." />
+                                      <SelectValue placeholder={t("selectValue")} />
                                     </SelectTrigger>
                                     <SelectContent>
-                                      {triggerRefs[rule.trigger_field ?? ""].map((opt) => (
+                                      {triggerOptions[rule.trigger_field ?? ""].map((opt) => (
                                         <SelectItem key={opt.value} value={opt.value}>{opt.name}</SelectItem>
                                       ))}
                                     </SelectContent>
@@ -751,7 +768,7 @@ export function SettingsClient() {
                                 )}
                               </div>
                               <div className="col-span-2">
-                                <label className="text-[10px] text-muted-foreground">CC Email Tambahan (bila kondisi terpenuhi)</label>
+                                <label className="text-[10px] text-muted-foreground">{t("additionalCc")}</label>
                                 <Input
                                   value={rule.additional_cc}
                                   onChange={(e) => {
@@ -782,7 +799,7 @@ export function SettingsClient() {
         type={setting.type === "integer" ? "number" : "text"}
         value={setting.value || ""}
         onChange={(e) => handleChange(setting.key, e.target.value)}
-        placeholder={`Masukkan ${setting.key}`}
+        placeholder={t("enterPlaceholder", { key: setting.key })}
       />
     );
   };
@@ -806,9 +823,9 @@ export function SettingsClient() {
               {INACTIVE_KEYS.includes(setting.key) && (
                 <span
                   className="shrink-0 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-medium text-amber-700 dark:bg-amber-900/40 dark:text-amber-300"
-                  title="Pengaturan ini tersimpan namun fiturnya belum ditegakkan oleh sistem."
+                  title={t("inactiveTitle")}
                 >
-                  Belum aktif
+                  {t("inactiveBadge")}
                 </span>
               )}
             </div>
@@ -859,8 +876,8 @@ export function SettingsClient() {
       <Card className="max-w-2xl mx-auto mt-10">
         <CardContent className="p-10 text-center">
           <ShieldCheck className="w-16 h-16 mx-auto text-muted-foreground mb-4 opacity-20" />
-          <h2 className="text-xl font-bold mb-2">Akses Ditolak</h2>
-          <p className="text-muted-foreground">Anda tidak memiliki izin untuk mengakses halaman Pengaturan Sistem.</p>
+          <h2 className="text-xl font-bold mb-2">{t("accessDenied")}</h2>
+          <p className="text-muted-foreground">{t("accessDeniedDesc")}</p>
         </CardContent>
       </Card>
     );
@@ -875,16 +892,16 @@ export function SettingsClient() {
             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
               className="pl-8"
-              placeholder="Cari pengaturan…"
+              placeholder={t("searchPlaceholder")}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
           </div>
           <div className="flex items-center justify-between gap-3 sm:justify-end">
-            <p className="hidden text-xs text-muted-foreground md:block">Semua perubahan disimpan bersamaan.</p>
+            <p className="hidden text-xs text-muted-foreground md:block">{t("saveHint")}</p>
             <Button onClick={handleSave} disabled={saving} className="shadow-sm">
               {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-              Simpan Semua
+              {t("saveAll")}
             </Button>
           </div>
         </div>
@@ -893,7 +910,7 @@ export function SettingsClient() {
       {/* Mobile category dropdown (hidden while searching) */}
       {!isSearching && (
         <div className="mb-4 lg:hidden">
-          <label className="mb-1 block text-xs font-medium text-muted-foreground">Kategori Pengaturan</label>
+          <label className="mb-1 block text-xs font-medium text-muted-foreground">{t("mobileCategoryLabel")}</label>
           <select
             value={active}
             onChange={(e) => setActive(e.target.value)}
@@ -903,10 +920,10 @@ export function SettingsClient() {
               const items = section.items.filter((c) => countFor(c.id) > 0);
               if (items.length === 0) return null;
               return (
-                <optgroup key={section.label} label={section.label}>
+                <optgroup key={section.key} label={t(`sections.${section.key}`)}>
                   {items.map((cat) => (
                     <option key={cat.id} value={cat.id}>
-                      {cat.label} ({countFor(cat.id)})
+                      {t(`categories.${cat.id}.label`)} ({countFor(cat.id)})
                     </option>
                   ))}
                 </optgroup>
@@ -925,9 +942,9 @@ export function SettingsClient() {
                 const items = section.items.filter((c) => countFor(c.id) > 0);
                 if (items.length === 0) return null;
                 return (
-                  <div key={section.label}>
+                  <div key={section.key}>
                     <p className="mb-2 px-3 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                      {section.label}
+                      {t(`sections.${section.key}`)}
                     </p>
                     <nav className="space-y-1">
                       {items.map((cat) => {
@@ -944,7 +961,7 @@ export function SettingsClient() {
                             }`}
                           >
                             <Icon className="h-4 w-4 shrink-0" />
-                            <span className="flex-1 text-left">{cat.label}</span>
+                            <span className="flex-1 text-left">{t(`categories.${cat.id}.label`)}</span>
                             <span
                               className={`rounded-full px-1.5 py-0.5 text-[10px] ${
                                 isActive ? "bg-primary-foreground/20" : "bg-muted-foreground/10 text-muted-foreground"
@@ -970,24 +987,24 @@ export function SettingsClient() {
               <CardTitle className="flex items-center gap-2">
                 {isSearching ? (
                   <>
-                    <Search className="h-5 w-5 text-primary" /> Hasil Pencarian
+                    <Search className="h-5 w-5 text-primary" /> {t("searchResults")}
                   </>
                 ) : (
                   <>
-                    <activeMeta.icon className="h-5 w-5 text-primary" /> {activeMeta.label}
+                    <activeMeta.icon className="h-5 w-5 text-primary" /> {t(`categories.${activeMeta.id}.label`)}
                   </>
                 )}
               </CardTitle>
               <CardDescription>
                 {isSearching
-                  ? `Menampilkan ${visible.length} pengaturan yang cocok dengan "${search}".`
-                  : activeMeta.description}
+                  ? t("searchDesc", { count: visible.length, query: search })
+                  : t(`categories.${activeMeta.id}.description`)}
               </CardDescription>
             </CardHeader>
             <CardContent>
               {visible.length === 0 ? (
                 <div className="py-12 text-center text-sm text-muted-foreground">
-                  {isSearching ? "Tidak ada pengaturan yang cocok." : "Tidak ada pengaturan untuk kategori ini."}
+                  {isSearching ? t("noMatch") : t("noCategorySettings")}
                 </div>
               ) : (
                 renderSettingsGrid(visible)

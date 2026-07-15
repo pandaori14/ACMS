@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useTranslations } from "next-intl";
 import {
   Table,
   TableBody,
@@ -80,6 +81,8 @@ function formatDate(value: string | null): string {
 }
 
 export default function AuditLogsClient() {
+  const t = useTranslations("settingsAuditLogs");
+  const tc = useTranslations("common");
   const [logs, setLogs] = useState<AuditLog[]>([]);
   const [meta, setMeta] = useState<PaginationMeta>({ current_page: 1, last_page: 1, total: 0 });
   const [isLoading, setIsLoading] = useState(true);
@@ -115,14 +118,14 @@ export default function AuditLogsClient() {
     } catch (error: unknown) {
       const status = (error as { response?: { status?: number } })?.response?.status;
       if (status === 403) {
-        toast.error("Anda tidak memiliki izin untuk melihat audit trail.");
+        toast.error(t("forbidden"));
       } else {
-        toast.error("Gagal memuat audit trail.");
+        toast.error(t("loadError"));
       }
     } finally {
       setIsLoading(false);
     }
-  }, [page, q, from, to]);
+  }, [page, q, from, to, t]);
 
   useEffect(() => {
     fetchLogs();
@@ -139,27 +142,27 @@ export default function AuditLogsClient() {
       {/* Filters */}
       <form onSubmit={handleSearch} className="flex flex-wrap items-end gap-3">
         <div className="flex-1 min-w-[220px] space-y-1">
-          <label className="text-xs font-medium text-muted-foreground">Cari aksi / target</label>
+          <label className="text-xs font-medium text-muted-foreground">{t("searchLabel")}</label>
           <div className="relative">
             <Search className="absolute left-2.5 top-2.5 w-4 h-4 text-muted-foreground" />
             <Input
               className="pl-8"
-              placeholder="contoh: grade.stase.adjusted"
+              placeholder={t("searchPlaceholder")}
               value={q}
               onChange={(e) => setQ(e.target.value)}
             />
           </div>
         </div>
         <div className="space-y-1">
-          <label className="text-xs font-medium text-muted-foreground">Dari tanggal</label>
+          <label className="text-xs font-medium text-muted-foreground">{t("fromDate")}</label>
           <Input type="date" value={from} onChange={(e) => setFrom(e.target.value)} />
         </div>
         <div className="space-y-1">
-          <label className="text-xs font-medium text-muted-foreground">Sampai tanggal</label>
+          <label className="text-xs font-medium text-muted-foreground">{t("toDate")}</label>
           <Input type="date" value={to} onChange={(e) => setTo(e.target.value)} />
         </div>
         <Button type="submit">
-          <Search className="w-4 h-4 mr-2" /> Terapkan
+          <Search className="w-4 h-4 mr-2" /> {t("apply")}
         </Button>
       </form>
 
@@ -167,12 +170,12 @@ export default function AuditLogsClient() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="w-[170px]">Waktu</TableHead>
-              <TableHead>Aksi</TableHead>
-              <TableHead>Aktor</TableHead>
-              <TableHead>Target</TableHead>
-              <TableHead className="w-[130px]">IP</TableHead>
-              <TableHead className="text-right w-[80px]">Detail</TableHead>
+              <TableHead className="w-[170px]">{t("colTime")}</TableHead>
+              <TableHead>{t("colAction")}</TableHead>
+              <TableHead>{t("colActor")}</TableHead>
+              <TableHead>{t("colTarget")}</TableHead>
+              <TableHead className="w-[130px]">{t("colIp")}</TableHead>
+              <TableHead className="text-right w-[80px]">{t("colDetail")}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -185,7 +188,7 @@ export default function AuditLogsClient() {
             ) : logs.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={6} className="text-center h-32 text-muted-foreground">
-                  Belum ada catatan audit.
+                  {t("empty")}
                 </TableCell>
               </TableRow>
             ) : (
@@ -206,7 +209,7 @@ export default function AuditLogsClient() {
                         )}
                       </div>
                     ) : (
-                      <span className="text-xs text-muted-foreground italic">Sistem</span>
+                      <span className="text-xs text-muted-foreground italic">{t("system")}</span>
                     )}
                   </TableCell>
                   <TableCell>
@@ -237,7 +240,7 @@ export default function AuditLogsClient() {
       {/* Pagination */}
       <div className="flex items-center justify-between">
         <p className="text-xs text-muted-foreground">
-          Total {meta.total} catatan &middot; Halaman {meta.current_page} dari {meta.last_page}
+          {t("paginationInfo", { total: meta.total, page: meta.current_page, lastPage: meta.last_page })}
         </p>
         <div className="flex gap-2">
           <Button
@@ -246,7 +249,7 @@ export default function AuditLogsClient() {
             disabled={meta.current_page <= 1 || isLoading}
             onClick={() => setPage((p) => Math.max(1, p - 1))}
           >
-            <ChevronLeft className="w-4 h-4" /> Sebelumnya
+            <ChevronLeft className="w-4 h-4" /> {tc("previous")}
           </Button>
           <Button
             variant="outline"
@@ -254,7 +257,7 @@ export default function AuditLogsClient() {
             disabled={meta.current_page >= meta.last_page || isLoading}
             onClick={() => setPage((p) => p + 1)}
           >
-            Berikutnya <ChevronRight className="w-4 h-4" />
+            {tc("next")} <ChevronRight className="w-4 h-4" />
           </Button>
         </div>
       </div>
@@ -265,7 +268,7 @@ export default function AuditLogsClient() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <ShieldCheck className="w-5 h-5 text-blue-700" />
-              Detail Audit
+              {t("detailTitle")}
             </DialogTitle>
             <DialogDescription>
               {selected && (
@@ -277,17 +280,17 @@ export default function AuditLogsClient() {
           {selected && (
             <div className="space-y-4 text-sm">
               <div className="grid grid-cols-2 gap-3">
-                <Field label="Waktu" value={formatDate(selected.created_at)} />
-                <Field label="IP Address" value={selected.ip_address ?? "-"} mono />
-                <Field label="Aktor" value={selected.actor?.name ?? "Sistem"} />
-                <Field label="Peran" value={selected.actor_role ?? "-"} />
-                <Field label="Target" value={selected.target_fqcn ?? "-"} mono />
-                <Field label="Target ID" value={selected.target_id ?? "-"} mono />
+                <Field label={t("fieldTime")} value={formatDate(selected.created_at)} />
+                <Field label={t("fieldIp")} value={selected.ip_address ?? "-"} mono />
+                <Field label={t("fieldActor")} value={selected.actor?.name ?? t("system")} />
+                <Field label={t("fieldRole")} value={selected.actor_role ?? "-"} />
+                <Field label={t("fieldTarget")} value={selected.target_fqcn ?? "-"} mono />
+                <Field label={t("fieldTargetId")} value={selected.target_id ?? "-"} mono />
               </div>
 
-              <PayloadBlock title="State Sebelum (old)" data={selected.old_payload} />
-              <PayloadBlock title="State Sesudah (new)" data={selected.new_payload} />
-              <PayloadBlock title="Metadata" data={selected.metadata} />
+              <PayloadBlock title={t("stateOld")} data={selected.old_payload} />
+              <PayloadBlock title={t("stateNew")} data={selected.new_payload} />
+              <PayloadBlock title={t("metadata")} data={selected.metadata} />
             </div>
           )}
         </DialogContent>

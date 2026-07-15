@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useTranslations } from "next-intl";
 import { getApiErrorMessage } from "@/lib/api-helpers";
 import { 
   Table, 
@@ -35,6 +36,8 @@ type SystemReference = {
 };
 
 export default function ReferencesClient() {
+  const t = useTranslations("settingsReferences");
+  const tc = useTranslations("common");
   const [references, setReferences] = useState<SystemReference[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   
@@ -55,7 +58,7 @@ export default function ReferencesClient() {
       const res = await api.get('/v1/system-references');
       setReferences(res.data);
     } catch {
-      toast.error("Gagal memuat data referensi.");
+      toast.error(t("loadError"));
     } finally {
       setIsLoading(false);
     }
@@ -63,6 +66,7 @@ export default function ReferencesClient() {
 
   useEffect(() => {
     fetchReferences();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- sekali saat mount
   }, []);
 
   const handleOpenDialog = (ref?: SystemReference) => {
@@ -92,47 +96,47 @@ export default function ReferencesClient() {
     try {
       if (editingId) {
         await api.put(`/v1/system-references/${editingId}`, formData);
-        toast.success("Referensi berhasil diperbarui.");
+        toast.success(t("updateSuccess"));
       } else {
         await api.post('/v1/system-references', formData);
-        toast.success("Referensi baru berhasil ditambahkan.");
+        toast.success(t("createSuccess"));
       }
       setIsDialogOpen(false);
       fetchReferences();
     } catch (error) {
-      toast.error(getApiErrorMessage(error, "Gagal menyimpan data."));
+      toast.error(getApiErrorMessage(error, t("saveError")));
     } finally {
       setIsSubmitting(false);
     }
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm("Apakah Anda yakin ingin menghapus referensi ini?")) return;
+    if (!confirm(t("deleteConfirm"))) return;
     try {
       await api.delete(`/v1/system-references/${id}`);
-      toast.success("Referensi berhasil dihapus.");
+      toast.success(t("deleteSuccess"));
       fetchReferences();
     } catch {
-      toast.error("Gagal menghapus data.");
+      toast.error(t("deleteError"));
     }
   };
 
   const handleToggleActive = async (id: string, currentStatus: boolean) => {
     try {
       await api.put(`/v1/system-references/${id}`, { is_active: !currentStatus });
-      toast.success("Status berhasil diperbarui.");
+      toast.success(t("statusSuccess"));
       fetchReferences();
     } catch {
-      toast.error("Gagal memperbarui status.");
+      toast.error(t("statusError"));
     }
   };
 
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
-        <h2 className="text-xl font-semibold">Daftar Referensi Master</h2>
+        <h2 className="text-xl font-semibold">{t("listTitle")}</h2>
         <Button onClick={() => handleOpenDialog()}>
-          <Plus className="w-4 h-4 mr-2" /> Tambah Referensi
+          <Plus className="w-4 h-4 mr-2" /> {t("addRef")}
         </Button>
       </div>
 
@@ -140,11 +144,11 @@ export default function ReferencesClient() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Kategori</TableHead>
-              <TableHead>Nama Tampilan (Name)</TableHead>
-              <TableHead>Nilai Sistem (Value)</TableHead>
-              <TableHead>Status Aktif</TableHead>
-              <TableHead className="text-right">Aksi</TableHead>
+              <TableHead>{t("colCategory")}</TableHead>
+              <TableHead>{t("colName")}</TableHead>
+              <TableHead>{t("colValue")}</TableHead>
+              <TableHead>{t("colActive")}</TableHead>
+              <TableHead className="text-right">{t("colActions")}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -157,7 +161,7 @@ export default function ReferencesClient() {
             ) : references.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={5} className="text-center h-32 text-muted-foreground">
-                  Belum ada data referensi.
+                  {t("empty")}
                 </TableCell>
               </TableRow>
             ) : (
@@ -194,60 +198,60 @@ export default function ReferencesClient() {
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{editingId ? "Edit Referensi" : "Tambah Referensi Baru"}</DialogTitle>
+            <DialogTitle>{editingId ? t("editTitle") : t("addTitle")}</DialogTitle>
             <DialogDescription>
-              Isi formulir di bawah ini untuk mengelola referensi sistem.
+              {t("dialogDesc")}
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="category">Kategori (Category)</Label>
-              <Input 
-                id="category" 
-                placeholder="Contoh: incident_types" 
-                value={formData.category} 
+              <Label htmlFor="category">{t("categoryLabel")}</Label>
+              <Input
+                id="category"
+                placeholder={t("categoryPlaceholder")}
+                value={formData.category}
                 onChange={(e) => setFormData({...formData, category: e.target.value})}
-                required 
+                required
               />
-              <p className="text-xs text-muted-foreground">Kelompok referensi (harus sama untuk item yang sejenis).</p>
+              <p className="text-xs text-muted-foreground">{t("categoryHelp")}</p>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="name">Nama Tampilan (Name)</Label>
-              <Input 
-                id="name" 
-                placeholder="Contoh: Kekerasan Seksual" 
-                value={formData.name} 
+              <Label htmlFor="name">{t("nameLabel")}</Label>
+              <Input
+                id="name"
+                placeholder={t("namePlaceholder")}
+                value={formData.name}
                 onChange={(e) => setFormData({...formData, name: e.target.value})}
-                required 
+                required
               />
-              <p className="text-xs text-muted-foreground">Teks yang akan dibaca oleh *User* di *Dropdown*.</p>
+              <p className="text-xs text-muted-foreground">{t("nameHelp")}</p>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="value">Nilai Sistem (Value)</Label>
-              <Input 
-                id="value" 
-                placeholder="Contoh: sexual_harassment" 
-                value={formData.value} 
+              <Label htmlFor="value">{t("valueLabel")}</Label>
+              <Input
+                id="value"
+                placeholder={t("valuePlaceholder")}
+                value={formData.value}
                 onChange={(e) => setFormData({...formData, value: e.target.value})}
-                required 
+                required
               />
-              <p className="text-xs text-muted-foreground">Nilai unik untuk diolah di *database* (tanpa spasi, gunakan *underscore*).</p>
+              <p className="text-xs text-muted-foreground">{t("valueHelp")}</p>
             </div>
             <div className="flex items-center justify-between pt-2 border-t">
               <div className="space-y-0.5">
-                <Label>Status Aktif</Label>
-                <p className="text-xs text-muted-foreground">Apakah referensi ini dapat dipilih oleh *User*?</p>
+                <Label>{t("activeLabel")}</Label>
+                <p className="text-xs text-muted-foreground">{t("activeHelp")}</p>
               </div>
-              <Switch 
-                checked={formData.is_active} 
+              <Switch
+                checked={formData.is_active}
                 onCheckedChange={(c) => setFormData({...formData, is_active: c})}
               />
             </div>
             <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>Batal</Button>
+              <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>{tc("cancel")}</Button>
               <Button type="submit" disabled={isSubmitting}>
                 {isSubmitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                Simpan
+                {tc("save")}
               </Button>
             </DialogFooter>
           </form>
