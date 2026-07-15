@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { ShieldAlert, ShieldCheck, ChevronLeft } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -13,6 +14,7 @@ export default function SafetyLayout({
 }: {
   children: React.ReactNode;
 }) {
+  const t = useTranslations("safetyPublic");
   const [mounted, setMounted] = useState(false);
   const [landingConfig, setLandingConfig] = useState({
     appName: "ACMS Safety",
@@ -55,7 +57,7 @@ export default function SafetyLayout({
           <div className="flex items-center gap-3">
             <Link href="/" className="flex items-center gap-2 text-slate-500 hover:text-slate-900 transition-colors mr-4">
               <ChevronLeft className="h-5 w-5" />
-              <span className="font-medium text-sm hidden sm:inline">Kembali</span>
+              <span className="font-medium text-sm hidden sm:inline">{t("navBack")}</span>
             </Link>
             <div className="h-6 w-px bg-slate-200 hidden sm:block"></div>
             {landingConfig.appLogo ? (
@@ -67,13 +69,13 @@ export default function SafetyLayout({
             )}
             <div>
               <span className="block font-bold text-sm leading-none text-slate-900 tracking-tight">{landingConfig.appName}</span>
-              <span className="block text-[9px] font-bold tracking-widest text-red-600 uppercase mt-0.5">Incident Reporting</span>
+              <span className="block text-[9px] font-bold tracking-widest text-red-600 uppercase mt-0.5">{t("navReportBadge")}</span>
             </div>
           </div>
           <div className="flex items-center gap-4">
             <Link href="/login">
               <Button className="rounded-full shadow-sm bg-red-600 hover:bg-red-700 h-9 px-5 font-semibold text-xs">
-                Buat Laporan
+                {t("navCreateReport")}
               </Button>
             </Link>
           </div>

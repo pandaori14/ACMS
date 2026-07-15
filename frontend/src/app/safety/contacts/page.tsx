@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import api from "@/lib/api";
 import { AppSetting } from "@/lib/api-helpers";
 import { Loader2, Phone, Mail, ExternalLink, ShieldAlert } from "lucide-react";
@@ -15,6 +16,7 @@ interface EmergencyContact {
 }
 
 export default function ContactsPage() {
+  const t = useTranslations("safetyPublic");
   const [contacts, setContacts] = useState<EmergencyContact[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -44,15 +46,15 @@ export default function ContactsPage() {
         <div className="w-16 h-16 bg-red-100 text-red-600 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-sm">
           <Phone className="h-8 w-8" />
         </div>
-        <h1 className="text-3xl md:text-4xl font-bold text-slate-900 mb-4">Kontak Darurat</h1>
+        <h1 className="text-3xl md:text-4xl font-bold text-slate-900 mb-4">{t("contactsTitle")}</h1>
         <p className="text-slate-500 max-w-2xl mx-auto">
-          Jika Anda berada dalam kondisi darurat atau membutuhkan bantuan segera terkait insiden, silakan hubungi salah satu kontak di bawah ini.
+          {t("contactsSubtitle")}
         </p>
       </div>
 
       {contacts.length === 0 ? (
         <div className="text-center py-10 bg-slate-50 rounded-xl border border-slate-100 text-slate-500">
-          Belum ada kontak darurat yang tersedia.
+          {t("contactsEmpty")}
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

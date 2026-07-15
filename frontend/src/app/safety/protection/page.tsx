@@ -1,12 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import api from "@/lib/api";
 import { AppSetting } from "@/lib/api-helpers";
 import ReactMarkdown from "react-markdown";
 import { Loader2, ShieldCheck } from "lucide-react";
 
 export default function ProtectionPage() {
+  const t = useTranslations("safetyPublic");
   const [content, setContent] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -14,8 +16,9 @@ export default function ProtectionPage() {
     api.get("/api/public-settings").then((res) => {
       const data = res.data;
       const val = data.find((s: AppSetting) => s.key === "incident_witness_protection_content")?.value;
-      setContent(val || "### Dokumen Kebijakan Belum Tersedia");
+      setContent(val || t("protectionUnavailable"));
     }).catch(console.error).finally(() => setLoading(false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- sekali saat mount
   }, []);
 
   if (loading) {
@@ -34,8 +37,8 @@ export default function ProtectionPage() {
             <ShieldCheck className="h-6 w-6" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-slate-900">Perlindungan Saksi & Pelapor</h1>
-            <p className="text-slate-500 text-sm">Kebijakan Whistleblower dan kerahasiaan</p>
+            <h1 className="text-2xl font-bold text-slate-900">{t("protectionTitle")}</h1>
+            <p className="text-slate-500 text-sm">{t("protectionSubtitle")}</p>
           </div>
         </div>
         

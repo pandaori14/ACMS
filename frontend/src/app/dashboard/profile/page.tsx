@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import api from "@/lib/api";
 import { getApiErrorMessage } from "@/lib/api-helpers";
 import { useAuthStore } from "@/store/useAuthStore";
@@ -18,6 +19,8 @@ interface NotificationPref {
 }
 
 export default function ProfilePage() {
+  const t = useTranslations("profilePage");
+  const tc = useTranslations("common");
   const user = useAuthStore((state) => state.user);
   const setUser = useAuthStore((state) => state.setUser);
 
@@ -54,9 +57,9 @@ export default function ProfilePage() {
       await api.put("/api/v1/notification-preferences", {
         preferences: prefs.map((p) => ({ event_type: p.event_type, email_enabled: p.email_enabled })),
       });
-      toast.success("Preferensi notifikasi tersimpan.");
+      toast.success(t("prefsSaved"));
     } catch (err) {
-      toast.error(getApiErrorMessage(err, "Gagal menyimpan preferensi."));
+      toast.error(getApiErrorMessage(err, t("errSavePrefs")));
     } finally {
       setSavingPrefs(false);
     }
@@ -77,7 +80,7 @@ export default function ProfilePage() {
       setSetupData(res.data.data);
       setConfirmCode("");
     } catch (err) {
-      toast.error(getApiErrorMessage(err, "Gagal memulai aktivasi 2FA."));
+      toast.error(getApiErrorMessage(err, t("errStart2fa")));
     } finally {
       setTwoFaBusy(false);
     }
@@ -93,7 +96,7 @@ export default function ProfilePage() {
       setShowRecovery(true); // recovery codes masih di setupData — tampilkan sekali
       if (user) setUser({ ...user, two_factor_enabled: true, must_enable_2fa: false });
     } catch (err) {
-      toast.error(getApiErrorMessage(err, "Kode salah — coba lagi."));
+      toast.error(getApiErrorMessage(err, t("errWrongCode")));
     } finally {
       setTwoFaBusy(false);
     }
@@ -104,14 +107,14 @@ export default function ProfilePage() {
     setTwoFaBusy(true);
     try {
       await api.delete("/api/auth/two-factor", { data: { current_password: disablePassword } });
-      toast.success("2FA dinonaktifkan.");
+      toast.success(t("twoFaDisabled"));
       setTwoFaEnabled(false);
       setSetupData(null);
       setShowRecovery(false);
       setDisablePassword("");
       if (user) setUser({ ...user, two_factor_enabled: false });
     } catch (err) {
-      toast.error(getApiErrorMessage(err, "Gagal menonaktifkan 2FA."));
+      toast.error(getApiErrorMessage(err, t("errDisable2fa")));
     } finally {
       setTwoFaBusy(false);
     }
@@ -120,7 +123,7 @@ export default function ProfilePage() {
   const copyRecovery = () => {
     if (!setupData) return;
     navigator.clipboard.writeText(setupData.recovery_codes.join("\n"));
-    toast.success("Recovery codes disalin.");
+    toast.success(t("recoveryCopied"));
   };
 
   useEffect(() => {
@@ -132,10 +135,10 @@ export default function ProfilePage() {
     setSavingProfile(true);
     try {
       const res = await api.put("/api/auth/profile", { name });
-      toast.success("Profil berhasil diperbarui.");
+      toast.success(t("profileUpdated"));
       if (res.data.user) setUser(res.data.user);
     } catch (err) {
-      toast.error(getApiErrorMessage(err, "Gagal memperbarui profil."));
+      toast.error(getApiErrorMessage(err, t("errUpdateProfile")));
     } finally {
       setSavingProfile(false);
     }
@@ -144,16 +147,16 @@ export default function ProfilePage() {
   const handleChangePassword = async (e: React.FormEvent) => {
     e.preventDefault();
     if (passwordForm.password !== passwordForm.password_confirmation) {
-      toast.error("Konfirmasi password tidak sama.");
+      toast.error(t("errPasswordMismatch"));
       return;
     }
     setSavingPassword(true);
     try {
       await api.post("/api/auth/change-password", passwordForm);
-      toast.success("Password berhasil diganti.");
+      toast.success(t("passwordChanged"));
       setPasswordForm({ current_password: "", password: "", password_confirmation: "" });
     } catch (err) {
-      toast.error(getApiErrorMessage(err, "Gagal mengganti password."));
+      toast.error(getApiErrorMessage(err, t("errChangePassword")));
     } finally {
       setSavingPassword(false);
     }
@@ -162,8 +165,8 @@ export default function ProfilePage() {
   return (
     <div className="max-w-2xl mx-auto space-y-6">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">Profil Saya</h1>
-        <p className="text-muted-foreground mt-1">Kelola informasi akun dan keamanan Anda.</p>
+        <h1 className="text-3xl font-bold tracking-tight">{t("title")}</h1>
+        <p className="text-muted-foreground mt-1">{t("subtitle")}</p>
       </div>
 
       <Card className="clean-card">
@@ -187,12 +190,12 @@ export default function ProfilePage() {
           <form onSubmit={handleSaveProfile} className="space-y-4">
             <div className="space-y-2">
               <label className="text-sm font-medium flex items-center gap-2">
-                <UserCircle className="w-4 h-4" /> Nama Lengkap
+                <UserCircle className="w-4 h-4" /> {t("fullName")}
               </label>
               <Input required value={name} onChange={(e) => setName(e.target.value)} />
             </div>
             <Button type="submit" disabled={savingProfile}>
-              {savingProfile ? "Menyimpan..." : "Simpan Profil"}
+              {savingProfile ? tc("saving") : t("saveProfile")}
             </Button>
           </form>
         </CardContent>
@@ -201,16 +204,16 @@ export default function ProfilePage() {
       <Card className="clean-card">
         <CardHeader className="pb-3">
           <CardTitle className="text-lg flex items-center gap-2">
-            <LockKeyhole className="w-5 h-5" /> Ganti Password
+            <LockKeyhole className="w-5 h-5" /> {t("changePassword")}
           </CardTitle>
           <CardDescription>
-            Gunakan password kuat minimal 8 karakter yang tidak dipakai di layanan lain.
+            {t("passwordHint")}
           </CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleChangePassword} className="space-y-4">
             <div className="space-y-2">
-              <label className="text-sm font-medium">Password Saat Ini</label>
+              <label className="text-sm font-medium">{t("currentPassword")}</label>
               <Input
                 type="password"
                 required
@@ -221,7 +224,7 @@ export default function ProfilePage() {
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <label className="text-sm font-medium">Password Baru</label>
+                <label className="text-sm font-medium">{t("newPassword")}</label>
                 <Input
                   type="password"
                   required
@@ -232,7 +235,7 @@ export default function ProfilePage() {
                 />
               </div>
               <div className="space-y-2">
-                <label className="text-sm font-medium">Ulangi Password Baru</label>
+                <label className="text-sm font-medium">{t("repeatPassword")}</label>
                 <Input
                   type="password"
                   required
@@ -244,7 +247,7 @@ export default function ProfilePage() {
               </div>
             </div>
             <Button type="submit" disabled={savingPassword}>
-              {savingPassword ? "Menyimpan..." : "Ganti Password"}
+              {savingPassword ? tc("saving") : t("changePassword")}
             </Button>
           </form>
         </CardContent>
@@ -254,27 +257,26 @@ export default function ProfilePage() {
       <Card className="clean-card">
         <CardHeader className="pb-3">
           <CardTitle className="text-lg flex items-center gap-2">
-            <ShieldCheck className="w-5 h-5" /> Autentikasi Dua Faktor (2FA)
+            <ShieldCheck className="w-5 h-5" /> {t("twoFaTitle")}
           </CardTitle>
           <CardDescription>
-            Lapisan keamanan ekstra: login membutuhkan kode 6 digit dari aplikasi authenticator
-            (Google Authenticator, Microsoft Authenticator, Aegis, dll).
+            {t("twoFaDesc")}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           {twoFaEnabled ? (
             <>
               <div className="flex items-center gap-2">
-                <Badge className="bg-emerald-100 text-emerald-700">AKTIF</Badge>
+                <Badge className="bg-emerald-100 text-emerald-700">{t("active")}</Badge>
                 <span className="text-sm text-muted-foreground">
-                  Akun Anda dilindungi 2FA.
+                  {t("protectedBy2fa")}
                 </span>
               </div>
 
               {showRecovery && setupData && (
                 <div className="rounded-md border border-amber-300 bg-amber-50 dark:bg-amber-950/30 p-4 space-y-2">
                   <p className="text-sm font-semibold text-amber-800 dark:text-amber-200">
-                    SIMPAN recovery codes ini — hanya ditampilkan SEKALI:
+                    {t("saveRecoveryCodes")}
                   </p>
                   <div className="grid grid-cols-2 gap-1 font-mono text-sm">
                     {setupData.recovery_codes.map((c) => (
@@ -282,17 +284,17 @@ export default function ProfilePage() {
                     ))}
                   </div>
                   <Button type="button" variant="outline" size="sm" onClick={copyRecovery}>
-                    <Copy className="w-4 h-4 mr-1" /> Salin Semua
+                    <Copy className="w-4 h-4 mr-1" /> {t("copyAll")}
                   </Button>
                   <p className="text-xs text-amber-700 dark:text-amber-300">
-                    Gunakan salah satu kode ini (sekali pakai) bila kehilangan akses ke authenticator.
+                    {t("recoveryHint")}
                   </p>
                 </div>
               )}
 
               <form onSubmit={disableTwoFa} className="flex flex-col sm:flex-row gap-2 sm:items-end">
                 <div className="space-y-1 flex-1 max-w-xs">
-                  <label className="text-sm font-medium">Nonaktifkan — masukkan password</label>
+                  <label className="text-sm font-medium">{t("disableEnterPassword")}</label>
                   <Input
                     type="password"
                     required
@@ -301,7 +303,7 @@ export default function ProfilePage() {
                   />
                 </div>
                 <Button type="submit" variant="outline" className="text-red-600" disabled={twoFaBusy}>
-                  Nonaktifkan 2FA
+                  {t("disable2fa")}
                 </Button>
               </form>
             </>
@@ -310,16 +312,16 @@ export default function ProfilePage() {
               <div className="flex flex-col sm:flex-row gap-4 items-start">
                 <img
                   src={setupData.qr_svg}
-                  alt="QR 2FA"
+                  alt={t("qrAlt")}
                   className="w-44 h-44 border rounded-md bg-white p-1 shrink-0"
                 />
                 <div className="space-y-2 text-sm">
-                  <p className="font-medium">1. Pindai QR dengan aplikasi authenticator</p>
+                  <p className="font-medium">{t("step1ScanQr")}</p>
                   <p className="text-muted-foreground">
-                    Atau masukkan manual: <code className="font-mono text-xs bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded">{setupData.secret}</code>
+                    {t("orEnterManually")} <code className="font-mono text-xs bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded">{setupData.secret}</code>
                   </p>
                   <form onSubmit={confirmTwoFa} className="space-y-2 pt-2">
-                    <p className="font-medium">2. Masukkan kode 6 digit untuk konfirmasi</p>
+                    <p className="font-medium">{t("step2EnterCode")}</p>
                     <div className="flex gap-2">
                       <Input
                         required
@@ -332,7 +334,7 @@ export default function ProfilePage() {
                         onChange={(e) => setConfirmCode(e.target.value.replace(/\D/g, ""))}
                       />
                       <Button type="submit" disabled={twoFaBusy || confirmCode.length !== 6}>
-                        {twoFaBusy ? "Memeriksa..." : "Aktifkan"}
+                        {twoFaBusy ? t("checking") : t("activate")}
                       </Button>
                     </div>
                   </form>
@@ -342,15 +344,15 @@ export default function ProfilePage() {
           ) : (
             <div className="flex items-center justify-between gap-4">
               <div className="flex items-center gap-2">
-                <Badge variant="secondary">Nonaktif</Badge>
+                <Badge variant="secondary">{t("inactive")}</Badge>
                 {user?.must_enable_2fa && (
                   <span className="text-sm text-amber-600 font-medium">
-                    Kebijakan sistem meminta peran Anda mengaktifkan 2FA.
+                    {t("mustEnable2fa")}
                   </span>
                 )}
               </div>
               <Button onClick={startTwoFa} disabled={twoFaBusy} className="bg-blue-900 hover:bg-blue-800 text-white">
-                {twoFaBusy ? "Menyiapkan..." : "Aktifkan 2FA"}
+                {twoFaBusy ? t("preparing") : t("activate2fa")}
               </Button>
             </div>
           )}
@@ -362,11 +364,10 @@ export default function ProfilePage() {
         <Card className="clean-card">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-lg">
-              <BellRing className="w-5 h-5" /> Preferensi Notifikasi Email
+              <BellRing className="w-5 h-5" /> {t("notifPrefsTitle")}
             </CardTitle>
             <CardDescription>
-              Pilih email otomatis mana yang ingin Anda terima. Notifikasi lonceng in-app dan
-              email keamanan akun (reset password) tetap selalu aktif.
+              {t("notifPrefsDesc")}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
@@ -387,7 +388,7 @@ export default function ProfilePage() {
               ))}
             </div>
             <Button onClick={savePrefs} disabled={savingPrefs} className="bg-blue-900 hover:bg-blue-800 text-white">
-              {savingPrefs ? "Menyimpan..." : "Simpan Preferensi"}
+              {savingPrefs ? tc("saving") : t("savePrefs")}
             </Button>
           </CardContent>
         </Card>

@@ -1,12 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import api from "@/lib/api";
 import { AppSetting } from "@/lib/api-helpers";
 import ReactMarkdown from "react-markdown";
 import { Loader2, FileText } from "lucide-react";
 
 export default function SOPPage() {
+  const t = useTranslations("safetyPublic");
   const [content, setContent] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -14,8 +16,9 @@ export default function SOPPage() {
     api.get("/api/public-settings").then((res) => {
       const data = res.data;
       const val = data.find((s: AppSetting) => s.key === "incident_sop_content")?.value;
-      setContent(val || "### Dokumen SOP Belum Tersedia");
+      setContent(val || t("sopUnavailable"));
     }).catch(console.error).finally(() => setLoading(false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- sekali saat mount
   }, []);
 
   if (loading) {
@@ -34,8 +37,8 @@ export default function SOPPage() {
             <FileText className="h-6 w-6" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-slate-900">Standar Operasional Prosedur</h1>
-            <p className="text-slate-500 text-sm">Dokumen resmi pelaporan insiden</p>
+            <h1 className="text-2xl font-bold text-slate-900">{t("sopTitle")}</h1>
+            <p className="text-slate-500 text-sm">{t("sopSubtitle")}</p>
           </div>
         </div>
         
