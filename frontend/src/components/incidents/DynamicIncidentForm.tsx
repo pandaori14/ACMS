@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useMemo, useCallback } from "react";
+import { useTranslations } from "next-intl";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -64,6 +65,8 @@ export default function DynamicIncidentForm({
   previewMode = false,
   onSubmitSuccess,
 }: DynamicIncidentFormProps) {
+  const t = useTranslations("incidentReport");
+  const tc = useTranslations("common");
   const [loading, setLoading] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [formValues, setFormValues] = useState<Record<string, string | string[]>>({});
@@ -131,7 +134,7 @@ export default function DynamicIncidentForm({
                 : !val || (Array.isArray(val) && val.length === 0);
 
           if (isEmpty) {
-            toast.error(`"${field.label}" wajib diisi.`);
+            toast.error(t("fieldRequired", { label: field.label }));
             return;
           }
         }
@@ -179,12 +182,12 @@ export default function DynamicIncidentForm({
       const res = await api.post("/api/v1/incidents/report", fd, {
         headers: { "Content-Type": "multipart/form-data" },
       });
-      toast.success(res.data.message ?? "Laporan berhasil dikirim");
+      toast.success(res.data.message ?? t("submitSuccess"));
       setIsSubmitted(true);
       onSubmitSuccess?.();
     } catch (err: unknown) {
       const e = err as { response?: { data?: { error?: string; message?: string } } };
-      toast.error(e.response?.data?.error ?? e.response?.data?.message ?? "Terjadi kesalahan saat mengirim laporan");
+      toast.error(e.response?.data?.error ?? e.response?.data?.message ?? t("submitError"));
     } finally {
       setLoading(false);
     }
@@ -198,9 +201,9 @@ export default function DynamicIncidentForm({
         <Card className="border-green-200 bg-green-50/50 dark:bg-green-950/10">
           <CardContent className="flex flex-col items-center justify-center p-12 text-center">
             <CheckCircle2 className="h-16 w-16 text-green-500 mb-4" />
-            <h3 className="text-2xl font-bold text-green-700 dark:text-green-400">Laporan Berhasil Terkirim!</h3>
+            <h3 className="text-2xl font-bold text-green-700 dark:text-green-400">{t("dynSuccessTitle")}</h3>
             <p className="text-muted-foreground mt-4 text-lg">
-              Terima kasih atas laporan Anda. Laporan akan ditangani secara rahasia dan profesional sesuai prosedur yang berlaku.
+              {t("dynSuccessBody")}
             </p>
             <Button
               className="mt-8"
@@ -210,7 +213,7 @@ export default function DynamicIncidentForm({
                 setIsSubmitted(false);
               }}
             >
-              Kirim Laporan Baru
+              {t("dynSendNew")}
             </Button>
           </CardContent>
         </Card>
@@ -243,7 +246,7 @@ export default function DynamicIncidentForm({
         <div className="bg-amber-50 dark:bg-amber-950/30 text-amber-800 dark:text-amber-300 p-4 rounded-lg flex gap-3 text-sm border border-amber-200 dark:border-amber-900">
           <Eye className="h-5 w-5 shrink-0 mt-0.5" />
           <p>
-            <strong>Mode Preview.</strong> Ini adalah tampilan form yang akan dilihat pelapor. Input dinonaktifkan.
+            {t.rich("dynPreviewNotice", { b: (chunks) => <strong>{chunks}</strong> })}
           </p>
         </div>
       )}
@@ -295,7 +298,7 @@ export default function DynamicIncidentForm({
         <CardFooter className="flex flex-col-reverse sm:flex-row sm:justify-between gap-3 pt-2 px-0">
           {!previewMode && (
             <Button type="button" variant="outline" className="w-full sm:w-auto" onClick={() => window.history.back()}>
-              Batal
+              {tc("cancel")}
             </Button>
           )}
           <Button
@@ -304,7 +307,7 @@ export default function DynamicIncidentForm({
             className="w-full sm:w-auto sm:ml-auto text-white"
             style={{ backgroundColor: themeColor }}
           >
-            {loading ? "Mengirim Laporan..." : "Kirim Laporan"}
+            {loading ? t("submitting") : t("dynSubmit")}
           </Button>
         </CardFooter>
       </form>
@@ -328,6 +331,8 @@ interface FieldRendererProps {
 }
 
 function FieldRenderer({ field, value, onChange, fileValue, onFileChange, fileRef, disabled, themeColor }: FieldRendererProps) {
+  const t = useTranslations("incidentReport");
+
   const renderField = (): React.ReactNode => {
     switch (field.field_type as FieldType) {
       case "text":
@@ -383,7 +388,7 @@ function FieldRenderer({ field, value, onChange, fileValue, onFileChange, fileRe
             disabled={disabled}
           >
             <SelectTrigger className="w-full">
-              <SelectValue placeholder={field.placeholder ?? "Pilih..."} />
+              <SelectValue placeholder={field.placeholder ?? t("selectPlaceholder")} />
             </SelectTrigger>
             <SelectContent>
               {(field.options ?? []).map((opt) => (
@@ -407,7 +412,7 @@ function FieldRenderer({ field, value, onChange, fileValue, onFileChange, fileRe
               disabled={disabled}
             >
               <SelectTrigger className="w-full">
-                <SelectValue placeholder={field.placeholder ?? "Tambah pilihan..."} />
+                <SelectValue placeholder={field.placeholder ?? t("multiselectPlaceholder")} />
               </SelectTrigger>
               <SelectContent>
                 {(field.options ?? [])
@@ -514,7 +519,7 @@ function FieldRenderer({ field, value, onChange, fileValue, onFileChange, fileRe
                 disabled={disabled}
               >
                 <Paperclip className="h-4 w-4 mr-2" />
-                {fileValue ? fileValue.name : "Pilih File"}
+                {fileValue ? fileValue.name : t("chooseFile")}
               </Button>
               {fileValue && !disabled && (
                 <Button
@@ -523,7 +528,7 @@ function FieldRenderer({ field, value, onChange, fileValue, onFileChange, fileRe
                   size="sm"
                   onClick={() => onFileChange(null)}
                 >
-                  Hapus
+                  {t("removeFile")}
                 </Button>
               )}
             </div>

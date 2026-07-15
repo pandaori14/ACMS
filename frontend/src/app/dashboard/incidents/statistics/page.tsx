@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
@@ -14,7 +15,6 @@ import api from "@/lib/api";
 import { toast } from "sonner";
 import { useAuthStore } from "@/store/useAuthStore";
 import type { IncidentStatistics } from "@/types/incident";
-import { SEVERITY_LABELS, STATUS_LABELS } from "@/types/incident";
 
 const SEVERITY_FILL: Record<string, string> = {
   critical: "#dc2626",
@@ -30,12 +30,23 @@ function humanizeType(value: string): string {
 }
 
 export default function IncidentStatisticsPage() {
+  const t = useTranslations("incidentStatistics");
   const router = useRouter();
   const permissions = useAuthStore((s) => s.user?.permissions) ?? [];
   const canManage = permissions.includes("manage-incidents");
 
   const [stats, setStats] = useState<IncidentStatistics | null>(null);
   const [loading, setLoading] = useState(true);
+
+  // Status/severity dari backend; fallback ke nilai mentah bila key tak ada (severity konfigurabel).
+  const statusLabel = useCallback(
+    (status: string) => (t.has(`status.${status}`) ? t(`status.${status}`) : status),
+    [t]
+  );
+  const severityLabel = useCallback(
+    (severity: string) => (t.has(`severity.${severity}`) ? t(`severity.${severity}`) : severity),
+    [t]
+  );
 
   useEffect(() => {
     if (!canManage) router.replace("/dashboard/incidents");
@@ -47,11 +58,11 @@ export default function IncidentStatisticsPage() {
       const res = await api.get("/api/v1/incidents/statistics");
       setStats(res.data.data);
     } catch {
-      toast.error("Gagal memuat statistik insiden");
+      toast.error(t("loadError"));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     if (canManage) fetchStats();
@@ -59,17 +70,17 @@ export default function IncidentStatisticsPage() {
 
   const exportCsv = () => {
     if (!stats) return;
-    const rows: string[] = ["Kategori,Item,Jumlah"];
-    Object.entries(stats.by_status).forEach(([k, v]) => rows.push(`Status,${STATUS_LABELS[k as keyof typeof STATUS_LABELS] ?? k},${v}`));
-    Object.entries(stats.by_severity).forEach(([k, v]) => rows.push(`Keparahan,${SEVERITY_LABELS[k] ?? k},${v}`));
-    Object.entries(stats.by_type).forEach(([k, v]) => rows.push(`Jenis,${humanizeType(k)},${v}`));
-    rows.push(`Total,Semua Laporan,${stats.total}`);
+    const rows: string[] = [t("csvHeader")];
+    Object.entries(stats.by_status).forEach(([k, v]) => rows.push(`${t("csvCatStatus")},${statusLabel(k)},${v}`));
+    Object.entries(stats.by_severity).forEach(([k, v]) => rows.push(`${t("csvCatSeverity")},${severityLabel(k)},${v}`));
+    Object.entries(stats.by_type).forEach(([k, v]) => rows.push(`${t("csvCatType")},${humanizeType(k)},${v}`));
+    rows.push(`${t("csvCatTotal")},${t("csvAllReports")},${stats.total}`);
 
     const blob = new Blob([rows.join("\n")], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
-    link.download = `statistik-insiden-${format(new Date(), "yyyy-MM-dd")}.csv`;
+    link.download = `${t("csvFilename")}-${format(new Date(), "yyyy-MM-dd")}.csv`;
     link.click();
     URL.revokeObjectURL(url);
   };
@@ -77,36 +88,36 @@ export default function IncidentStatisticsPage() {
   if (!canManage) return null;
 
   const byType = stats ? Object.entries(stats.by_type).map(([k, v]) => ({ name: humanizeType(k), value: v })) : [];
-  const bySeverity = stats ? Object.entries(stats.by_severity).map(([k, v]) => ({ name: SEVERITY_LABELS[k] ?? k, value: v, fill: SEVERITY_FILL[k] ?? "#94a3b8" })) : [];
+  const bySeverity = stats ? Object.entries(stats.by_severity).map(([k, v]) => ({ name: severityLabel(k), value: v, fill: SEVERITY_FILL[k] ?? "#94a3b8" })) : [];
   const trend = stats ? stats.trend_30_days.map((d) => ({ date: format(new Date(d.date), "dd MMM"), count: d.count })) : [];
 
   const statCards = [
-    { label: "Total Laporan", value: stats?.total ?? 0, icon: ShieldAlert, color: "text-slate-900 dark:text-slate-50" },
-    { label: "Laporan Masuk", value: stats?.by_status?.submitted ?? 0, icon: Clock, color: "text-red-600" },
-    { label: "Investigasi", value: stats?.by_status?.investigating ?? 0, icon: AlertTriangle, color: "text-amber-600" },
-    { label: "Selesai", value: stats?.by_status?.resolved ?? 0, icon: CheckCircle2, color: "text-green-600" },
+    { label: t("cardTotal"), value: stats?.total ?? 0, icon: ShieldAlert, color: "text-slate-900 dark:text-slate-50" },
+    { label: t("cardSubmitted"), value: stats?.by_status?.submitted ?? 0, icon: Clock, color: "text-red-600" },
+    { label: t("cardInvestigating"), value: stats?.by_status?.investigating ?? 0, icon: AlertTriangle, color: "text-amber-600" },
+    { label: t("cardResolved"), value: stats?.by_status?.resolved ?? 0, icon: CheckCircle2, color: "text-green-600" },
   ];
 
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-4">
         <Button variant="ghost" size="sm" className="w-fit -ml-2" onClick={() => router.push("/dashboard/incidents")}>
-          <ArrowLeft className="h-4 w-4 mr-2" /> Kembali ke Daftar Insiden
+          <ArrowLeft className="h-4 w-4 mr-2" /> {t("backToList")}
         </Button>
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <h1 className="text-3xl font-bold tracking-tight text-red-700 dark:text-red-400 flex items-center gap-2">
               <BarChart2 className="h-8 w-8" />
-              Statistik Insiden
+              {t("title")}
             </h1>
-            <p className="text-muted-foreground mt-1">Ringkasan dan tren pelaporan insiden 30 hari terakhir.</p>
+            <p className="text-muted-foreground mt-1">{t("subtitle")}</p>
           </div>
           <div className="flex gap-2">
             <Button variant="outline" size="sm" onClick={exportCsv} disabled={!stats}>
-              <Download className="h-4 w-4 mr-2" /> Ekspor CSV
+              <Download className="h-4 w-4 mr-2" /> {t("exportCsv")}
             </Button>
             <Button variant="outline" size="sm" onClick={fetchStats} disabled={loading}>
-              <RefreshCw className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`} /> Refresh
+              <RefreshCw className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`} /> {t("refresh")}
             </Button>
           </div>
         </div>
@@ -128,18 +139,18 @@ export default function IncidentStatisticsPage() {
       </div>
 
       {loading ? (
-        <div className="flex items-center justify-center h-64 text-muted-foreground">Memuat statistik...</div>
+        <div className="flex items-center justify-center h-64 text-muted-foreground">{t("loading")}</div>
       ) : (
         <>
           {/* Tren 30 hari */}
           <Card className="clean-card">
             <CardHeader>
-              <CardTitle className="text-base font-semibold">Tren Pelaporan (30 Hari Terakhir)</CardTitle>
-              <CardDescription className="text-xs">Jumlah laporan insiden per hari</CardDescription>
+              <CardTitle className="text-base font-semibold">{t("trendTitle")}</CardTitle>
+              <CardDescription className="text-xs">{t("trendDesc")}</CardDescription>
             </CardHeader>
             <CardContent className="h-[280px]">
               {trend.length === 0 ? (
-                <div className="flex items-center justify-center h-full text-sm text-muted-foreground">Belum ada laporan dalam 30 hari terakhir.</div>
+                <div className="flex items-center justify-center h-full text-sm text-muted-foreground">{t("trendEmpty")}</div>
               ) : (
                 <ResponsiveContainer width="100%" height="100%">
                   <AreaChart data={trend} margin={{ top: 10, right: 20, left: -10, bottom: 0 }}>
@@ -153,7 +164,7 @@ export default function IncidentStatisticsPage() {
                     <XAxis dataKey="date" tick={{ fontSize: 11, fill: "#64748b" }} tickLine={false} axisLine={false} />
                     <YAxis allowDecimals={false} tick={{ fontSize: 11, fill: "#64748b" }} tickLine={false} axisLine={false} />
                     <Tooltip contentStyle={{ borderRadius: "6px", border: "1px solid #e2e8f0", fontSize: "12px" }} />
-                    <Area type="monotone" dataKey="count" name="Laporan" stroke="#dc2626" strokeWidth={2} fill="url(#trendFill)" />
+                    <Area type="monotone" dataKey="count" name={t("trendSeriesName")} stroke="#dc2626" strokeWidth={2} fill="url(#trendFill)" />
                   </AreaChart>
                 </ResponsiveContainer>
               )}
@@ -164,12 +175,12 @@ export default function IncidentStatisticsPage() {
             {/* Per Jenis */}
             <Card className="clean-card">
               <CardHeader>
-                <CardTitle className="text-base font-semibold">Insiden per Jenis</CardTitle>
-                <CardDescription className="text-xs">Distribusi berdasarkan kategori pelaporan</CardDescription>
+                <CardTitle className="text-base font-semibold">{t("byTypeTitle")}</CardTitle>
+                <CardDescription className="text-xs">{t("byTypeDesc")}</CardDescription>
               </CardHeader>
               <CardContent className="h-[300px]">
                 {byType.length === 0 ? (
-                  <div className="flex items-center justify-center h-full text-sm text-muted-foreground">Belum ada data.</div>
+                  <div className="flex items-center justify-center h-full text-sm text-muted-foreground">{t("noData")}</div>
                 ) : (
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={byType} layout="vertical" margin={{ top: 5, right: 20, left: 20, bottom: 5 }}>
@@ -177,7 +188,7 @@ export default function IncidentStatisticsPage() {
                       <XAxis type="number" allowDecimals={false} tick={{ fontSize: 11, fill: "#64748b" }} tickLine={false} axisLine={false} />
                       <YAxis type="category" dataKey="name" width={120} tick={{ fontSize: 11, fill: "#64748b" }} tickLine={false} axisLine={false} />
                       <Tooltip cursor={{ fill: "rgba(0,0,0,0.03)" }} contentStyle={{ borderRadius: "6px", border: "1px solid #e2e8f0", fontSize: "12px" }} />
-                      <Bar dataKey="value" name="Jumlah" fill="#0f172a" radius={[0, 4, 4, 0]} />
+                      <Bar dataKey="value" name={t("byTypeSeriesName")} fill="#0f172a" radius={[0, 4, 4, 0]} />
                     </BarChart>
                   </ResponsiveContainer>
                 )}
@@ -187,12 +198,12 @@ export default function IncidentStatisticsPage() {
             {/* Per Keparahan */}
             <Card className="clean-card">
               <CardHeader>
-                <CardTitle className="text-base font-semibold">Insiden per Tingkat Keparahan</CardTitle>
-                <CardDescription className="text-xs">Proporsi severity laporan</CardDescription>
+                <CardTitle className="text-base font-semibold">{t("bySeverityTitle")}</CardTitle>
+                <CardDescription className="text-xs">{t("bySeverityDesc")}</CardDescription>
               </CardHeader>
               <CardContent className="h-[300px]">
                 {bySeverity.length === 0 ? (
-                  <div className="flex items-center justify-center h-full text-sm text-muted-foreground">Belum ada data severity.</div>
+                  <div className="flex items-center justify-center h-full text-sm text-muted-foreground">{t("noSeverityData")}</div>
                 ) : (
                   <ResponsiveContainer width="100%" height="100%">
                     <PieChart>

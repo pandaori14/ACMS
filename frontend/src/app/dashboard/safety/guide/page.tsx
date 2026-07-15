@@ -1,10 +1,14 @@
 import { Metadata } from "next";
+import { getTranslations } from "next-intl/server";
 import { GuideClient } from "./GuideClient";
 
-export const metadata: Metadata = {
-  title: "Panduan Pelaporan Insiden | ACMS",
-  description: "Panduan resmi untuk melaporkan insiden keselamatan dan akademik",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("incidentGuide");
+  return {
+    title: t("metaTitle"),
+    description: t("metaDescription"),
+  };
+}
 
 export default function GuidePage() {
   return <GuideClient />;

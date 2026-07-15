@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useTranslations } from "next-intl";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,7 +14,6 @@ import { MessageSquare, Info, CheckCircle2, Lock, Inbox, ChevronDown } from "luc
 import { format } from "date-fns";
 import api from "@/lib/api";
 import type { Consultation, ConsultationStatus } from "@/types/incident";
-import { CONSULTATION_STATUS_LABELS } from "@/types/incident";
 
 interface FormOption {
   value: string;
@@ -29,22 +29,30 @@ interface ConsultForm {
 
 const EMPTY_FORM: ConsultForm = { category: "", topic: "", message: "", is_anonymous: false };
 
-function statusBadge(status: ConsultationStatus) {
-  switch (status) {
-    case "pending": return <Badge variant="destructive">Menunggu</Badge>;
-    case "in_progress": return <Badge className="bg-amber-500 text-white">Diproses</Badge>;
-    case "responded": return <Badge className="bg-blue-600 text-white">Direspons</Badge>;
-    case "closed": return <Badge className="bg-green-600 text-white">Ditutup</Badge>;
-    default: return <Badge variant="outline">{CONSULTATION_STATUS_LABELS[status] ?? status}</Badge>;
-  }
-}
+const CONSULT_STATUS_CLS: Record<ConsultationStatus, string> = {
+  pending: "",
+  in_progress: "bg-amber-500 text-white",
+  responded: "bg-blue-600 text-white",
+  closed: "bg-green-600 text-white",
+};
 
 export default function ConsultPage() {
+  const t = useTranslations("incidentConsult");
+  const tc = useTranslations("common");
   const [loading, setLoading] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [categories, setCategories] = useState<FormOption[]>([]);
   const [history, setHistory] = useState<Consultation[]>([]);
   const [formData, setFormData] = useState<ConsultForm>(EMPTY_FORM);
+
+  const statusBadge = (status: ConsultationStatus) => {
+    if (!t.has(`consultStatus.${status}`)) {
+      return <Badge variant="outline">{status}</Badge>;
+    }
+    const label = t(`consultStatus.${status}`);
+    if (status === "pending") return <Badge variant="destructive">{label}</Badge>;
+    return <Badge className={CONSULT_STATUS_CLS[status]}>{label}</Badge>;
+  };
 
   useEffect(() => {
     api.get("/api/v1/consultations/form-options")
@@ -72,19 +80,19 @@ export default function ConsultPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.category || !formData.topic || !formData.message) {
-      toast.error("Harap lengkapi semua field yang wajib diisi");
+      toast.error(t("validationRequired"));
       return;
     }
 
     setLoading(true);
     try {
       const res = await api.post("/api/v1/consultations", formData);
-      toast.success(res.data.message ?? "Konsultasi berhasil dikirim");
+      toast.success(res.data.message ?? t("submitSuccess"));
       setIsSubmitted(true);
       fetchHistory();
     } catch (err: unknown) {
       const e = err as { response?: { data?: { error?: string; message?: string } } };
-      toast.error(e.response?.data?.error ?? e.response?.data?.message ?? "Gagal mengirim konsultasi");
+      toast.error(e.response?.data?.error ?? e.response?.data?.message ?? t("submitError"));
     } finally {
       setLoading(false);
     }
@@ -100,10 +108,10 @@ export default function ConsultPage() {
       <div>
         <h1 className="text-3xl font-bold tracking-tight text-blue-900 dark:text-blue-400 flex items-center gap-2">
           <MessageSquare className="h-8 w-8" />
-          Konsultasi Rahasia
+          {t("title")}
         </h1>
         <p className="text-muted-foreground mt-2">
-          Sampaikan kekhawatiran, pertanyaan, atau permohonan bantuan Anda secara rahasia kepada tim yang berwenang. Konsultasi dapat dilakukan secara anonim.
+          {t("subtitle")}
         </p>
       </div>
 
@@ -112,12 +120,12 @@ export default function ConsultPage() {
         <Card className="border-blue-200 bg-blue-50/50 dark:bg-blue-950/10">
           <CardContent className="flex flex-col items-center justify-center p-12 text-center">
             <CheckCircle2 className="h-16 w-16 text-blue-500 mb-4" />
-            <h3 className="text-2xl font-bold text-blue-700 dark:text-blue-400">Konsultasi Terkirim</h3>
+            <h3 className="text-2xl font-bold text-blue-700 dark:text-blue-400">{t("successTitle")}</h3>
             <p className="text-muted-foreground mt-4 text-lg">
-              Permintaan konsultasi Anda telah kami terima. Balasan akan muncul di bagian <strong>Riwayat Konsultasi Saya</strong> di bawah, dan Anda akan diberi tahu via email (jika tidak anonim).
+              {t.rich("successBody", { b: (chunks) => <strong>{chunks}</strong> })}
             </p>
             <Button className="mt-8 bg-blue-900 hover:bg-blue-800 text-white" onClick={resetForm}>
-              Kirim Konsultasi Lain
+              {t("sendAnother")}
             </Button>
           </CardContent>
         </Card>
@@ -126,22 +134,22 @@ export default function ConsultPage() {
           <div className="bg-blue-50 dark:bg-blue-950/30 text-blue-800 dark:text-blue-300 p-4 rounded-lg flex gap-3 text-sm border border-blue-200 dark:border-blue-900">
             <Info className="h-5 w-5 shrink-0 mt-0.5" />
             <p>
-              Konsultasi ini bersifat <strong>rahasia</strong>. Tim yang merespons adalah Admin Program Studi atau Kaprodi yang ditugaskan. Jika Anda memilih <strong>Anonim</strong>, identitas Anda tidak akan tercatat — namun balasan tidak dapat dikaitkan kembali kepada Anda.
+              {t.rich("infoNotice", { b: (chunks) => <strong>{chunks}</strong> })}
             </p>
           </div>
 
           <Card>
             <form onSubmit={handleSubmit}>
               <CardHeader>
-                <CardTitle>Detail Konsultasi</CardTitle>
-                <CardDescription>Jelaskan hal yang ingin Anda konsultasikan dengan sedetail mungkin agar kami dapat memberikan respons yang tepat.</CardDescription>
+                <CardTitle>{t("detailTitle")}</CardTitle>
+                <CardDescription>{t("detailDesc")}</CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
                 <div className="space-y-2">
-                  <Label htmlFor="category">Kategori Konsultasi <span className="text-red-500">*</span></Label>
+                  <Label htmlFor="category">{t("categoryLabel")} <span className="text-red-500">*</span></Label>
                   <Select value={formData.category} onValueChange={(v) => handleChange("category", v)}>
                     <SelectTrigger>
-                      <SelectValue placeholder="Pilih Kategori" />
+                      <SelectValue placeholder={t("categoryPlaceholder")} />
                     </SelectTrigger>
                     <SelectContent>
                       {categories.map((c) => (
@@ -152,10 +160,10 @@ export default function ConsultPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="topic">Topik / Judul Konsultasi <span className="text-red-500">*</span></Label>
+                  <Label htmlFor="topic">{t("topicLabel")} <span className="text-red-500">*</span></Label>
                   <Input
                     id="topic"
-                    placeholder="Cth: Pertanyaan tentang jadwal stase, Masalah dengan preceptor, dll"
+                    placeholder={t("topicPlaceholder")}
                     value={formData.topic}
                     onChange={(e) => handleChange("topic", e.target.value)}
                     maxLength={255}
@@ -163,10 +171,10 @@ export default function ConsultPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="message">Pesan / Isi Konsultasi <span className="text-red-500">*</span></Label>
+                  <Label htmlFor="message">{t("messageLabel")} <span className="text-red-500">*</span></Label>
                   <Textarea
                     id="message"
-                    placeholder="Ceritakan secara detail apa yang ingin Anda konsultasikan — minimal 20 karakter..."
+                    placeholder={t("messagePlaceholder")}
                     className="min-h-[200px] resize-y"
                     value={formData.message}
                     onChange={(e) => handleChange("message", e.target.value)}
@@ -186,18 +194,18 @@ export default function ConsultPage() {
                   <div className="space-y-1">
                     <label htmlFor="is_anonymous" className="text-sm font-medium leading-none cursor-pointer flex items-center gap-2">
                       <Lock className="h-3.5 w-3.5 text-muted-foreground" />
-                      Sembunyikan Identitas Saya (Konsultasi Anonim)
+                      {t("anonLabel")}
                     </label>
                     <p className="text-xs text-muted-foreground">
-                      Nama Anda tidak akan disertakan. Catatan: konsultasi anonim tidak akan muncul di Riwayat Anda karena tidak terkait dengan akun.
+                      {t("anonHint")}
                     </p>
                   </div>
                 </div>
               </CardContent>
               <CardFooter className="flex flex-col-reverse sm:flex-row sm:justify-between gap-3 bg-muted/20 pt-6">
-                <Button type="button" variant="outline" className="w-full sm:w-auto" onClick={() => window.history.back()}>Batal</Button>
+                <Button type="button" variant="outline" className="w-full sm:w-auto" onClick={() => window.history.back()}>{tc("cancel")}</Button>
                 <Button type="submit" disabled={loading} className="bg-blue-900 hover:bg-blue-800 text-white w-full sm:w-auto">
-                  {loading ? "Mengirim..." : "Kirim Konsultasi"}
+                  {loading ? t("submitting") : t("submit")}
                 </Button>
               </CardFooter>
             </form>
@@ -208,12 +216,12 @@ export default function ConsultPage() {
       {/* Riwayat Konsultasi Saya */}
       <div>
         <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2 mb-3">
-          <Inbox className="h-5 w-5" /> Riwayat Konsultasi Saya
+          <Inbox className="h-5 w-5" /> {t("historyTitle")}
         </h2>
         {history.length === 0 ? (
           <Card>
             <CardContent className="py-10 text-center text-sm text-muted-foreground">
-              Belum ada konsultasi yang Anda kirimkan (konsultasi anonim tidak tampil di sini).
+              {t("historyEmpty")}
             </CardContent>
           </Card>
         ) : (
@@ -226,7 +234,7 @@ export default function ConsultPage() {
                       <p className="font-medium text-slate-900 dark:text-slate-100 truncate">{c.topic}</p>
                       <p className="text-xs text-muted-foreground mt-0.5">
                         {format(new Date(c.created_at), "dd MMM yyyy")}
-                        {c.response ? " · Balasan tersedia" : " · Menunggu balasan"}
+                        {c.response ? ` · ${t("replyAvailable")}` : ` · ${t("awaitingReply")}`}
                       </p>
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
@@ -236,21 +244,21 @@ export default function ConsultPage() {
                   </summary>
                   <div className="px-4 pb-4 space-y-3 border-t pt-3">
                     <div>
-                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">Pesan Anda</p>
+                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">{t("yourMessage")}</p>
                       <p className="text-sm whitespace-pre-wrap text-slate-700 dark:text-slate-300">{c.message}</p>
                     </div>
                     {c.response ? (
                       <div className="bg-blue-50 dark:bg-blue-950/20 rounded-md p-3">
-                        <p className="text-xs font-semibold text-blue-700 dark:text-blue-300 uppercase tracking-wider mb-1">Balasan Tim</p>
+                        <p className="text-xs font-semibold text-blue-700 dark:text-blue-300 uppercase tracking-wider mb-1">{t("teamReply")}</p>
                         <p className="text-sm whitespace-pre-wrap text-slate-700 dark:text-slate-300">{c.response}</p>
                         {c.responded_at && (
                           <p className="text-xs text-muted-foreground mt-2">
-                            {c.responder?.name ? `Oleh ${c.responder.name} · ` : ""}{format(new Date(c.responded_at), "dd MMM yyyy, HH:mm")}
+                            {c.responder?.name ? t("byLine", { name: c.responder.name }) : ""}{format(new Date(c.responded_at), "dd MMM yyyy, HH:mm")}
                           </p>
                         )}
                       </div>
                     ) : (
-                      <p className="text-sm text-muted-foreground italic">Konsultasi Anda sedang diproses. Balasan akan muncul di sini.</p>
+                      <p className="text-sm text-muted-foreground italic">{t("processingReply")}</p>
                     )}
                   </div>
                 </details>

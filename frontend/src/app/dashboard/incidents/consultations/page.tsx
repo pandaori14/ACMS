@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -16,26 +17,16 @@ import { toast } from "sonner";
 import { useAuthStore } from "@/store/useAuthStore";
 import type { Consultation, ConsultationStatus } from "@/types/incident";
 
-function getStatusBadge(status: ConsultationStatus) {
-  switch (status) {
-    case "pending": return <Badge variant="destructive">Menunggu</Badge>;
-    case "in_progress": return <Badge className="bg-amber-500 text-white">Diproses</Badge>;
-    case "responded": return <Badge className="bg-blue-600 text-white">Direspons</Badge>;
-    case "closed": return <Badge className="bg-green-600 text-white">Ditutup</Badge>;
-    default: return <Badge variant="outline">{status}</Badge>;
-  }
-}
-
-const CATEGORY_LABELS: Record<string, string> = {
-  academic: "Konsultasi Akademik",
-  psychological: "Konsultasi Psikologis",
-  career: "Konsultasi Karir Klinis",
-  bullying_consult: "Konsultasi Perundungan",
-  k3_consult: "Konsultasi K3",
-  other: "Konsultasi Lainnya",
+const CONSULT_STATUS_CLS: Record<ConsultationStatus, string> = {
+  pending: "",
+  in_progress: "bg-amber-500 text-white",
+  responded: "bg-blue-600 text-white",
+  closed: "bg-green-600 text-white",
 };
 
 export default function ConsultationsPage() {
+  const t = useTranslations("incidentConsultations");
+  const tc = useTranslations("common");
   const router = useRouter();
   const permissions = useAuthStore((s) => s.user?.permissions) ?? [];
   const canManage = permissions.includes("manage-consultations");
@@ -51,6 +42,19 @@ export default function ConsultationsPage() {
   const [responseText, setResponseText] = useState("");
   const [responseStatus, setResponseStatus] = useState<string>("");
   const [submitting, setSubmitting] = useState(false);
+
+  // Kategori konsultasi dikonfigurasi via system_references → fallback ke nilai mentah.
+  const categoryLabel = (category: string) =>
+    t.has(`category.${category}`) ? t(`category.${category}`) : category;
+
+  const getStatusBadge = (status: ConsultationStatus) => {
+    if (!t.has(`consultStatus.${status}`)) {
+      return <Badge variant="outline">{status}</Badge>;
+    }
+    const label = t(`consultStatus.${status}`);
+    if (status === "pending") return <Badge variant="destructive">{label}</Badge>;
+    return <Badge className={CONSULT_STATUS_CLS[status]}>{label}</Badge>;
+  };
 
   useEffect(() => {
     if (!canManage) {
@@ -72,11 +76,11 @@ export default function ConsultationsPage() {
         responded: data.filter((c) => c.status === "responded").length,
       });
     } catch {
-      toast.error("Gagal memuat daftar konsultasi");
+      toast.error(t("loadError"));
     } finally {
       setLoading(false);
     }
-  }, [statusFilter]);
+  }, [statusFilter, t]);
 
   useEffect(() => {
     if (canManage) fetchData();
@@ -97,12 +101,12 @@ export default function ConsultationsPage() {
         response: responseText,
         status: responseStatus,
       });
-      toast.success("Respons konsultasi berhasil disimpan");
+      toast.success(t("respondSuccess"));
       setDialogOpen(false);
       fetchData();
     } catch (err: unknown) {
       const e = err as { response?: { data?: { message?: string } } };
-      toast.error(e.response?.data?.message ?? "Gagal menyimpan respons");
+      toast.error(e.response?.data?.message ?? t("respondError"));
     } finally {
       setSubmitting(false);
     }
@@ -116,13 +120,13 @@ export default function ConsultationsPage() {
         <div>
           <h1 className="text-3xl font-bold tracking-tight text-blue-900 dark:text-blue-400 flex items-center gap-2">
             <MessageSquareDot className="h-8 w-8" />
-            Manajemen Konsultasi
+            {t("title")}
           </h1>
-          <p className="text-muted-foreground mt-1">Kelola dan respons permintaan konsultasi dari mahasiswa dan civitas akademika.</p>
+          <p className="text-muted-foreground mt-1">{t("subtitle")}</p>
         </div>
         <Button variant="outline" size="sm" onClick={fetchData} disabled={loading}>
           <RefreshCw className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`} />
-          Refresh
+          {t("refresh")}
         </Button>
       </div>
 
@@ -130,32 +134,32 @@ export default function ConsultationsPage() {
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <Card className="clean-card">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-slate-600 dark:text-slate-400">Total</CardTitle>
+            <CardTitle className="text-sm font-medium text-slate-600 dark:text-slate-400">{t("cardTotal")}</CardTitle>
             <MessageSquare className="h-4 w-4 text-slate-400" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-semibold">{stats.total}</div>
-            <p className="text-xs text-muted-foreground mt-1">Semua konsultasi</p>
+            <p className="text-xs text-muted-foreground mt-1">{t("cardTotalSub")}</p>
           </CardContent>
         </Card>
         <Card className="clean-card">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-slate-600 dark:text-slate-400">Menunggu</CardTitle>
+            <CardTitle className="text-sm font-medium text-slate-600 dark:text-slate-400">{t("cardPending")}</CardTitle>
             <Clock className="h-4 w-4 text-red-400" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-semibold text-red-600">{stats.pending}</div>
-            <p className="text-xs text-muted-foreground mt-1">Belum direspons</p>
+            <p className="text-xs text-muted-foreground mt-1">{t("cardPendingSub")}</p>
           </CardContent>
         </Card>
         <Card className="clean-card">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-slate-600 dark:text-slate-400">Direspons</CardTitle>
+            <CardTitle className="text-sm font-medium text-slate-600 dark:text-slate-400">{t("cardResponded")}</CardTitle>
             <CheckCircle2 className="h-4 w-4 text-blue-400" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-semibold text-blue-600">{stats.responded}</div>
-            <p className="text-xs text-muted-foreground mt-1">Sudah dijawab</p>
+            <p className="text-xs text-muted-foreground mt-1">{t("cardRespondedSub")}</p>
           </CardContent>
         </Card>
       </div>
@@ -164,14 +168,14 @@ export default function ConsultationsPage() {
       <div className="flex items-center gap-3">
         <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v ?? "all")}>
           <SelectTrigger className="w-full sm:w-[200px]">
-            <SelectValue placeholder="Semua Status" />
+            <SelectValue placeholder={t("filterAllStatus")} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">Semua Status</SelectItem>
-            <SelectItem value="pending">Menunggu</SelectItem>
-            <SelectItem value="in_progress">Diproses</SelectItem>
-            <SelectItem value="responded">Direspons</SelectItem>
-            <SelectItem value="closed">Ditutup</SelectItem>
+            <SelectItem value="all">{t("filterAllStatus")}</SelectItem>
+            <SelectItem value="pending">{t("consultStatus.pending")}</SelectItem>
+            <SelectItem value="in_progress">{t("consultStatus.in_progress")}</SelectItem>
+            <SelectItem value="responded">{t("consultStatus.responded")}</SelectItem>
+            <SelectItem value="closed">{t("consultStatus.closed")}</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -181,22 +185,22 @@ export default function ConsultationsPage() {
         <table className="w-full min-w-[680px] text-sm text-left">
           <thead className="bg-muted/50 text-xs uppercase font-semibold">
             <tr>
-              <th className="px-4 py-3 whitespace-nowrap">Tanggal</th>
-              <th className="px-4 py-3 whitespace-nowrap">Kategori</th>
-              <th className="px-4 py-3 whitespace-nowrap">Topik</th>
-              <th className="px-4 py-3 whitespace-nowrap">Pemohon</th>
-              <th className="px-4 py-3 whitespace-nowrap">Status</th>
-              <th className="px-4 py-3 text-right whitespace-nowrap">Aksi</th>
+              <th className="px-4 py-3 whitespace-nowrap">{tc("date")}</th>
+              <th className="px-4 py-3 whitespace-nowrap">{t("colCategory")}</th>
+              <th className="px-4 py-3 whitespace-nowrap">{t("colTopic")}</th>
+              <th className="px-4 py-3 whitespace-nowrap">{t("colRequester")}</th>
+              <th className="px-4 py-3 whitespace-nowrap">{tc("status")}</th>
+              <th className="px-4 py-3 text-right whitespace-nowrap">{tc("actions")}</th>
             </tr>
           </thead>
           <tbody className="divide-y">
             {loading ? (
               <tr>
-                <td colSpan={6} className="px-4 py-8 text-center text-muted-foreground">Memuat data...</td>
+                <td colSpan={6} className="px-4 py-8 text-center text-muted-foreground">{t("loadingData")}</td>
               </tr>
             ) : consultations.length === 0 ? (
               <tr>
-                <td colSpan={6} className="px-4 py-8 text-center text-muted-foreground">Tidak ada konsultasi ditemukan.</td>
+                <td colSpan={6} className="px-4 py-8 text-center text-muted-foreground">{t("empty")}</td>
               </tr>
             ) : (
               consultations.map((c) => (
@@ -204,12 +208,12 @@ export default function ConsultationsPage() {
                   <td className="px-4 py-3 whitespace-nowrap text-xs text-muted-foreground">
                     {format(new Date(c.created_at), "dd MMM yyyy")}
                   </td>
-                  <td className="px-4 py-3">{CATEGORY_LABELS[c.category] ?? c.category}</td>
+                  <td className="px-4 py-3">{categoryLabel(c.category)}</td>
                   <td className="px-4 py-3 max-w-[200px] truncate font-medium">{c.topic}</td>
                   <td className="px-4 py-3">
                     {c.is_anonymous ? (
                       <span className="flex items-center text-muted-foreground gap-1 italic text-xs">
-                        <UserX className="h-3.5 w-3.5" /> Anonim
+                        <UserX className="h-3.5 w-3.5" /> {t("anonymous")}
                       </span>
                     ) : (
                       c.requester?.name ?? "—"
@@ -219,7 +223,7 @@ export default function ConsultationsPage() {
                   <td className="px-4 py-3 text-right">
                     <Button variant="ghost" size="sm" onClick={() => handleOpenDetail(c)}>
                       <Eye className="h-4 w-4 mr-1" />
-                      {c.status === "pending" || c.status === "in_progress" ? "Respons" : "Detail"}
+                      {c.status === "pending" || c.status === "in_progress" ? t("respondAction") : t("detailAction")}
                     </Button>
                   </td>
                 </tr>
@@ -235,10 +239,10 @@ export default function ConsultationsPage() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <MessageSquareDot className="h-5 w-5 text-blue-600" />
-              Detail Konsultasi
+              {t("dialogTitle")}
             </DialogTitle>
             <DialogDescription>
-              {selected && `${CATEGORY_LABELS[selected.category] ?? selected.category} — ${format(new Date(selected.created_at), "dd MMM yyyy")}`}
+              {selected && `${categoryLabel(selected.category)} — ${format(new Date(selected.created_at), "dd MMM yyyy")}`}
             </DialogDescription>
           </DialogHeader>
 
@@ -247,13 +251,13 @@ export default function ConsultationsPage() {
               {/* Meta */}
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div>
-                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">Status</p>
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">{tc("status")}</p>
                   {getStatusBadge(selected.status)}
                 </div>
                 <div>
-                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">Pemohon</p>
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">{t("colRequester")}</p>
                   {selected.is_anonymous ? (
-                    <span className="flex items-center gap-1 italic text-muted-foreground"><UserX className="h-3.5 w-3.5" /> Anonim</span>
+                    <span className="flex items-center gap-1 italic text-muted-foreground"><UserX className="h-3.5 w-3.5" /> {t("anonymous")}</span>
                   ) : (
                     <span className="font-medium">{selected.requester?.name ?? "—"}</span>
                   )}
@@ -262,25 +266,25 @@ export default function ConsultationsPage() {
 
               {/* Topic */}
               <div>
-                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">Topik</p>
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">{t("colTopic")}</p>
                 <p className="font-medium">{selected.topic}</p>
               </div>
 
               {/* Message */}
               <div>
-                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">Pesan</p>
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">{t("metaMessage")}</p>
                 <div className="bg-muted/30 p-3 rounded-md text-sm whitespace-pre-wrap">{selected.message}</div>
               </div>
 
               {/* Existing response */}
               {selected.response && (
                 <div className="border-t pt-4">
-                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">Respons</p>
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">{t("metaResponse")}</p>
                   <div className="bg-blue-50 dark:bg-blue-950/20 p-3 rounded-md text-sm whitespace-pre-wrap">
                     {selected.response}
                   </div>
                   <p className="text-xs text-muted-foreground mt-1.5">
-                    Dijawab oleh: <span className="font-medium">{selected.responder?.name ?? "—"}</span>
+                    {t("answeredByLabel")} <span className="font-medium">{selected.responder?.name ?? "—"}</span>
                     {selected.responded_at && ` · ${format(new Date(selected.responded_at), "dd MMM yyyy, HH:mm")}`}
                   </p>
                 </div>
@@ -290,26 +294,26 @@ export default function ConsultationsPage() {
               {selected.status !== "closed" && (
                 <div className="border-t pt-4 space-y-3">
                   <Label className="text-sm font-semibold">
-                    {selected.response ? "Perbarui Respons" : "Tambah Respons"}
+                    {selected.response ? t("updateResponse") : t("addResponse")}
                   </Label>
                   <Textarea
-                    placeholder="Tulis respons konsultasi..."
+                    placeholder={t("responsePlaceholder")}
                     className="min-h-[120px]"
                     value={responseText ?? ""}
                     onChange={(e) => setResponseText(e.target.value)}
                   />
                   <div className="space-y-2">
-                    <Label className="text-sm">Status setelah respons</Label>
+                    <Label className="text-sm">{t("statusAfterLabel")}</Label>
                     <Select value={responseStatus} onValueChange={(v) => setResponseStatus(v ?? "")}>
                       <SelectTrigger className="w-full sm:w-[220px]">
-                        <SelectValue placeholder="Pilih status..." />
+                        <SelectValue placeholder={t("selectStatusPlaceholder")} />
                       </SelectTrigger>
                       <SelectContent>
                         {(selected.status === "pending" || selected.status === "in_progress") && (
-                          <SelectItem value="in_progress">Diproses (masih berlanjut)</SelectItem>
+                          <SelectItem value="in_progress">{t("statusOptionInProgress")}</SelectItem>
                         )}
-                        <SelectItem value="responded">Direspons (menunggu konfirmasi)</SelectItem>
-                        <SelectItem value="closed">Ditutup (selesai)</SelectItem>
+                        <SelectItem value="responded">{t("statusOptionResponded")}</SelectItem>
+                        <SelectItem value="closed">{t("statusOptionClosed")}</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -319,14 +323,14 @@ export default function ConsultationsPage() {
           )}
 
           <DialogFooter className="gap-2">
-            <Button variant="ghost" onClick={() => setDialogOpen(false)}>Tutup</Button>
+            <Button variant="ghost" onClick={() => setDialogOpen(false)}>{tc("close")}</Button>
             {selected?.status !== "closed" && (
               <Button
                 onClick={handleRespond}
                 disabled={!responseText.trim() || !responseStatus || submitting}
                 className="bg-blue-900 hover:bg-blue-800 text-white"
               >
-                {submitting ? "Menyimpan..." : "Simpan Respons"}
+                {submitting ? tc("saving") : t("saveResponse")}
               </Button>
             )}
           </DialogFooter>

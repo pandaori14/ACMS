@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import api from "@/lib/api";
 import { AppSetting } from "@/lib/api-helpers";
 import { Card, CardContent } from "@/components/ui/card";
@@ -9,6 +10,7 @@ import { useAuthStore } from "@/store/useAuthStore";
 import ReactMarkdown from "react-markdown";
 
 export function GuideClient() {
+  const t = useTranslations("incidentGuide");
   const [guideContent, setGuideContent] = useState<string>("");
   const [loading, setLoading] = useState(true);
   const user = useAuthStore((state) => state.user);
@@ -24,21 +26,21 @@ export function GuideClient() {
   const fetchGuide = async () => {
     try {
       const { data } = await api.get("/api/public-settings");
-      
+
       // Determine the setting key based on the role
       const roleKey = userRole.toLowerCase().replace(/\s+/g, '_');
       const settingKey = `incident_guide_${roleKey}`;
-      
+
       const guide = data.find((s: AppSetting) => s.key === settingKey)?.value;
-      
+
       if (guide) {
         setGuideContent(guide);
       } else {
-        setGuideContent("### Panduan Belum Tersedia\n\nMaaf, panduan pelaporan untuk peran Anda belum dikonfigurasi oleh Super Admin.");
+        setGuideContent(t("guideNotAvailable"));
       }
     } catch (err) {
       console.error(err);
-      setGuideContent("### Gagal Memuat Panduan\n\nTerjadi kesalahan saat mengambil panduan pelaporan.");
+      setGuideContent(t("guideLoadError"));
     } finally {
       setLoading(false);
     }
@@ -59,8 +61,8 @@ export function GuideClient() {
           <BookOpen className="h-5 w-5" />
         </div>
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Panduan Pelaporan Insiden</h1>
-          <p className="text-sm text-muted-foreground">Petunjuk resmi yang disesuaikan untuk peran Anda ({userRole})</p>
+          <h1 className="text-2xl font-bold tracking-tight">{t("title")}</h1>
+          <p className="text-sm text-muted-foreground">{t("subtitle", { role: userRole })}</p>
         </div>
       </div>
 
